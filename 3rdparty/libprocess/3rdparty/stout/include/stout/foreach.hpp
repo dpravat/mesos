@@ -13,49 +13,37 @@
 #ifndef __STOUT_FOREACH_HPP__
 #define __STOUT_FOREACH_HPP__
 
-#include <boost/foreach.hpp>
+#include <tuple>
+#include <utility>
 
-namespace __foreach__ {
+#include <boost/preprocessor/seq/cat.hpp>
 
-// NOTE: This is a copied from Boost
-// (boost/tuple/detail/tuple_basic_no_partial_spec.hpp) because the
-// new 'boost::tuples::ignore' does not work in our 'foreachkey' and
-// 'foreachvalue'.
-struct swallow_assign {
-  template <typename T>
-  swallow_assign const& operator=(const T&) const {
-    return *this;
-  }
-};
+#define FOREACH_ID(id) BOOST_PP_SEQ_CAT((__foreach_)(__LINE__)(_)(id)(__))
 
-swallow_assign const ignore = swallow_assign();
+#define foreach(ELEM, ELEMS) for (ELEM : ELEMS)
 
-} // namespace __foreach__ {
+#define foreachpair(KEY, VALUE, ELEMS)                                       \
+  foreach (auto&& FOREACH_ID(elem), ELEMS)                                   \
+    if (false) FOREACH_ID(break): break; else                                \
+    if (bool FOREACH_ID(continue) = false); else                             \
+    if (true) goto FOREACH_ID(body); else                                    \
+    for (;;)                                                                 \
+      if (FOREACH_ID(continue)) break; else                                  \
+      if (true) goto FOREACH_ID(break); else                                 \
+      FOREACH_ID(body):                                                      \
+      if (bool FOREACH_ID(once) = false); else                               \
+      for (KEY = std::get<0>(                                                \
+              std::forward<decltype(FOREACH_ID(elem))>(FOREACH_ID(elem)));   \
+           !FOREACH_ID(once);                                                \
+           FOREACH_ID(once) = true)                                          \
+        if ((FOREACH_ID(continue) = false)); else                            \
+        for (VALUE = std::get<1>(                                            \
+                std::forward<decltype(FOREACH_ID(elem))>(FOREACH_ID(elem))); \
+             !FOREACH_ID(continue);                                          \
+             FOREACH_ID(continue) = true)
 
-#define BOOST_FOREACH_PAIR(VARFIRST, VARSECOND, COL)                    \
-  BOOST_FOREACH_PREAMBLE()                                              \
-  if (boost::foreach_detail_::auto_any_t BOOST_FOREACH_ID(_foreach_col) = BOOST_FOREACH_CONTAIN(COL)) {} else /* NOLINT(whitespace/line_length) */ \
-    if (boost::foreach_detail_::auto_any_t BOOST_FOREACH_ID(_foreach_cur) = BOOST_FOREACH_BEGIN(COL)) {} else /* NOLINT(whitespace/line_length) */ \
-      if (boost::foreach_detail_::auto_any_t BOOST_FOREACH_ID(_foreach_end) = BOOST_FOREACH_END(COL)) {} else /* NOLINT(whitespace/line_length) */ \
-        for (bool BOOST_FOREACH_ID(_foreach_continue) = true, BOOST_FOREACH_ID(_foreach_onetime) = true; /* NOLINT(whitespace/line_length) */ \
-             BOOST_FOREACH_ID(_foreach_continue) && !BOOST_FOREACH_DONE(COL); /* NOLINT(whitespace/line_length) */ \
-             BOOST_FOREACH_ID(_foreach_continue) ? BOOST_FOREACH_NEXT(COL) : (void)0) /* NOLINT(whitespace/line_length) */ \
-          if (boost::foreach_detail_::set_false(BOOST_FOREACH_ID(_foreach_onetime))) {} else /* NOLINT(whitespace/line_length) */ \
-            for (VARFIRST = BOOST_FOREACH_DEREF(COL).first;             \
-                 !BOOST_FOREACH_ID(_foreach_onetime);                   \
-                 BOOST_FOREACH_ID(_foreach_onetime) = true)             \
-              if (boost::foreach_detail_::set_false(BOOST_FOREACH_ID(_foreach_continue))) {} else /* NOLINT(whitespace/line_length) */ \
-                for (VARSECOND = BOOST_FOREACH_DEREF(COL).second;       \
-                     !BOOST_FOREACH_ID(_foreach_continue);              \
-                     BOOST_FOREACH_ID(_foreach_continue) = true)
+#define foreachkey(KEY, ELEMS) foreachpair (KEY, std::ignore, ELEMS)
 
-#define foreach BOOST_FOREACH
-#define foreachpair BOOST_FOREACH_PAIR
-
-#define foreachkey(VAR, COL)                    \
-  foreachpair (VAR, __foreach__::ignore, COL)
-
-#define foreachvalue(VAR, COL)                  \
-  foreachpair (__foreach__::ignore, VAR, COL)
+#define foreachvalue(VALUE, ELEMS) foreachpair (std::ignore, VALUE, ELEMS)
 
 #endif // __STOUT_FOREACH_HPP__
