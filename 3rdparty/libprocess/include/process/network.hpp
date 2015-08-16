@@ -29,8 +29,13 @@ namespace network {
  */
 inline Try<int> socket(int family, int type, int protocol)
 {
+#ifdef __WINDOWS__
+  const int invalidsocket = INVALID_SOCKET;
+#else
+  const int invalidsocket = -1;
+#endif
   int s;
-  if ((s = ::socket(family, type, protocol)) == -1) {
+  if ((s = ::socket(family, type, protocol)) == invalidsocket) {
     return ErrnoError();
   }
 
@@ -45,6 +50,35 @@ inline Try<int> socket(int family, int type, int protocol)
 
   return s;
 }
+
+#ifdef __WINDOWS__
+inline bool isSocket(int fd)
+{
+
+  // We use an 'int' but expect a SOCKET if this is Windows.
+  static_assert(sizeof(SOCKET) == sizeof(int), "Can not use int for SOCKET");
+
+  int value = 0;
+  int length = sizeof(int);
+
+  if (::getsockopt(
+          fd,
+          SOL_SOCKET,
+          SO_TYPE,
+          (char*) &value,
+          &length) == SOCKET_ERROR) {
+    switch (WSAGetLastError()) {
+      case WSAENOTSOCK:
+        return false;
+      default:
+        // TODO(benh): Handle `WSANOTINITIALISED`
+        ABORT("Not expecting 'getsockopt' to fail when passed a valid socket");
+    }
+  }
+
+  return true;
+}
+#endif
 
 
 // TODO(benh): Remove and defer to Socket::accept.
