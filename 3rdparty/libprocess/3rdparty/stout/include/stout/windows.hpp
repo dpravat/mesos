@@ -346,12 +346,6 @@ decltype(_write(fd, buffer, count))
 }
 
 
-inline auto close(int fd) ->
-decltype(_close(fd))
-{
-  return _close(fd);
-}
-
 
 inline auto chdir(const char* path) ->
 decltype(_chdir(path))
