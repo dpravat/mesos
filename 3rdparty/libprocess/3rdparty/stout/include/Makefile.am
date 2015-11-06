@@ -131,7 +131,6 @@ nobase_include_HEADERS =		\
   stout/proc.hpp			\
   stout/protobuf.hpp			\
   stout/posix/fs.hpp			\
-  stout/posix/gzip.hpp			\
   stout/posix/os.hpp			\
   stout/recordio.hpp			\
   stout/representation.hpp			\
@@ -157,5 +156,4 @@ nobase_include_HEADERS =		\
   stout/windows/error.hpp		\
   stout/windows/format.hpp		\
   stout/windows/fs.hpp			\
-  stout/windows/gzip.hpp		\
   stout/windows/os.hpp
