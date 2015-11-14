@@ -198,6 +198,7 @@ set(SCHEDULER_SRC
 set(AGENT_SRC
   ${AGENT_SRC}
   slave/constants.cpp
+  slave/paths.cpp
   slave/state.cpp
   )
 
@@ -209,7 +210,6 @@ if (NOT WIN32)
     slave/http.cpp
     slave/metrics.cpp
     slave/monitor.cpp
-    slave/paths.cpp
     slave/qos_controller.cpp
     slave/qos_controllers/noop.cpp
     slave/resource_estimator.cpp
