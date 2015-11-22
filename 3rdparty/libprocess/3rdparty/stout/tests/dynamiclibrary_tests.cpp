@@ -26,12 +26,20 @@ TEST(DynamicLibraryTest, LoadKnownSymbol)
 #elif defined(__FreeBSD__)
   Try<Nothing> result = dltest.open("libc.so.7");
 #else
+#ifdef __WINDOWS__
+  Try<Nothing> result = dltest.open("ntdll.dll");
+#else
   Try<Nothing> result = dltest.open("libdl.dylib");
+#endif
 #endif
 
   EXPECT_SOME(result);
 
+#ifdef __WINDOWS__
+  Try<void*> symbol = dltest.loadSymbol("NtOpenProcess");
+#else
   Try<void*> symbol = dltest.loadSymbol("dlopen");
+#endif
 
   EXPECT_SOME(symbol);
 
