@@ -201,6 +201,7 @@ set(AGENT_SRC
   slave/metrics.cpp
   slave/paths.cpp
   slave/state.cpp
+  slave/resource_estimator.cpp
   )
 
 if (NOT WIN32)
@@ -212,7 +213,6 @@ if (NOT WIN32)
     slave/monitor.cpp
     slave/qos_controller.cpp
     slave/qos_controllers/noop.cpp
-    slave/resource_estimator.cpp
     slave/slave.cpp
     slave/status_update_manager.cpp
     slave/validation.cpp
