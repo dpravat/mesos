@@ -245,6 +245,7 @@ set(AGENT_SRC
   slave/state.cpp
   slave/status_update_manager.cpp
   slave/validation.cpp
+  slave/monitor.cpp
   )
 
 if (NOT WIN32)
@@ -253,7 +254,6 @@ if (NOT WIN32)
     slave/container_logger.cpp
     slave/container_loggers/sandbox.cpp
     slave/flags.cpp
-    slave/monitor.cpp
     slave/resource_estimator.cpp
     slave/slave.cpp
     slave/containerizer/composing.cpp
