@@ -208,13 +208,13 @@ set(AGENT_SRC
   slave/state.cpp
   slave/status_update_manager.cpp
   slave/validation.cpp
+  slave/monitor.cpp
   )
 
 if (NOT WIN32)
   set(AGENT_SRC
     ${AGENT_SRC}
     slave/flags.cpp
-    slave/monitor.cpp
     slave/slave.cpp
     slave/containerizer/composing.cpp
     slave/containerizer/composing.hpp
