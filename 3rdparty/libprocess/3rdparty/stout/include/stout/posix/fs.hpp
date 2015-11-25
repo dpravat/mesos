@@ -21,6 +21,7 @@
 #include <stout/bytes.hpp>
 #include <stout/error.hpp>
 #include <stout/nothing.hpp>
+#include <stout/os.hpp>
 #include <stout/try.hpp>
 
 // TODO(bmahler): Merge available() and usage() into df() that returns
@@ -58,6 +59,14 @@ inline Try<Nothing> symlink(
     return ErrnoError();
   }
   return Nothing();
+}
+
+
+// Returns a list of all files matching the given pattern. On POSIX builds this
+// is just a wrapper on os::glob()
+inline Try<std::list<std::string>> list(const std::string& pattern)
+{
+  return os::glob(pattern);
 }
 
 } // namespace fs {
