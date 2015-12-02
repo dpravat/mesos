@@ -31,6 +31,7 @@
 #include "mesos/mesos.hpp"
 
 #include "slave/containerizer/mesos/launch.hpp"
+#include "slave/containerizer/mesos/pipe.hpp"
 
 using std::cerr;
 using std::cout;
@@ -133,7 +134,11 @@ int MesosContainerizerLaunch::execute()
     }
   }
 
-  Try<Nothing> close = os::close(flags.pipe_write.get());
+  auto pipe = mesos::internal::local_from_global({{
+      flags.pipe_read.get(),
+      flags.pipe_write.get() }});
+
+  Try<Nothing> close = os::close(pipe[1]);
   if (close.isError()) {
     cerr << "Failed to close pipe[1]: " << close.error() << endl;
     return 1;
@@ -142,8 +147,8 @@ int MesosContainerizerLaunch::execute()
   // Do a blocking read on the pipe until the parent signals us to continue.
   char dummy;
   ssize_t length;
-  while ((length = ::read(
-              flags.pipe_read.get(),
+  while ((length = os::read(
+              pipe[0],
               &dummy,
               sizeof(dummy))) == -1 &&
           errno == EINTR);
@@ -155,7 +160,7 @@ int MesosContainerizerLaunch::execute()
      return 1;
   }
 
-  close = os::close(flags.pipe_read.get());
+  close = os::close(pipe[0]);
   if (close.isError()) {
     cerr << "Failed to close pipe[0]: " << close.error() << endl;
     return 1;
