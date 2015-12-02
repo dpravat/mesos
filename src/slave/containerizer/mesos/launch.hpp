@@ -41,8 +41,19 @@ public:
     Option<std::string> rootfs;
     Option<std::string> user;
 #endif // __WINDOWS__
+
+#ifndef __WINDOWS__
+    // POSIX pipes are identified by file descriptors.
     Option<int> pipe_read;
     Option<int> pipe_write;
+#else
+    // Windows pipes are identified by handles, rather than file descriptors.
+    // Since HANDLE is actually `void *`, we need to use an integer type large
+    // enough to store a pointer value - `uintptr_t` is meant just for that.
+    Option<uintptr_t> pipe_read;
+    Option<uintptr_t> pipe_write;
+#endif // !__WINDOWS__
+
     Option<JSON::Object> commands; // Additional preparation commands.
   };
 
