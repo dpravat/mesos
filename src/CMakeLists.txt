@@ -209,6 +209,7 @@ set(AGENT_SRC
   slave/status_update_manager.cpp
   slave/validation.cpp
   slave/monitor.cpp
+  slave/containerizer/mesos/launch.cpp
   )
 
 if (NOT WIN32)
@@ -225,7 +226,6 @@ if (NOT WIN32)
     slave/containerizer/fetcher.cpp
     slave/containerizer/mesos/containerizer.cpp
     slave/containerizer/mesos/isolator.cpp
-    slave/containerizer/mesos/launch.cpp
     slave/containerizer/mesos/launcher.cpp
     slave/containerizer/mesos/mount.cpp
     slave/containerizer/mesos/isolators/posix/disk.cpp

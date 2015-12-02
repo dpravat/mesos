@@ -16,12 +16,13 @@
 
 #include <errno.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <iostream>
 
 #include <stout/foreach.hpp>
+
 #include <stout/os.hpp>
+
 #include <stout/protobuf.hpp>
 #include <stout/unreachable.hpp>
 
@@ -263,7 +264,9 @@ int MesosContainerizerLaunch::execute()
 
   if (command.get().shell()) {
     // Execute the command using shell.
-    execlp("sh", "sh", "-c", command.get().value().c_str(), (char*) NULL);
+    os::execlp(os::shell_const::name(), os::shell_const::arg0(),
+               os::shell_const::arg1(),
+               command.get().value().c_str(), (char*) NULL);
   } else {
     // Use os::execvpe to launch the command.
     char** argv = new char*[command.get().arguments().size() + 1];
@@ -272,7 +275,7 @@ int MesosContainerizerLaunch::execute()
     }
     argv[command.get().arguments().size()] = NULL;
 
-    execvp(command.get().value().c_str(), argv);
+    os::execvp(command.get().value().c_str(), argv);
   }
 
   // If we get here, the execle call failed.
