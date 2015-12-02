@@ -401,9 +401,9 @@ public:
       if (override.isNone()) {
         if (command.shell()) {
           execlp(
-              "sh",
-              "sh",
-              "-c",
+              os::shell_const::name(),
+              os::shell_const::arg0(),
+              os::shell_const::arg1(),
               command.value().c_str(),
               (char*) NULL);
         } else {
