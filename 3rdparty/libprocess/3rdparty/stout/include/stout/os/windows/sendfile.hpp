@@ -29,7 +29,6 @@ inline ssize_t sendfile(int s, int fd, off_t offset, size_t length)
 {
   UNIMPLEMENTED;
 }
-
 } // namespace os {
 
 #endif // __STOUT_OS_WINDOWS_SENDFILE_HPP__
