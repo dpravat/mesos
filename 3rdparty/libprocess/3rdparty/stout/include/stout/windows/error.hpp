@@ -27,16 +27,17 @@
 class WindowsError : public Error
 {
 public:
-  WindowsError()
-    : Error(get_last_error_as_string()) {}
+  WindowsError(const DWORD error = ERROR_SUCCESS)
+    : Error(GetLastErrorAsString(error)) {}
 
-  WindowsError(const std::string& message)
-    : Error(message + ": " + get_last_error_as_string()) {}
+  WindowsError(const std::string& message, const DWORD error = ERROR_SUCCESS)
+    : Error(message + ": " + GetLastErrorAsString(error)) {}
 
 private:
-  static std::string get_last_error_as_string()
+  static std::string GetLastErrorAsString(const DWORD error)
   {
-    DWORD errorCode = ::GetLastError();
+    DWORD errorCode = (error == ERROR_SUCCESS) ? ::GetLastError() : error;
+
 
     // Default if no error.
     if (errorCode == 0) {
