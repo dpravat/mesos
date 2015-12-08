@@ -85,6 +85,35 @@ include(VsBuildCommand)
 # Configuration.
 include(MesosConfigure)
 
+# For Windows path for patch.exe may be passed
+# Also checks if GnuWin32 patch.exe exists
+##############################################
+if (WIN32)
+  set(PROGRAMFILESX86 "PROGRAMFILES(X86)")
+  set(PATCHEXE_DEFAULT_LOCATION $ENV{${PROGRAMFILESX86}}/GnuWin32/bin)
+
+  set(PATCHEXE_PATH ${PATCHEXE_DEFAULT_LOCATION} CACHE PATH "Path for GnuWin32 patch.exe")
+  set(GNUWIN32_PATCH_EXECUTABLE ${PATCHEXE_PATH}/patch.exe CACHE PATH "Full path for GnuWin32 patch.exe")
+
+  if(NOT EXISTS ${GNUWIN32_PATCH_EXECUTABLE})
+  message(
+    FATAL_ERROR
+    "GnuWin32 patch.exe was not found. Use -DPATCHEXE_PATH to "
+    "provide the local path of GnuWin32 patch.exe"
+    "Windows builds of Mesos requires GnuWin32 patch.exe "
+    "to apply updates to ZooKeeper-3.4.5. You may get it from "
+    "http://gnuwin32.sourceforge.net/packages/patch.htm"
+    )
+    return()
+  else()
+    message(
+    STATUS
+    "GnuWin32 patch.exe exists at: "
+    ${GNUWIN32_PATCH_EXECUTABLE}
+    )
+  endif()
+ENDIF (WIN32)
+
 # SUBDIRECTORIES.
 #################
 add_subdirectory(3rdparty)

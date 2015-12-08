@@ -42,9 +42,41 @@ if (NOT WIN32)
     ${MESOS_3RDPARTY_SRC}/zookeeper-${ZOOKEEPER_VERSION}.patch
     ZOOKEEPER_PATCH_CMD)
 elseif (WIN32)
-  set(ZOOKEEPER_PATCH_CMD   ${CMAKE_NOOP})
+  #
+  # First: Copy patch.exe and patch.exe.manifest to the user temp dir where elevation is not required
+  # Set \Users\<user>\AppData\Local\Temp dir
+  set(USER_TMP_DIR "TMP")
+  # Set full path for temp location of patch.exe
+  set(PATCHEXE_TMP_LOCATION $ENV{${USER_TMP_DIR}}/patch.exe)
+
+  #set full path for patch.exe.manifest
+  set(PATCHMANIFEST_LOCATION ${MESOS_3RDPARTY_SRC}/patch.exe.manifest)
+  # Set full path for temp location of patch.exe.manifest
+  set(PATCHMANIFEST_TMP_LOCATION $ENV{${USER_TMP_DIR}}/patch.exe.manifest)
+
+  # Copy patch.exe and path.exe.manifest to temp location
+  configure_file(${GNUWIN32_PATCH_EXECUTABLE} ${PATCHEXE_TMP_LOCATION} COPYONLY)
+  configure_file(${PATCHMANIFEST_LOCATION} ${PATCHMANIFEST_TMP_LOCATION} COPYONLY)
+
+  #
+  # Second: Apply manifest to patch command
+  set(APPLY_PATCH_MANIFEST_COMMAND  "mt.exe" -manifest mt -manifest ${PATCHMANIFEST_TMP_LOCATION} -outputresource:${PATCHEXE_TMP_LOCATION};1)
+
+  add_custom_command(OUTPUT   patch.exe
+                     COMMAND  ${APPLY_PATCH_MANIFEST_COMMAND})
+
+  #
+  #Third: set the patch command which will utilize patch.exe in temp location for no elevation prompt
+  set(ZOOKEEPER_PATCH_CMD ${PATCHEXE_TMP_LOCATION} --binary -p1 < ${MESOS_3RDPARTY_SRC}/zookeeper-${ZOOKEEPER_VERSION}.patch)
+
+
+  VS_BUILD_CMD(
+      ZOOKEEPER
+      ${ZOOKEEPER_C_ROOT}/zookeeper-vs2015.sln
+      ${CMAKE_BUILD_TYPE}
+      "")
+
   set(ZOOKEEPER_CONFIG_CMD  ${CMAKE_NOOP})
-  set(ZOOKEEPER_BUILD_CMD   ${CMAKE_NOOP})
   set(ZOOKEEPER_INSTALL_CMD ${CMAKE_NOOP})
 endif (NOT WIN32)
 
