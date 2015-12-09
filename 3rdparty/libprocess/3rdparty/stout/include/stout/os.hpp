@@ -51,6 +51,7 @@
 #include <stout/os/mkdir.hpp>
 #include <stout/os/mkdtemp.hpp>
 #include <stout/os/mktemp.hpp>
+#include <stout/os/permissions.hpp>
 #include <stout/os/process.hpp>
 #include <stout/os/rename.hpp>
 #include <stout/os/rm.hpp>

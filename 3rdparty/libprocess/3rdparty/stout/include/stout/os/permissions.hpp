@@ -13,8 +13,6 @@
 #ifndef __STOUT_OS_PERMISSIONS_HPP__
 #define __STOUT_OS_PERMISSIONS_HPP__
 
-#include <sys/stat.h>
-
 #include <string>
 
 
@@ -54,19 +52,12 @@ struct Permissions
   bool sticky;
 };
 
-
-inline Try<Permissions> permissions(const std::string& path)
-{
-  struct stat status;
-  if (::stat(path.c_str(), &status) < 0) {
-    return ErrnoError();
-  }
-
-  return Permissions(status.st_mode);
-}
-
-
 } // namespace os {
 
+#ifdef __WINDOWS__
+#include <stout/os/windows/permissions.hpp>
+#else
+#include <stout/os/posix/permissions.hpp>
+#endif // __WINDOWS__
 
 #endif // __STOUT_OS_PERMISSIONS_HPP__
