@@ -57,7 +57,6 @@
 #include <stout/os/getcwd.hpp>
 #include <stout/os/killtree.hpp>
 #include <stout/os/os.hpp>
-#include <stout/os/permissions.hpp>
 #include <stout/os/read.hpp>
 #include <stout/os/realpath.hpp>
 #include <stout/os/rename.hpp>
