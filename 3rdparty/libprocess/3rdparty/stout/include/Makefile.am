@@ -89,6 +89,7 @@ nobase_include_HEADERS =		\
   stout/os/sendfile.hpp			\
   stout/os/shell.hpp			\
   stout/os/signals.hpp			\
+  stout/os/signalhandler.hpp   \
   stout/os/stat.hpp			\
   stout/os/strerror.hpp			\
   stout/os/su.hpp			\
@@ -111,6 +112,7 @@ nobase_include_HEADERS =		\
   stout/os/posix/sendfile.hpp		\
   stout/os/posix/shell.hpp		\
   stout/os/posix/signals.hpp		\
+  stout/os/posix/signalhandler.hpp		\
   stout/os/posix/stat.hpp		\
   stout/os/posix/su.hpp		\
   stout/os/raw/environment.hpp		\
@@ -128,6 +130,7 @@ nobase_include_HEADERS =		\
   stout/os/windows/sendfile.hpp		\
   stout/os/windows/shell.hpp		\
   stout/os/windows/signals.hpp		\
+  stout/os/windows/signalhandler.hpp		\
   stout/os/windows/stat.hpp		\
   stout/os/windows/su.hpp		\
   stout/path.hpp			\
