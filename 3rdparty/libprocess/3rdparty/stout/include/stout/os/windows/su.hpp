@@ -21,7 +21,22 @@
 
 namespace os {
 
+inline Result<uid_t> getuid(const Option<std::string>& user = None())
+{
+  return WindowsError(ERROR_NOT_SUPPORTED);
+}
+
+inline Result<gid_t> getgid(const Option<std::string>& user = None())
+{
+  return WindowsError(ERROR_NOT_SUPPORTED);
+}
+
 inline Try<Nothing> su(const std::string& user)
+{
+  return WindowsError(ERROR_NOT_SUPPORTED);
+}
+
+inline Result<std::string> user(Option<uid_t> uid = None())
 {
   return WindowsError(ERROR_NOT_SUPPORTED);
 }
