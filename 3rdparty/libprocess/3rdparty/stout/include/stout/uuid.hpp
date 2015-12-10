@@ -24,6 +24,12 @@
 
 #include <stout/thread_local.hpp>
 
+// The zookeeper winconfig.h header aliases "random" to "rand", which causes
+// calls to UUID::random() to be translated to UUID::rand() on Windows builds
+#ifdef __WINDOWS__
+#undef random
+#endif // __WINDOWS__
+
 // NOTE: This namespace is necessary because the standard Windows headers
 // define a UUID struct in the global namespace for the DCE RPC API. We put
 // this in the `id::` namespace to avoid collisions. Note also that we include
