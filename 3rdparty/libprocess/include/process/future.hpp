@@ -211,7 +211,7 @@ private:
   struct Prefer : LessPrefer {};
 
   template <typename F, typename = typename std::result_of<F(const T&)>::type>
-  const Future<T>& onReady(F&& f, Prefer) const
+  const Future<T>& onReady(F f, Prefer) const
   {
     return onReady(std::function<void(const T&)>(
         [=](const T& t) mutable {
@@ -219,8 +219,12 @@ private:
         }));
   }
 
-  template <typename F, typename = typename std::result_of<F()>::type>
-  const Future<T>& onReady(F&& f, LessPrefer) const
+  template <
+      typename F,
+      typename G =
+        typename std::enable_if<!std::is_bind_expression<F>::value, F>::type,
+      typename = typename std::result_of<G()>::type>
+  const Future<T>& onReady(F f, LessPrefer) const
   {
     return onReady(std::function<void(const T&)>(
         [=](const T&) mutable {
@@ -228,8 +232,10 @@ private:
         }));
   }
 
-  template <typename F, typename = typename std::result_of<F(const std::string&)>::type> // NOLINT(whitespace/line_length)
-  const Future<T>& onFailed(F&& f, Prefer) const
+  template <
+      typename F,
+      typename = typename std::result_of<F(const std::string&)>::type>
+  const Future<T>& onFailed(F f, Prefer) const
   {
     return onFailed(std::function<void(const std::string&)>(
         [=](const std::string& message) mutable {
@@ -237,8 +243,12 @@ private:
         }));
   }
 
-  template <typename F, typename = typename std::result_of<F()>::type>
-  const Future<T>& onFailed(F&& f, LessPrefer) const
+  template <
+      typename F,
+      typename G =
+        typename std::enable_if<!std::is_bind_expression<F>::value, F>::type,
+      typename = typename std::result_of<G()>::type>
+  const Future<T>& onFailed(F f, LessPrefer) const
   {
     return onFailed(std::function<void(const std::string&)>(
         [=](const std::string&) mutable {
@@ -246,8 +256,10 @@ private:
         }));
   }
 
-  template <typename F, typename = typename std::result_of<F(const Future<T>&)>::type> // NOLINT(whitespace/line_length)
-  const Future<T>& onAny(F&& f, Prefer) const
+  template <
+      typename F,
+      typename = typename std::result_of<F(const Future<T>&)>::type>
+  const Future<T>& onAny(F f, Prefer) const
   {
     return onAny(std::function<void(const Future<T>&)>(
         [=](const Future<T>& future) mutable {
@@ -255,8 +267,12 @@ private:
         }));
   }
 
-  template <typename F, typename = typename std::result_of<F()>::type>
-  const Future<T>& onAny(F&& f, LessPrefer) const
+  template <
+      typename F,
+      typename G =
+        typename std::enable_if<!std::is_bind_expression<F>::value, F>::type,
+      typename = typename std::result_of<G()>::type>
+  const Future<T>& onAny(F f, LessPrefer) const
   {
     return onAny(std::function<void(const Future<T>&)>(
         [=](const Future<T>&) mutable {
@@ -266,39 +282,33 @@ private:
 
 public:
   template <typename F>
-  const Future<T>& onDiscard(F&& f) const
+  const Future<T>& onDiscard(F f) const
   {
-    return onDiscard(std::function<void()>(
-        [=]() mutable {
-          f();
-        }));
+    return onDiscard(std::function<void()>([=]() mutable { f(); }));
   }
 
   template <typename F>
-  const Future<T>& onReady(F&& f) const
+  const Future<T>& onReady(F f) const
   {
-    return onReady(std::forward<F>(f), Prefer());
+    return onReady(std::move(f), Prefer());
   }
 
   template <typename F>
-  const Future<T>& onFailed(F&& f) const
+  const Future<T>& onFailed(F f) const
   {
-    return onFailed(std::forward<F>(f), Prefer());
+    return onFailed(std::move(f), Prefer());
   }
 
   template <typename F>
-  const Future<T>& onDiscarded(F&& f) const
+  const Future<T>& onDiscarded(F f) const
   {
-    return onDiscarded(std::function<void()>(
-        [=]() mutable {
-          f();
-        }));
+    return onDiscarded(std::function<void()>([=]() mutable { f(); }));
   }
 
   template <typename F>
-  const Future<T>& onAny(F&& f) const
+  const Future<T>& onAny(F f) const
   {
-    return onAny(std::forward<F>(f), Prefer());
+    return onAny(std::move(f), Prefer());
   }
 
   // Installs callbacks that get executed when this future is ready
@@ -326,35 +336,45 @@ private:
   template <typename F, typename X = typename internal::unwrap<typename std::result_of<F(const T&)>::type>::type> // NOLINT(whitespace/line_length)
   Future<X> then(_Deferred<F>&& f, Prefer) const
   {
-    // note the then<X> is necessary to not have an infinite loop with
-    // then(F&& f)
-    return then<X>(f.operator std::function<Future<X>(const T&)>());
+    return then(f.operator std::function<Future<X>(const T&)>());
   }
 
-  template <typename F, typename X = typename internal::unwrap<typename std::result_of<F()>::type>::type> // NOLINT(whitespace/line_length)
+  template <
+      typename F,
+      typename G =
+        typename std::enable_if<!std::is_bind_expression<F>::value, F>::type,
+      typename X =
+        typename internal::unwrap<typename std::result_of<G()>::type>::type>
   Future<X> then(_Deferred<F>&& f, LessPrefer) const
   {
-    return then<X>(f.operator std::function<Future<X>()>());
+    return then(f.operator std::function<Future<X>()>());
   }
 
-  template <typename F, typename X = typename internal::unwrap<typename std::result_of<F(const T&)>::type>::type> // NOLINT(whitespace/line_length)
-  Future<X> then(F&& f, Prefer) const
+  template <
+      typename F,
+      typename X = typename internal::unwrap<
+          typename std::result_of<F(const T&)>::type>::type>
+  Future<X> then(F f, Prefer) const
   {
-    return then<X>(std::function<Future<X>(const T&)>(f));
+    return then(std::function<Future<X>(const T&)>(f));
   }
 
-  template <typename F, typename X = typename internal::unwrap<typename std::result_of<F()>::type>::type> // NOLINT(whitespace/line_length)
-  Future<X> then(F&& f, LessPrefer) const
+  template <
+      typename F,
+      typename G =
+        typename std::enable_if<!std::is_bind_expression<F>::value, F>::type,
+      typename X =
+        typename internal::unwrap<typename std::result_of<G()>::type>::type>
+  Future<X> then(F f, LessPrefer) const
   {
-    return then<X>(std::function<Future<X>()>(f));
+    return then(std::function<Future<X>()>(f));
   }
 
 public:
   template <typename F>
-  auto then(F&& f) const
-    -> decltype(this->then(std::forward<F>(f), Prefer()))
+  auto then(F f) const -> decltype(this->then(std::move(f), Prefer()))
   {
-    return then(std::forward<F>(f), Prefer());
+    return then(std::move(f), Prefer());
   }
 
   // Installs callbacks that get executed if this future completes
