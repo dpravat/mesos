@@ -41,6 +41,7 @@
 #include <stout/option.hpp>
 #include <stout/preprocessor.hpp>
 #include <stout/result.hpp>
+#include <stout/result_of.hpp>
 #include <stout/synchronized.hpp>
 #include <stout/try.hpp>
 
@@ -210,7 +211,7 @@ private:
   struct LessPrefer {};
   struct Prefer : LessPrefer {};
 
-  template <typename F, typename = typename std::result_of<F(const T&)>::type>
+  template <typename F, typename = typename result_of<F(const T&)>::type>
   const Future<T>& onReady(F f, Prefer) const
   {
     return onReady(std::function<void(const T&)>(
@@ -223,7 +224,7 @@ private:
       typename F,
       typename G =
         typename std::enable_if<!std::is_bind_expression<F>::value, F>::type,
-      typename = typename std::result_of<G()>::type>
+      typename = typename result_of<G()>::type>
   const Future<T>& onReady(F f, LessPrefer) const
   {
     return onReady(std::function<void(const T&)>(
@@ -234,7 +235,7 @@ private:
 
   template <
       typename F,
-      typename = typename std::result_of<F(const std::string&)>::type>
+      typename = typename result_of<F(const std::string&)>::type>
   const Future<T>& onFailed(F f, Prefer) const
   {
     return onFailed(std::function<void(const std::string&)>(
@@ -247,7 +248,7 @@ private:
       typename F,
       typename G =
         typename std::enable_if<!std::is_bind_expression<F>::value, F>::type,
-      typename = typename std::result_of<G()>::type>
+      typename = typename result_of<G()>::type>
   const Future<T>& onFailed(F f, LessPrefer) const
   {
     return onFailed(std::function<void(const std::string&)>(
@@ -258,7 +259,7 @@ private:
 
   template <
       typename F,
-      typename = typename std::result_of<F(const Future<T>&)>::type>
+      typename = typename result_of<F(const Future<T>&)>::type>
   const Future<T>& onAny(F f, Prefer) const
   {
     return onAny(std::function<void(const Future<T>&)>(
@@ -271,7 +272,7 @@ private:
       typename F,
       typename G =
         typename std::enable_if<!std::is_bind_expression<F>::value, F>::type,
-      typename = typename std::result_of<G()>::type>
+      typename = typename result_of<G()>::type>
   const Future<T>& onAny(F f, LessPrefer) const
   {
     return onAny(std::function<void(const Future<T>&)>(
@@ -333,7 +334,10 @@ public:
   }
 
 private:
-  template <typename F, typename X = typename internal::unwrap<typename std::result_of<F(const T&)>::type>::type> // NOLINT(whitespace/line_length)
+  template <
+      typename F,
+      typename X =
+        typename internal::unwrap<typename result_of<F(const T&)>::type>::type>
   Future<X> then(_Deferred<F>&& f, Prefer) const
   {
     return then(f.operator std::function<Future<X>(const T&)>());
@@ -344,7 +348,7 @@ private:
       typename G =
         typename std::enable_if<!std::is_bind_expression<F>::value, F>::type,
       typename X =
-        typename internal::unwrap<typename std::result_of<G()>::type>::type>
+        typename internal::unwrap<typename result_of<G()>::type>::type>
   Future<X> then(_Deferred<F>&& f, LessPrefer) const
   {
     return then(f.operator std::function<Future<X>()>());
@@ -352,8 +356,8 @@ private:
 
   template <
       typename F,
-      typename X = typename internal::unwrap<
-          typename std::result_of<F(const T&)>::type>::type>
+      typename X =
+        typename internal::unwrap<typename result_of<F(const T&)>::type>::type>
   Future<X> then(F f, Prefer) const
   {
     return then(std::function<Future<X>(const T&)>(f));
@@ -364,7 +368,7 @@ private:
       typename G =
         typename std::enable_if<!std::is_bind_expression<F>::value, F>::type,
       typename X =
-        typename internal::unwrap<typename std::result_of<G()>::type>::type>
+        typename internal::unwrap<typename result_of<G()>::type>::type>
   Future<X> then(F f, LessPrefer) const
   {
     return then(std::function<Future<X>()>(f));
