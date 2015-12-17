@@ -24,6 +24,10 @@
 
 inline std::string WSTRINGIFY(int status)
 {
+#ifdef __WINDOWS__
+  LOG(WARNING) << "`WSTRINGIFY` has been called, but is a no-op on Windows";
+  return "";
+#else
   std::string message;
   if (WIFEXITED(status)) {
     message += "exited with status ";
@@ -33,6 +37,7 @@ inline std::string WSTRINGIFY(int status)
     message += strsignal(WTERMSIG(status));
   }
   return message;
+#endif // __WINDOWS__
 }
 
 #endif // __STATUS_UTILS_HPP__
