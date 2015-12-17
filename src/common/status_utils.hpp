@@ -24,7 +24,7 @@
 
 inline std::string WSTRINGIFY(int status)
 {
-  std::string message;
+/*  std::string message;
   if (WIFEXITED(status)) {
     message += "exited with status ";
     message += stringify(WEXITSTATUS(status));
@@ -33,6 +33,8 @@ inline std::string WSTRINGIFY(int status)
     message += strsignal(WTERMSIG(status));
   }
   return message;
+  */
+return "";
 }
 
 #endif // __STATUS_UTILS_HPP__
