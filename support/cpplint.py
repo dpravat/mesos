@@ -4667,7 +4667,7 @@ def ParseArguments(args):
   This may set the output format and verbosity level as side-effects.
 
   Args:
-    args: The command line arguments:
+    args: The command line arguments.
 
   Returns:
     The list of filenames to lint.
@@ -4731,9 +4731,19 @@ def ParseArguments(args):
   return filenames
 
 
-def main():
-  filenames = ParseArguments(sys.argv[1:])
+def LintFiles(filenames):
+  """Runs all the linter logic, return `True` if there were errors.
 
+  Useful if you want to call the linter from another Python file. Note that
+  this function does not call `sys.exit` at the end, which makes it suitable to
+  call from other Python scripts.
+
+  Args:
+    filenames: Paths to files to lint.
+
+  Returns:
+    `True` if we found linting errors, `False` otherwise.
+  """
   # Change stderr to write with replacement characters so we don't die
   # if we try to print something containing non-ASCII characters.
   sys.stderr = codecs.StreamReaderWriter(sys.stderr,
@@ -4746,7 +4756,15 @@ def main():
     ProcessFile(filename, _cpplint_state.verbose_level)
   _cpplint_state.PrintErrorCounts()
 
-  sys.exit(_cpplint_state.error_count > 0)
+  return _cpplint_state.error_count > 0
+
+
+def main():
+  filenames = ParseArguments(sys.argv[1:])
+  errors_found = LintFiles(filenames)
+
+  sys.exit(errors_found)
+
 
 
 if __name__ == '__main__':

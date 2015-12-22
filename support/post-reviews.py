@@ -65,15 +65,112 @@ def execute(command, ignore_errors=False):
         return None
     return data
 
+def user_skipped_review_win32():
+    """Prints prompt asking whether to skip or post a reveiew, reports result.
+
+    The can respond to the prompt with: a 'y', indicating we want to post the
+    review; an 'n', indicating we want to skip the review; or Ctrl-D,
+    indicating we want to terminate the script.
+
+    On Unix, the user types Ctrl-C to skip a review. This approach doesn't
+    work on Windows because the model for OS signals is totally different.
+    The specific reason is detailed in[1]; our solution is to use a
+    `getch`-like approach on Windows, where the user presses the 'y' or the
+    'n' key to push the current review or skip it, respectively.
+
+    The summary of the issue detailed in [1] is: when the user presses Ctrl-C,
+    `fgets` returns EOF  immediately, but `errno` is not set to reflect the
+    interrupt like it is on many Unixes. This causes an `EOFError` to be
+    raised. Concurrently, the signal handler is called asynchronously on
+    another thread, which causes the `KeyboardInterrupt` to be raised. Most
+    of the time, the `EOFError` gets raised first and the user sees an
+    `EOFError` followed by a `KeyboardInterrupt`, rather than just a
+    `KeyboardInterrupt`. It is very hard to reliably route around this at the
+    application level, so instead of writing complicated code to accomplish
+    this, we just write replace the interface with an equally simple one that
+    we know we can reliably support.
+
+    [1] http://bugs.python.org/issue439992
+
+    Returns:
+        `True` if user asked to skip review, `False` otherwise.
+    """
+    import msvcrt
+    ctrl_d = chr(4)
+
+    print "\nPress 'y' to post, 'n' to skip, or ^D to exit.\n"
+
+    choice = msvcrt.getch()
+
+    # Loop until we get a 'y', and 'n', or a Ctrl-D.
+    while choice != 'y' and choice != 'n' and choice != ctrl_d:
+        print "Invalid choice. Press 'y' to continue or 'n' to skip or " + \
+            "^D to abort."
+        choice = msvcrt.getch()
+
+    # Report the user choice.
+    if choice == 'y':
+        return False
+    elif choice == ctrl_d:
+        sys.exit(0)
+    else:
+        return True
+
+def user_skipped_review_unix():
+    """Prints prompt asking whether to skip or post a reveiew, reports result.
+
+    The can respond to the prompt with: a '<RET>', indicating we want to post
+    the review; or a Ctrl-C indicating we want to skip the review.
+
+    Returns:
+        `True` if user asked to skip review, `False` otherwise.
+    """
+    try:
+        raw_input(
+            "\nPress enter to continue or 'Ctrl-C' to skip.\n")
+    except KeyboardInterrupt:
+        return True
+    return False
+
+# The user review prompt is OS-specific; we set it here.
+if os.name == 'nt':
+    user_skipped_review = user_skipped_review_win32
+else:
+    user_skipped_review = user_skipped_review_unix
+
+# On Windows, we need to call `rbt.cmd` instead of `rbt` the Bash script.
+if os.name == 'nt':
+    rbt_executable = 'rbt.cmd'
+else:
+    rbt_executable = 'rbt'
+
+# TODO(hausdorff): We have disabled colors for the diffs on Windows, as piping
+# them through `subprocess` causes us to emit ANSI escape codes, which the
+# command prompt doesn't recognize. Presumably we are being routed through some
+# TTY that causes git to not emit the colors using `cmd`'s color codes API
+# (which is entirely different from ANSI. See [1] for more information and
+# MESOS-3872.
+#
+# [1] http://stackoverflow.com/questions/5921556/in-git-bash-on-windows-7-colors-display-as-code-when-running-cucumber-or-rspec
+if os.name == 'nt':
+    creating_review_format = '--pretty=format:%H %d %s'
+    updating_review_format = '--pretty=format:%H %d %s (%cr)'
+    parent_log_format = '--pretty=format:%H %d %s (%cr)'
+    history_log_format = '--pretty=format:%H %d %s (%cr)'
+else:
+    creating_review_format = '--pretty=format:%Cred%H%Creset -%C(yellow)%d%Creset %s'
+    updating_review_format = '--pretty=format:%Cred%H%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset'
+    parent_log_format = '--pretty=format:%Cred%H%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset'
+    history_log_format = '--pretty=format:%Cred%H%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset'
 
 # TODO(benh): Make sure this is a git repository, apologize if not.
 
 # Choose 'rbt' if available, otherwise choose 'post-review'.
 post_review = None
-rbt_version = execute(['rbt', '--version'], ignore_errors=True)
+rbt_version = execute([rbt_executable, '--version'], ignore_errors=True)
 if rbt_version:
   rbt_version = LooseVersion(rbt_version)
-  post_review = ['rbt', 'post']
+  post_review = [rbt_executable, 'post']
 elif execute(['post-review', '--version'], ignore_errors=True):
   post_review = ['post-review']
 else:
@@ -157,7 +254,7 @@ output = check_output([
     'git',
     '--no-pager',
     'log',
-    '--pretty=format:%Cred%H%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset',
+    history_log_format,
     merge_base + '..HEAD'])
 print 'Running \'%s\' across all of ...' % " ".join(post_review)
 print output
@@ -198,9 +295,12 @@ for i in range(len(shas)):
 
     pos = message.find('Review:')
     if pos != -1:
-        pattern = re.compile('Review: ({url})$'.format(
-            url=os.path.join(reviewboard_url, 'r', '[0-9]+')))
+        # NOTE: Strip the trailing '/' off the URL so we don't generate a
+        # pattern that looks for two slashes, e.g., `reviews.apache.org//r/`.
+        url_pattern = "/".join([reviewboard_url.strip('/'), 'r', '[0-9]+'])
+        pattern = re.compile('Review: ({url})$'.format(url=url_pattern))
         match = pattern.search(message.strip().strip('/'))
+
         if match is None:
             print "\nInvalid ReviewBoard URL: '{}'".format(message[pos:])
             sys.exit(1)
@@ -214,7 +314,7 @@ for i in range(len(shas)):
             'git',
             '--no-pager',
             'log',
-            '--pretty=format:%Cred%H%Creset -%C(yellow)%d%Creset %s',
+            creating_review_format,
             previous + '..' + sha])
         print '\nCreating diff of:'
         print output
@@ -223,7 +323,7 @@ for i in range(len(shas)):
             'git',
             '--no-pager',
             'log',
-            '--pretty=format:%Cred%H%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset',
+            updating_review_format,
             previous + '..' + sha])
         print '\nUpdating diff of:'
         print output
@@ -233,16 +333,14 @@ for i in range(len(shas)):
         'git',
         '--no-pager',
         'log',
-        '--pretty=format:%Cred%H%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset',
+        parent_log_format,
         tracking_branch + '..' + previous])
 
     if output:
         print '\n... with parent diff created from:'
         print output
 
-    try:
-        raw_input('\nPress enter to continue or \'Ctrl-C\' to skip.\n')
-    except KeyboardInterrupt:
+    if user_skipped_review():
         i = i + 1
         previous = sha
         parent_review_request_id = review_request_id
@@ -270,7 +368,7 @@ for i in range(len(shas)):
         command = command + ['--review-request-id=' + review_request_id]
 
     # Determine how to specify the revision range.
-    if 'rbt' in post_review and rbt_version >= LooseVersion('RBTools 0.6'):
+    if rbt_executable in post_review and rbt_version >= LooseVersion('RBTools 0.6'):
        # rbt >= 0.6.1 supports '--depends-on' argument.
        # Only set the "depends on" if this is not the first review in the chain.
        if rbt_version >= LooseVersion('RBTools 0.6.1') and parent_review_request_id:

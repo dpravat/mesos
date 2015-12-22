@@ -7,6 +7,10 @@ import re
 import subprocess
 import sys
 
+from cStringIO import StringIO
+
+import cpplint # The Google C++ linter in our `support/` directory.
+
 # Root source paths (will be traversed recursively).
 source_dirs = ['src',
                'include',
@@ -30,6 +34,47 @@ def find_candidates(root_dir):
 
             if source_criteria_regex.search(name) is not None:
                 yield path
+
+def lint_and_capture_stderr(rules, source_paths):
+    """Lint source files and capture `stderr` as a string.
+
+    The "normal" way of implementing this is to call `subprocess.Popen`.
+    Normally you redirect `stderr` into a string so you can process it, and
+    set the file descriptors to `CLOEXEC`, but some OSs (e.g., Windows) don't
+    support this.
+
+    Hence, our solution is to simply call the linter manually, and redirect
+    all `stderr` and `stdout` to a string using the `StringIO` API. This
+    works because there isn't any concurrency in the code in this area, and
+    we can get away with swapping the "real" `stderr` back in when we're done.
+
+    Args:
+        rules: The rules to run on our source files.
+        source_paths: The source files to lint.
+
+    Return:
+        A tuple `(errors_found, stderr)`, capturing results of the linter process.
+    """
+    system_stdout = sys.stdout
+    system_stderr = sys.stderr
+
+    # Point `stdout` and `stderr` to a `StringIO` so they can be captured.
+    sys.stdout = linter_stdout = StringIO()
+    sys.stderr = linter_stderr = StringIO()
+
+    # Run linter.
+    filenames = cpplint.ParseArguments([rules] + source_paths)
+    errors_found = cpplint.LintFiles(filenames)
+
+    # Set `stdout` and `stderr` back to normal.
+    sys.stdout = system_stdout
+    sys.stderr = system_stderr
+
+    # NOTE: `stderr` seems to print line breaks as '\n` on the Windows command
+    # prompt, which means that carriage returns are probably added when it's
+    # piped through some tty layer. In any event, we should not have to worry
+    # about carriage return here.
+    return (errors_found, linter_stderr.getvalue().split('\n'))
 
 def run_lint(source_paths):
     '''
@@ -60,20 +105,19 @@ def run_lint(source_paths):
         'whitespace/todo']
 
     rules_filter = '--filter=-,+' + ',+'.join(active_rules)
-    p = subprocess.Popen(
-        ['python', 'support/cpplint.py', rules_filter] + source_paths,
-        stderr=subprocess.PIPE,
-        close_fds=True)
+
+    (errors_found, captured_stderr) = lint_and_capture_stderr(
+        rules_filter,
+        source_paths)
 
     # Lines are stored and filtered, only showing found errors instead
     # of e.g., 'Done processing XXX.' which tends to be dominant output.
-    for line in p.stderr:
+    for line in captured_stderr:
         if re.match('^(Done processing |Total errors found: )', line):
             continue
-        sys.stderr.write(line)
+        sys.stderr.write(line + '\n')
 
-    p.wait()
-    return p.returncode
+    return errors_found
 
 def check_license_header(source_paths):
     ''' Checks the license headers of the given files. '''
@@ -109,7 +153,9 @@ if __name__ == '__main__':
     candidates = []
     for source_dir in source_dirs:
         for candidate in find_candidates(source_dir):
-            candidates.append(candidate)
+            # Convert all paths to absolute paths to normalize path separators,
+            # which differ by OS.
+            candidates.append(os.path.abspath(candidate))
 
     # If file paths are specified, check all file paths that are
     # candidates; else check all candidates.
@@ -132,5 +178,20 @@ if __name__ == '__main__':
                             format(num_errors=total_errors))
         sys.exit(total_errors)
     else:
-        print "No files to lint\n"
-        sys.exit(0)
+        # File paths specified, run lint on all file paths that are candidates.
+        # NOTE: Convert to absolute path to normalize path separators, which
+        # differ by OS.
+        file_paths = map(os.path.abspath, sys.argv[1:])
+
+        # Compute the set intersect of the input file paths and candidates.
+        # This represents the reduced set of candidates to run lint on.
+        candidates_set = set(candidates)
+        clean_file_paths_set = set(map(lambda x: x.rstrip(), file_paths))
+        filtered_candidates_set = clean_file_paths_set.intersection(
+            candidates_set)
+
+        if filtered_candidates_set:
+            sys.exit(run_lint(list(filtered_candidates_set)))
+        else:
+            print "No files to lint\n"
+            sys.exit(0)
