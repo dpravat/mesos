@@ -15,11 +15,17 @@
 
 #include <stdarg.h> // For va_list, va_start, etc.
 
+#include <process.h>
+
 #include <ostream>
 #include <string>
 
 #include <stout/try.hpp>
 
+// os::sytem returns -1 if the processor cannot be started
+// therefore any return valu indicates the process has been started
+#define WIFEXITED(x) ((x) != -1)
+#define WEXITSTATUS(x) (x)
 
 namespace os {
 
@@ -30,6 +36,42 @@ template <typename... T>
 Try<std::string> shell(const std::string& fmt, const T&... t)
 {
   UNIMPLEMENTED;
+}
+
+struct shell_const
+{
+static const char* name()
+{
+  return "cmd.exe";
+}
+static const char* arg0()
+{
+  return "cmd.exe";
+}
+static const char* arg1()
+{
+  return "/c";
+}
+};
+
+template <typename... T>
+int execlp(const char* path, const T*... t)
+{
+  return ::execlp(path, t...);
+}
+
+inline int execvp(const char *file, char *const argv[])
+{
+    return _execvp(file, argv);
+}
+
+// Executes a command by calling "cmd /c <command>", and returns
+// after the command has been completed. Returns 0 if succeeds, and
+// return -1 on error
+inline int system(const std::string& command)
+{
+    return ::_spawnl(_P_WAIT, shell_const::name(), shell_const::arg0(),
+                      shell_const::arg1(), command.c_str());
 }
 
 } // namespace os {
