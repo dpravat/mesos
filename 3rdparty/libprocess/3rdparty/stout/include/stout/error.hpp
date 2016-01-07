@@ -24,6 +24,9 @@
 
 #ifdef __WINDOWS__
 #include <stout/windows/error.hpp>
+using SocketError = WindowsSocketError;
+#else
+using SocketError = ErrnoError;
 #endif // __WINDOWS__
 
 #endif // __STOUT_ERROR_HPP__

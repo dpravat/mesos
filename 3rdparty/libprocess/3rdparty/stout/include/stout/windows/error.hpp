@@ -116,6 +116,9 @@ public:
 
   WindowsSocketError(const std::string& message)
     : WindowsErrorBase(::WSAGetLastError(), message) {}
+
+  WindowsSocketError(const WindowsError& error)
+    : WindowsErrorBase(error) {}
 };
 
 #endif // __STOUT_WINDOWS_ERROR_HPP__

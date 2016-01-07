@@ -15,19 +15,33 @@
 
 #include <errno.h>
 
+#include <stout/error.hpp>
+#include <stout/try.hpp>
+#include <stout/windows.hpp>
 
 namespace os {
 
 // Returns the amount of bytes written from the input file
-// descriptor to the output socket. On error, returns -1 and
-// errno indicates the error.
-// NOTE: The following limitations exist because of the OS X
-// implementation of sendfile:
-//   1. s must be a stream oriented socket descriptor.
-//   2. fd must be a regular file descriptor.
-inline ssize_t sendfile(int s, int fd, off_t offset, size_t length)
+// descriptor to the output socket.
+// On error, `Try<ssize_t, SocketError>` contains the error.
+inline Try<ssize_t, SocketError> sendfile(
+    int s, int fd, off_t offset, size_t length)
 {
-  UNIMPLEMENTED;
+  // NOTE: It is not necessary to close the `HANDLE`; when we call `_close` on
+  // `fd` it will close the underlying `HANDLE` as well.
+  HANDLE file = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+
+  LONG high = static_cast<LONG>(offset >> 32);
+  if (SetFilePointer(file, static_cast<LONG>(offset & MAXDWORD), &high, FILE_BEGIN) ==
+      INVALID_SET_FILE_POINTER) {
+    return WindowsError();
+  }
+
+  if (TransmitFile(s, file, length, 0, NULL, NULL, 0) == TRUE) {
+    return length;
+  } else {
+    return WindowsSocketError();
+  }
 }
 
 } // namespace os {
