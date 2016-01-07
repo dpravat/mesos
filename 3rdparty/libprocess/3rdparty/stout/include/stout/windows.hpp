@@ -24,6 +24,7 @@
 #include <BaseTsd.h> // For `SSIZE_T`.
 // We include `Winsock2.h` before `Windows.h` explicitly to avoid symbold
 // re-definitions. This is a known pattern in the windows community.
+#include <WS2tcpip.h>
 #include <Winsock2.h>
 #include <Windows.h>
 
