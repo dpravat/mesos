@@ -458,6 +458,10 @@ inline Try<std::set<pid_t> > children(pid_t pid, bool recursive = true)
   return children(pid, processes.get(), recursive);
 }
 
+inline int pagesize()
+{
+  return sysconf(_SC_PAGESIZE);
+}
 
 namespace libraries {
 
