@@ -24,6 +24,8 @@
 #include <stout/os.hpp>
 #include <stout/os/strerror.hpp>
 #include <stout/try.hpp>
+#include <stout/os/read.hpp>
+#include <stout/os/write.hpp>
 
 using std::string;
 
@@ -65,15 +67,20 @@ void read(
   } else {
     ssize_t length;
     if (flags == NONE) {
-      length = ::read(fd, data, size);
+      length = os::read(fd, data, size);
     } else { // PEEK.
-      // In case 'fd' is not a socket ::recv() will fail with ENOTSOCK and the
+      // In case 'fd' is not a socket os::recv() will fail with ENOTSOCK and the
       // error will be propagted out.
-      length = ::recv(fd, data, size, MSG_PEEK);
+      length = os::recv(fd, data, size, MSG_PEEK);
     }
 
     if (length < 0) {
+#ifndef __WINDOWS__
       if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+#else
+      if (WSAGetLastError() == WSAEALREADY
+          || WSAGetLastError() == WSAEWOULDBLOCK) {
+#endif
         // Restart the read operation.
         Future<short> future =
           io::poll(fd, process::io::READ).onAny(
@@ -123,10 +130,15 @@ void write(
   } else if (future.isFailed()) {
     promise->fail(future.failure());
   } else {
-    ssize_t length = ::write(fd, data, size);
+    ssize_t length = os::write(fd, data, size);
 
     if (length < 0) {
+#ifndef __WINDOWS__
       if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+#else
+      if (WSAGetLastError() == WSAEALREADY
+          || WSAGetLastError() == WSAEWOULDBLOCK) {
+#endif
         // Restart the write operation.
         Future<short> future =
           io::poll(fd, process::io::WRITE).onAny(
