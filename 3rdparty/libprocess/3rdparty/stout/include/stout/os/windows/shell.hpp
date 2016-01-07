@@ -40,7 +40,7 @@ namespace Shell {
 template <typename... T>
 Try<std::string> shell(const std::string& fmt, const T... t)
 {
-  UNIMPLEMENTED;
+  return "";
 }
 
 // Executes a command by calling "cmd /c <command>", and returns
