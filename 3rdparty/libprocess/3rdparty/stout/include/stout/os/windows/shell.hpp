@@ -40,7 +40,10 @@ namespace Shell {
 // of the command. Optionally, the output is returned via an argument.
 // TODO(vinod): Pass an istream object that can provide input to the command.
 template <typename... T>
-Try<std::string> shell(const std::string& fmt, const T... t) = delete;
+Try<std::string> shell(const std::string& fmt, const T... t)
+{
+  return "";
+}
 
 // Executes a command by calling "cmd /c <command>", and returns
 // after the command has been completed. Returns 0 if succeeds, and
