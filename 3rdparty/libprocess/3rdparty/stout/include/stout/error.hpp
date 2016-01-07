@@ -13,6 +13,7 @@
 #ifndef __STOUT_ERROR_HPP__
 #define __STOUT_ERROR_HPP__
 
+
 // NOTE: The order of these `#include`s is important. This file is structured
 // as a series of `#include`s for historical reasons. Before, `stout/error`
 // simply contained the definitions of `Error` and `ErrnoError`. The addition
@@ -25,5 +26,12 @@
 #ifdef __WINDOWS__
 #include <stout/windows/error.hpp>
 #endif // __WINDOWS__
+
+using SocketError =
+#ifdef __WINDOWS_
+  WindowsSocketError;
+#else
+  ErrnoError;
+#endif  // __WINDOWS__
 
 #endif // __STOUT_ERROR_HPP__
