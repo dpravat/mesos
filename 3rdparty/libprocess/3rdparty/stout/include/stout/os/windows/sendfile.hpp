@@ -15,6 +15,7 @@
 
 #include <errno.h>
 
+#include <stout/windows.hpp>
 
 namespace os {
 
@@ -25,9 +26,26 @@ namespace os {
 // implementation of sendfile:
 //   1. s must be a stream oriented socket descriptor.
 //   2. fd must be a regular file descriptor.
+
 inline ssize_t sendfile(int s, int fd, off_t offset, size_t length)
 {
-  UNIMPLEMENTED;
+  // NOTE: It is not necessary to close the `HANDLE`; when we call `_close` on
+  // `fd` will close the underlying `HANDLE` as well.
+  HANDLE file = (HANDLE)_get_osfhandle(fd);
+  OVERLAPPED off = {0, 0, {(DWORD)offset, (DWORD)(offset>>32)}, NULL};
+  BOOL transmit_initiated = TransmitFile(s, file, length, 0, &off, NULL, 0);
+
+  DWORD sent_bytes = 0;
+  DWORD flags = 0;
+  BOOL transmit_result = WSAGetOverlappedResult(s, &off, &sent_bytes, TRUE,
+                                                &flags);
+
+  if (transmit_initiated && transmit_result) {
+    return sent_bytes;
+  }
+
+  errno = WSAGetLastError();
+  return -1;
 }
 
 } // namespace os {
