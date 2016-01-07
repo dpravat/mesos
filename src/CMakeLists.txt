@@ -235,6 +235,7 @@ set(STATE_SRC
 set(AGENT_SRC
   ${AGENT_SRC}
   slave/constants.cpp
+  slave/flags.cpp
   slave/gc.cpp
   slave/http.cpp
   slave/metrics.cpp
@@ -253,7 +254,6 @@ if (NOT WIN32)
     ${AGENT_SRC}
     slave/container_logger.cpp
     slave/container_loggers/sandbox.cpp
-    slave/flags.cpp
     slave/resource_estimator.cpp
     slave/slave.cpp
     slave/containerizer/composing.cpp
