@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License
 
-#include <netinet/tcp.h>
 
 #include <process/io.hpp>
 #include <process/network.hpp>
@@ -18,6 +17,7 @@
 
 #include <stout/os/sendfile.hpp>
 #include <stout/os/strerror.hpp>
+#include <stout/os.hpp>
 
 #include "config.hpp"
 #include "poll_socket.hpp"
@@ -69,8 +69,10 @@ Future<Socket> accept(int fd)
   }
 
   // Turn off Nagle (TCP_NODELAY) so pipelined requests don't wait.
+  // NOTE: We cast to `char*` here because the function prototypes on Windows
+  // use `char*` instead of `void*`.
   int on = 1;
-  if (setsockopt(s, SOL_TCP, TCP_NODELAY, &on, sizeof(on)) < 0) {
+  if (::setsockopt(s, SOL_TCP, TCP_NODELAY, (char*)&on, sizeof(on)) < 0) {
     const string error = os::strerror(errno);
     VLOG(1) << "Failed to turn off the Nagle algorithm: " << error;
     os::close(s);
@@ -105,7 +107,10 @@ Future<Nothing> connect(const Socket& socket)
   socklen_t optlen = sizeof(opt);
   int s = socket.get();
 
-  if (getsockopt(s, SOL_SOCKET, SO_ERROR, &opt, &optlen) < 0 || opt != 0) {
+  // NOTE: We cast to `char*` here because the function prototypes on Windows
+  // use `char*` instead of `void*`.
+  if (::getsockopt(s, SOL_SOCKET, SO_ERROR, (char*)&opt, &optlen) < 0 ||
+      opt != 0) {
     // Connect failure.
     VLOG(1) << "Socket error while connecting";
     return Failure("Socket error while connecting");
@@ -121,7 +126,11 @@ Future<Nothing> PollSocketImpl::connect(const Address& address)
 {
   Try<int> connect = network::connect(get(), address);
   if (connect.isError()) {
+#ifdef __WINDOWS__
+    if(WSAGetLastError() == WSAEINPROGRESS) {
+#else
     if (errno == EINPROGRESS) {
+#endif
       return io::poll(get(), io::WRITE)
         .then(lambda::bind(&internal::connect, socket()));
     }
@@ -148,10 +157,14 @@ Future<size_t> socket_send_data(int s, const char* data, size_t size)
   while (true) {
     ssize_t length = send(s, data, size, MSG_NOSIGNAL);
 
+#ifndef __WINDOWS__
     if (length < 0 && (errno == EINTR)) {
       // Interrupted, try again now.
       continue;
     } else if (length < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+#else
+    if (length < 0 && (WSAGetLastError() == WSAEINPROGRESS)) {
+#endif // __WINDOWS__
       // Might block, try again later.
       return io::poll(s, io::WRITE)
         .then(lambda::bind(&internal::socket_send_data, s, data, size));
