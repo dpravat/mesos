@@ -15,31 +15,62 @@
 
 #include <stout/nothing.hpp>
 #include <stout/try.hpp>
+#include <stout/os/socket.hpp>
 
 
 namespace os {
 
 inline Try<Nothing> cloexec(int fd)
 {
-  UNIMPLEMENTED;
+  // This is not supported on Windows sockets.
+  // NOTE: May need to be implemented for files if needed.
+  return Nothing();
 }
 
 
 inline Try<bool> isCloexec(int fd)
 {
-  UNIMPLEMENTED;
+  // This is not supported on Windows sockets.
+  // NOTE: May need to be implemented for files if needed.
+  return true;
 }
 
 
 inline Try<Nothing> nonblock(int fd)
 {
-  UNIMPLEMENTED;
+  if (net::is_socket(fd)){
+    const u_long nonblockmode = 1;
+    u_long mode = nonblockmode;
+
+    int result = ioctlsocket(fd, FIONBIO, &mode);
+    if (result != NO_ERROR) {
+      return WindowsSocketError();
+    }
+  } else {
+    // Extract handle from file descriptor.
+    HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(fd));
+    if (handle == INVALID_HANDLE_VALUE) {
+      return WindowsError("Failed to get `HANDLE` for file descriptor");
+    } else {
+      if (GetFileType(handle) == FILE_TYPE_PIPE) {
+        DWORD pipe_mode = PIPE_NOWAIT; 
+        if (SetNamedPipeHandleState(handle, &pipe_mode, NULL, NULL)) {
+          return WindowsError(); 
+        };
+      }    
+    }
+  }
+
+  return Nothing();
 }
 
 
 inline Try<bool> isNonblock(int fd)
 {
-  UNIMPLEMENTED;
+  // In windows there is no way to know if the socket is
+  // blocking or non blocking. However, we set sockets
+  // to non blocking on startup. Returning true.
+  return true;
 }
 
 } // namespace os {
