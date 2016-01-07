@@ -29,7 +29,7 @@ namespace os {
 template <typename... T>
 Try<std::string> shell(const std::string& fmt, const T&... t)
 {
-  UNIMPLEMENTED;
+  return "";
 }
 
 // Canonical constants used as platform-dependent args to `exec` calls.
@@ -42,6 +42,7 @@ struct Shell
   static constexpr const char* arg0 = "cmd.exe";
   static constexpr const char* arg1 = "/c";
 };
+
 
 // Executes a command by calling "cmd /c <command>", and returns
 // after the command has been completed. Returns 0 if succeeds, and
