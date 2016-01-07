@@ -14,7 +14,7 @@
 #define __STOUT_OS_WINDOWS_SENDFILE_HPP__
 
 #include <errno.h>
-
+#include <mswsock.h>
 
 namespace os {
 
@@ -25,9 +25,21 @@ namespace os {
 // implementation of sendfile:
 //   1. s must be a stream oriented socket descriptor.
 //   2. fd must be a regular file descriptor.
+
 inline ssize_t sendfile(int s, int fd, off_t offset, size_t length)
 {
-  UNIMPLEMENTED;
+  OVERLAPPED off = {0};
+  off.Offset = offset;
+  HANDLE fileHandle = (HANDLE)_get_osfhandle(fd);
+
+  DWORD sent = 0;
+  BOOL result = TransmitFile(s, fileHandle, length, 0, &off, NULL,0);
+  result = WSAGetOverlappedResult(s, &off, &sent, TRUE, NULL);
+  if (result == TRUE ){
+     return sent;
+     }
+    errno = WSAGetLastError();
+    return -1;
 }
 
 } // namespace os {
