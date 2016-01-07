@@ -522,6 +522,23 @@ inline void appendPaths(const std::string& newPaths)
 
 /* /TODO */
 
+inline size_t recv(int sockfd, void *buf, size_t len, int flags)
+{
+  return ::recv(sockfd, buf, len, flags);
+}
+
+inline int setsockopt(int socket, int level, int option_name,
+                      const void *option_value, socklen_t option_len)
+{
+  return ::setsockopt(socket, level, option_name, option_value, option_len);
+}
+
+inline int getsockopt(int socket, int level, int option_name,
+                      void* option_value, socklen_t* option_len)
+{
+  return ::getsockopt(socket, level, option_name, option_value, option_len);
+}
+
 } // namespace os {
 
 #endif // __STOUT_POSIX_OS_HPP__
