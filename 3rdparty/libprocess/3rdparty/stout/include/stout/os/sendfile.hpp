@@ -13,6 +13,15 @@
 #ifndef __STOUT_OS_SENDFILE_HPP__
 #define __STOUT_OS_SENDFILE_HPP__
 
+#include <stout/error.hpp>
+#include <stout/try.hpp>
+
+using SocketError =
+#ifndef __WINDOWS__
+ErrnoError;
+#else
+WindowsSocketError;
+#endif
 
 // For readability, we minimize the number of #ifdef blocks in the code by
 // splitting platform specifc system calls into separate directories.

@@ -30,18 +30,23 @@
 namespace os {
 
 // Returns the amount of bytes written from the input file
-// descriptor to the output socket. On error, returns -1 and
-// errno indicates the error.
+// descriptor to the output socket. On error, On error,
+//  Try<ssize_t, ErrnoError> contains the error.
 // NOTE: The following limitations exist because of the OS X
 // implementation of sendfile:
 //   1. s must be a stream oriented socket descriptor.
 //   2. fd must be a regular file descriptor.
-inline ssize_t sendfile(int s, int fd, off_t offset, size_t length)
-{
+inline Try<ssize_t, SocketError> sendfile(int s, int fd, off_t offset,
+                                          size_t length) {
 #if defined(__linux__) || defined(__sun)
   SUPPRESS (SIGPIPE) {
     // This will set errno to EPIPE if a SIGPIPE occurs.
-    return ::sendfile(s, fd, &offset, length);
+    ssize_t sent = ::sendfile(s, fd, &offset, length);
+    if (send < 0) {
+      return return SocketError("Socket sendfile failed");
+    }
+
+    return sent;
   }
   UNREACHABLE();
 #elif defined __APPLE__
@@ -52,7 +57,7 @@ inline ssize_t sendfile(int s, int fd, off_t offset, size_t length)
     if (errno == EAGAIN && _length > 0) {
       return _length;
     }
-    return -1;
+    return SocketError("Socket sendfile failed");
   }
 
   return _length;
@@ -64,7 +69,7 @@ inline ssize_t sendfile(int s, int fd, off_t offset, size_t length)
         if (errno == EAGAIN && length > 0) {
           return _length;
         }
-        return -1;
+        return SocketError("Socket sendfile failed");
       }
   }
 
