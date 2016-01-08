@@ -11,12 +11,16 @@
 // limitations under the License
 
 #include <errno.h>
+#ifndef __WINDOWS__
 #include <netdb.h>
+#endif // __WINDOWS__
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
+#ifndef __WINDOWS__
 #include <arpa/inet.h>
+#endif // __WINDOWS__
 
 #include <glog/logging.h>
 
