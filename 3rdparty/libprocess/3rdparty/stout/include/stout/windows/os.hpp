@@ -15,6 +15,8 @@
 
 #include <direct.h>
 #include <io.h>
+#include <TlHelp32.h>
+#include <Psapi.h>
 
 #include <sys/utime.h>
 
@@ -34,14 +36,11 @@
 #include <stout/os/os.hpp>
 #include <stout/os/read.hpp>
 
+#include <stout/os/os.hpp>
 #include <stout/os/raw/environment.hpp>
 
 
-#include <TlHelp32.h>
-#include <Psapi.h>
-
 #define WNOHANG 0
-#define hstrerror() ("")
 #define SIGPIPE 100
 
 namespace os {
@@ -50,6 +49,47 @@ inline Try<std::list<Process>> processes()
 {
   return std::list<Process>();
 }
+
+// Overload of os::pids for filtering by groups and sessions.
+// A group / session id of 0 will fitler on the group / session ID
+// of the calling process.
+inline Try<std::set<pid_t>> pids(Option<pid_t> group, Option<pid_t> session)
+{
+// Windows does not have the concept of a process group, so we need to
+// enumerate all processes.
+//
+// The list of processes might differ between calls, so continue calling
+// `EnumProcesses` until the output buffer is large enough. The call is
+// considered to fully succeed when the function returns non-zero and the
+// number of bytes returned is less than the size of the `pids` array. If
+// that's not the case, then we need to increase the size of the `pids` array
+// and attempt the call again.
+//
+// To minimize the number of calls (at the expense
+// or memory), we choose to allocate double the amount suggested by
+// `EnumProcesses`.
+DWORD *pids = NULL;
+DWORD bytes = 1024;
+DWORD pidsSize = 0;
+
+// TODO(alexnaparu): Set a limit to the memory that can be used.
+while (pidsSize <= bytes) {
+  pidsSize = 2 * bytes;
+  pids = (DWORD *)realloc(pids, pidsSize);
+  if (!::EnumProcesses(pids, pidsSize, &bytes)) {
+    free(pids);
+    return WindowsError("`os::pids()`: Failed to call `EnumProcesses`");
+  }
+}
+
+std::set<pid_t> result;
+for (DWORD i = 0; i < bytes / sizeof(DWORD); i++) {
+  result.insert(pids[i]);
+}
+
+free(pids);
+return result;
+ }
 
 inline Option<Process> process(
     pid_t pid,
@@ -720,6 +760,7 @@ inline Result<Process> process(pid_t pid)
     executable_filename,
     false);            // is not zombie process.
 }
+
 
 } // namespace os {
 
