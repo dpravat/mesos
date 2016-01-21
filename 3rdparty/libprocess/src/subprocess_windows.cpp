@@ -10,17 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License
 
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#ifndef __WINDOWS__
-#include <unistd.h>
-#endif // __WINDOWS__
-#include <sys/types.h>
-
-#ifdef __linux__
-#include <sys/prctl.h>
-#endif // __linux__
 #include <sys/types.h>
 
 #include <string>
@@ -40,35 +31,54 @@
 #include <stout/strings.hpp>
 #include <stout/try.hpp>
 #include <stout/unreachable.hpp>
+#include <stout/windows.hpp>
 
+using std::array;
 using std::map;
 using std::string;
 using std::vector;
 
 namespace process {
 
-Subprocess::Hook::Hook(
-    const lambda::function<Try<Nothing>(pid_t)>& _parent_callback)
-  : parent_callback(_parent_callback) {}
+using InputFileDescriptors = Subprocess::IO::InputFileDescriptors;
+using OutputFileDescriptors = Subprocess::IO::OutputFileDescriptors;
 
-namespace internal {
 
-static void cleanup(
-    const Future<Option<int>>& result,
-    Promise<Option<int>>* promise,
-    const Subprocess& subprocess)
+Subprocess::IO Subprocess::PIPE()
 {
-  CHECK(!result.isPending());
-  CHECK(!result.isDiscarded());
-
-  if (result.isFailed()) {
-    promise->fail(result.failure());
-  } else {
-    promise->set(result.get());
-  }
-
-  delete promise;
+  UNIMPLEMENTED;
 }
 
-}  // namespace internal {
+
+Subprocess::IO Subprocess::PATH(const string& path)
+{
+  UNIMPLEMENTED;
+}
+
+
+Subprocess::IO Subprocess::FD(int fd, IO::FDType type)
+{
+  UNIMPLEMENTED;
+}
+
+
+// TODO(hausdorff): use RAII handles
+Try<Subprocess> subprocess(
+    const string& path,
+    vector<string> argv,
+    const Subprocess::IO& in,
+    const Subprocess::IO& out,
+    const Subprocess::IO& err,
+    const Setsid setsid,
+    const Option<flags::FlagsBase>& flags,
+    const Option<map<string, string>>& environment,
+    const Option<lambda::function<
+        pid_t(const lambda::function<int()>&)>>& _clone,
+    const vector<Subprocess::Hook>& parent_hooks,
+    const Option<string>& working_directory,
+    const Watchdog watchdog)
+{
+  UNIMPLEMENTED;
+}
+
 }  // namespace process {

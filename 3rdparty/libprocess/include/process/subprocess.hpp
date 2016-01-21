@@ -33,6 +33,9 @@
 #include <stout/option.hpp>
 #include <stout/try.hpp>
 
+#include <stout/os/shell.hpp>
+
+
 namespace process {
 
 // Flag describing whether a new process should generate a new sid.
@@ -88,8 +91,13 @@ public:
      */
     struct InputFileDescriptors
     {
+#ifndef __WINDOWS__
       int read = -1;
       Option<int> write = None();
+#else
+      HANDLE read = INVALID_HANDLE_VALUE;
+      Option<HANDLE> write = None();
+#endif // __WINDOWS__
     };
 
     /**
@@ -103,8 +111,13 @@ public:
      */
     struct OutputFileDescriptors
     {
+#ifndef __WINDOWS__
       Option<int> read = None();
       int write = -1;
+#else
+      Option<HANDLE> read = None();
+      HANDLE write = INVALID_HANDLE_VALUE;
+#endif // __WINDOWS__
     };
 
     /**
@@ -363,10 +376,10 @@ inline Try<Subprocess> subprocess(
     const Option<std::string>& working_directory = None(),
     const Watchdog watchdog = NO_MONITOR)
 {
-  std::vector<std::string> argv = {"sh", "-c", command};
+  std::vector<std::string> argv = {os::Shell::arg0, os::Shell::arg1, command};
 
   return subprocess(
-      "sh",
+      os::Shell::name,
       argv,
       in,
       out,
