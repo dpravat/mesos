@@ -41,6 +41,7 @@
 #include <stout/try.hpp>
 #include <stout/unreachable.hpp>
 #include <stout/version.hpp>
+#include <stout/exit.hpp>
 
 #include <stout/os/bootid.hpp>
 #include <stout/os/chdir.hpp>
