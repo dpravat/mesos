@@ -122,6 +122,14 @@ set(LIBEVENT_CMAKE_ARGS
   -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
   )
 
+if (NOT WIN32)
+  set(HTTP_PARSER_PATCH_CMD  ${CMAKE_NOOP})
+elseif (WIN32)
+  # Set the patch command which will utilize patch.exe under
+  # `\Users\<user>\AppData\Local\Temp with no elevation prompt`
+  set(HTTP_PARSER_PATCH_CMD ${PATCHEXE_LOCATION} --binary -p1 < ${PROCESS_3RD_SRC}/ry-http-parser-${HTTP_PARSER_VERSION}.patch)
+endif (NOT WIN32)
+
 # Third-party libraries. Tell the build system how to pull in and build third-
 # party libraries at compile time, using the ExternalProject_Add macro.
 ##############################################################################
@@ -163,6 +171,7 @@ ExternalProject_Add(
   ${HTTP_PARSER_TARGET}
   PREFIX            ${HTTP_PARSER_CMAKE_ROOT}
   UPDATE_COMMAND    ${RY_UPDATE_CMD}
+  PATCH_COMMAND     ${HTTP_PARSER_PATCH_CMD}
   INSTALL_COMMAND   ${CMAKE_NOOP}
   URL               ${HTTP_PARSER_URL}
   )
