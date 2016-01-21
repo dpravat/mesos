@@ -10,20 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License
 
-#include <errno.h>
-#include <limits.h>
+#ifndef __WINDOWS__
 #include <netdb.h>
-#include <signal.h>
-#include <stdarg.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 #include <arpa/inet.h>
-
-#include <glog/logging.h>
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -35,6 +26,18 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/uio.h>
+#endif
+
+#include <errno.h>
+#include <limits.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <glog/logging.h>
 
 #include <algorithm>
 #include <deque>
@@ -884,8 +887,11 @@ void initialize(const Option<string>& delegate)
   __s__ = new Socket(create.get());
 
   // Allow address reuse.
+  // NOTE: We cast to `char*` here because the function prototypes on Windows
+  // use `char*` instead of `void*`.
   int on = 1;
-  if (setsockopt(__s__->get(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+  if (::setsockopt(__s__->get(), SOL_SOCKET, SO_REUSEADDR, (char*)&on,
+                   sizeof(on)) < 0) {
     PLOG(FATAL) << "Failed to initialize, setsockopt(SO_REUSEADDR)";
   }
 
@@ -2232,16 +2238,20 @@ long ProcessManager::init_threads()
   for (long i = 0; i < num_worker_threads; i++) {
     // Retain the thread handles so that we can join when shutting down.
     threads.emplace_back(
-        // We pass a constant reference to `joining` to make it clear that this
-        // value is only being tested (read), and not manipulated.
-        new std::thread(std::bind([](const std::atomic_bool& joining) {
+        // NOTE: The intention of this code is to test (read) `joining_threads`,
+        // and not to manipulate it. Previously this was enforced by making the
+        // lambda below take a `const atomic_bool& joining` as an argument, and
+        // passing `joining_threads` in as an argument, so that the compiler
+        // enforced this. But, the MSVC implementation of `std::bind` is
+        // crippled, so to make this compile, we had to remove that guarantee.
+        new std::thread([this]() {
           do {
             ProcessBase* process = process_manager->dequeue();
             if (process == NULL) {
               Gate::state_t old = gate->approach();
               process = process_manager->dequeue();
               if (process == NULL) {
-                if (joining.load()) {
+                if (joining_threads.load()) {
                   break;
                 }
                 gate->arrive(old); // Wait at gate if idle.
@@ -2252,8 +2262,7 @@ long ProcessManager::init_threads()
             }
             process_manager->resume(process);
           } while (true);
-        },
-        std::cref(joining_threads))));
+        }));
   }
 
   // Create a thread for the event loop.
