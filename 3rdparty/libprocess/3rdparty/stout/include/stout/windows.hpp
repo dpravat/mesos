@@ -332,13 +332,6 @@ decltype(_write(fd, buffer, count))
 }
 
 
-inline auto open(const char* path, int flags) ->
-decltype(_open(path, flags))
-{
-  return _open(path, flags);
-}
-
-
 inline auto close(int fd) ->
 decltype(_close(fd))
 {
