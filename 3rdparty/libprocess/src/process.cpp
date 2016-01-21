@@ -12,29 +12,33 @@
 
 #include <errno.h>
 #include <limits.h>
-#include <netdb.h>
+#ifndef __WINDOWS__
+  #include <netdb.h>
+
+  #include <unistd.h>
+
+  #include <arpa/inet.h>
+
+  #include <netinet/in.h>
+  #include <netinet/tcp.h>
+
+  #include <sys/ioctl.h>
+  #include <sys/mman.h>
+  #include <sys/select.h>
+  #include <sys/socket.h>
+  #include <sys/time.h>
+  #include <sys/types.h>
+ #include <sys/uio.h>
+
+#endif
 #include <signal.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-
-#include <arpa/inet.h>
 
 #include <glog/logging.h>
-
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/uio.h>
 
 #include <algorithm>
 #include <deque>
@@ -53,6 +57,9 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <algorithm>
+
+#include <stout/os.hpp>
 
 #include <process/address.hpp>
 #include <process/check.hpp>
@@ -880,7 +887,7 @@ void initialize(const string& delegate)
 
   // Allow address reuse.
   int on = 1;
-  if (setsockopt(__s__->get(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+  if (os::setsockopt(__s__->get(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
     PLOG(FATAL) << "Failed to initialize, setsockopt(SO_REUSEADDR)";
   }
 
@@ -922,7 +929,7 @@ void initialize(const string& delegate)
 
     if (gethostname(hostname, sizeof(hostname)) < 0) {
       LOG(FATAL) << "Failed to initialize, gethostname: "
-                 << hstrerror(h_errno);
+                 << (h_errno);
     }
 
     // Lookup IP address of local hostname.
@@ -2195,7 +2202,9 @@ long ProcessManager::init_threads()
   // Allocating a static number of threads can cause starvation if
   // there are more waiting Processes than the number of worker
   // threads.
-  long cpus = std::max(8L, sysconf(_SC_NPROCESSORS_ONLN));
+
+  //  long cpus = std::max(8L, sysconf(_SC_NPROCESSORS_ONLN));
+  long cpus = std::max(8L, os::cpu());
   threads.reserve(cpus+1);
 
   // Create processing threads.
@@ -2204,14 +2213,15 @@ long ProcessManager::init_threads()
     threads.emplace_back(
         // We pass a constant reference to `joining` to make it clear that this
         // value is only being tested (read), and not manipulated.
-        new std::thread(std::bind([](const std::atomic_bool& joining) {
+
+        new std::thread([this]() {
           do {
             ProcessBase* process = process_manager->dequeue();
             if (process == NULL) {
               Gate::state_t old = gate->approach();
               process = process_manager->dequeue();
               if (process == NULL) {
-                if (joining.load()) {
+                if (joining_threads.load()) {
                   break;
                 }
                 gate->arrive(old); // Wait at gate if idle.
@@ -2222,8 +2232,8 @@ long ProcessManager::init_threads()
             }
             process_manager->resume(process);
           } while (true);
-        },
-        std::cref(joining_threads))));
+        }
+   ));
   }
 
   // Create a thread for the event loop.
