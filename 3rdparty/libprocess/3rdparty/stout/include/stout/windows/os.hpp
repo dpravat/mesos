@@ -156,11 +156,11 @@ inline void unsetenv(const std::string& key)
 #define WIFSTOPPED(x) false      // whether the child was stopped by delivery
                                  // of a signal
 
-#define WEXITSTATUS(x) (x & 0xFF)  // returns the exit status of the child, only
-                                   // be used if WIFEXITED is true
-#define WTERMSIG(x) 0        // returns the number of the signals that caused the
-                             // child process to terminate, only be used if WIFSIGNALED
-							 // is true
+#define WEXITSTATUS(x) (x & 0xFF)  // returns the exit status of the child,
+                                   // only be used if WIFEXITED is true
+#define WTERMSIG(x) 0        // returns the number of the signals that caused
+                             // the child process to terminate, only be used
+                             // if WIFSIGNALED is true
 
   // Suspends execution of the calling process until a child specified
   // by pid argument has changed state. By default, waitpid() waits only
@@ -168,28 +168,29 @@ inline void unsetenv(const std::string& key)
   // options argument
   //
   // The value of pid can be:
-  // <-1: meaning wait for any child process whose process group ID is equal to the absolute
-  // value of pid.
+  // <-1: meaning wait for any child process whose process group ID is equal
+  // to the absolute value of pid.
   // -1: meaning wait for any child process.
-  // 0: meaning wait for any child process whose process group ID is equal to that of the
-  // calling process.
-  // >0: meaning wait for the child whose process ID is equal to the value of pid.
-  //
+  // 0: meaning wait for any child process whose process group ID is equal to
+  // that of the calling process.
+  // >0: meaning wait for the child whose process ID is equal to the value of
+  // pid.
   // The value of options is an OR of zero or more of the following constants:
   // WNOHANG: return immediately if no child has exited.
-  // WUNTRACED: also return if a child has stopped (but not traced via ptrace(2)). Status for
-  // traced children
-  //    which have stopped is provided even if this option is not specified.
+  // WUNTRACED: also return if a child has stopped (but not traced via
+  //  ptrace(2)). Status for traced children
+  //  which have stopped is provided even if this option is not specified.
   //
-  // If status is not NULL, waitpid() stores status information in the int to which it points.
+  // If status is not NULL, waitpid() stores status information in the int to
+  // which it points.
   //
-  // Returns a value equal to the process ID of the child process for which status is reported.
-  // If the status is not available, 0 is returned. Otherwise, -1 shall be returend and errno set
-  // to indicate the error.
+  // Returns a value equal to the process ID of the child process for which
+  // status is reported.  If the status is not available, 0 is returned.
+  // Otherwise, -1 shall be returend and errno set to indicate the error.
 
   inline pid_t waitpid(pid_t pid, int *status, int options)
   {
-    // For now, we only implement: pid > 0 && options = 0
+    // For now, we only implement: (pid > 0) && (options is 0 or WNOHANG)
     if ((pid <= 0) || (options != 0 && options != WNOHANG))
     {
       // Function not implemented
@@ -214,6 +215,7 @@ inline void unsetenv(const std::string& key)
       errno = ECHILD;
       return -1;
     }
+
     std::shared_ptr<void> hSafeProcess(hProcess, ::CloseHandle);
 
     // Wait for child to terminate by default
@@ -255,7 +257,30 @@ inline void unsetenv(const std::string& key)
 
     // Return the pid of the child process for which the status is reported
     return pid;
-  }
+}
+
+  // This function is used to map the error code from gethostname() to a
+  // message string. The specific error code is retrieved by calling
+  //  WSAGetLastError(). FormatMessage() is used to obtain the message string.
+  //
+  // In this Windows version, argument err is not used; it's here for
+  // compatibility.
+
+inline const char *hstrerror(int err)
+{
+  static char buffer[256];
+
+  ::FormatMessage(
+    FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+    NULL,
+    WSAGetLastError(),
+    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+    buffer,
+    sizeof(buffer) / sizeof(char),
+    NULL);
+
+  return buffer;
+}
 
 /*
 // This function is a portable version of execvpe ('p' means searching
