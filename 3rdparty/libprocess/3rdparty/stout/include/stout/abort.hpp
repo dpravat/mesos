@@ -44,12 +44,12 @@ inline NORETURN void _Abort(const char* prefix, const char* message)
   // In fact, it is highly unlikely that strlen would be
   // implemented in an unsafe manner:
   // http://austingroupbugs.net/view.php?id=692
-  while (write(STDERR_FILENO, prefix, strlen(prefix)) == -1 &&
+  while (::write(STDERR_FILENO, prefix, strlen(prefix)) == -1 &&
          errno == EINTR);
   while (message != NULL &&
-         write(STDERR_FILENO, message, strlen(message)) == -1 &&
+         ::write(STDERR_FILENO, message, strlen(message)) == -1 &&
          errno == EINTR);
-  while (write(STDERR_FILENO, "\n", 1) == -1 && errno == EINTR);
+  while (::write(STDERR_FILENO, "\n", (size_t) 1) == -1 && errno == EINTR);
   abort();
 }
 
