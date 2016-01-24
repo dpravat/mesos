@@ -10,7 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License
 
-#include <unistd.h>
+#ifdef __WINDOWS__
+
+#else
+  #include <unistd.h>
+#endif
 
 #include <mutex>
 
@@ -75,12 +79,18 @@ void run_in_event_loop(
     // event_self_cbarg instead of re-assigning the event. For now we
     // manually re-assign the event to pass in the pointer to the
     // event itself as the callback argument.
-    event* ev = evtimer_new(base, async_function, NULL);
+    //
+    // NOTE: cast to `event_callback_fn` required on Windows to disabiguate
+    // `__cdecl` calling convention from `__stdcall`.
+    event* ev = evtimer_new(base, (event_callback_fn) async_function, NULL);
 
     // 'event_assign' is only valid on non-pending AND non-active
     // events. This means we have to assign the callback before
     // calling 'event_active'.
-    if (evtimer_assign(ev, base, async_function, ev) < 0) {
+    //
+    // NOTE: cast to `event_callback_fn` required on Windows to disabiguate
+    // `__cdecl` calling convention from `__stdcall`.
+    if (evtimer_assign(ev, base, (event_callback_fn) async_function, ev) < 0) {
       LOG(FATAL) << "Failed to assign callback on event";
     }
 
@@ -144,7 +154,9 @@ void EventLoop::delay(
     const lambda::function<void()>& function)
 {
   internal::Delay* delay = new internal::Delay();
-  delay->timer = evtimer_new(base, &internal::handle_delay, delay);
+  // NOTE: cast to `event_callback_fn` required on Windows to disabiguate
+  // `__cdecl` calling convention from `__stdcall`.
+  delay->timer = evtimer_new(base, (event_callback_fn) &internal::handle_delay, delay);
   if (delay->timer == NULL) {
     LOG(FATAL) << "Failed to delay, evtimer_new";
   }
