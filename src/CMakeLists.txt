@@ -123,6 +123,8 @@ set(COMMON_SRC
   common/roles.cpp
   common/type_utils.cpp
   common/values.cpp
+  common/build.cpp
+  common/roles.cpp
   )
 
 set(HDFS_SRC
@@ -203,8 +205,15 @@ set(LOGGING_SRC
   )
 
 set(MASTER_SRC
-  master/contender/contender.cpp
-  master/detector/detector.cpp
+  master/validation.cpp
+  master/detector.cpp
+   )
+
+if (NOT WIN32)
+set(MASTER_SRC
+  ${MASTER_SRC}
+  master/contender.cpp
+  master/constants.cpp
   master/flags.cpp
   master/http.cpp
   master/maintenance.cpp
@@ -215,7 +224,6 @@ set(MASTER_SRC
   master/registry.hpp
   master/registrar.cpp
   master/repairer.cpp
-  master/validation.cpp
   master/weights.cpp
   master/weights_handler.cpp
   master/allocator/allocator.cpp
@@ -223,6 +231,7 @@ set(MASTER_SRC
   master/allocator/mesos/metrics.cpp
   master/allocator/sorter/drf/sorter.cpp
   )
+endif (NOT WIN32)
 
 set(MODULE_SRC
   module/manager.cpp
@@ -257,6 +266,24 @@ set(AGENT_SRC
   slave/status_update_manager.cpp
   slave/validation.cpp
   slave/containerizer/mesos/launch.cpp
+  slave/containerizer/fetcher.cpp
+  slave/resource_estimator.cpp
+  slave/containerizer/containerizer.cpp
+  slave/containerizer/external_containerizer.cpp
+  slave/containerizer/composing.cpp
+  slave/containerizer/mesos/containerizer.cpp
+  slave/container_logger.cpp
+  slave/container_loggers/sandbox.cpp
+  slave/containerizer/mesos/launcher.cpp
+  slave/containerizer/mesos/provisioner/paths.cpp
+  slave/containerizer/mesos/provisioner/provisioner.cpp
+  slave/containerizer/mesos/provisioner/store.cpp
+  slave/containerizer/mesos/provisioner/appc/cache.cpp
+  slave/containerizer/mesos/provisioner/appc/fetcher.cpp
+  slave/containerizer/mesos/provisioner/appc/paths.cpp
+  slave/containerizer/mesos/provisioner/appc/store.cpp
+  slave/containerizer/mesos/provisioner/backend.cpp
+  slave/containerizer/mesos/provisioner/backends/copy.cpp
   )
 
 if (NOT WIN32)
@@ -266,16 +293,8 @@ if (NOT WIN32)
     slave/container_loggers/sandbox.cpp
     slave/resource_estimator.cpp
     slave/slave.cpp
-    slave/containerizer/composing.cpp
-    slave/containerizer/composing.hpp
-    slave/containerizer/containerizer.cpp
     slave/containerizer/docker.cpp
-    slave/containerizer/docker.hpp
-    slave/containerizer/external_containerizer.cpp
-    slave/containerizer/fetcher.cpp
-    slave/containerizer/mesos/containerizer.cpp
     slave/containerizer/mesos/isolator.cpp
-    slave/containerizer/mesos/launcher.cpp
     slave/containerizer/mesos/mount.cpp
     slave/containerizer/mesos/isolators/filesystem/posix.cpp
     slave/containerizer/mesos/isolators/posix/disk.cpp
@@ -283,15 +302,7 @@ if (NOT WIN32)
     slave/containerizer/mesos/isolators/network/cni/paths.cpp
     slave/containerizer/mesos/isolators/network/cni/spec.cpp
     slave/containerizer/mesos/provisioner/docker/local_puller.cpp
-    slave/containerizer/mesos/provisioner/paths.cpp
-    slave/containerizer/mesos/provisioner/provisioner.cpp
-    slave/containerizer/mesos/provisioner/store.cpp
-    slave/containerizer/mesos/provisioner/appc/cache.cpp
-    slave/containerizer/mesos/provisioner/appc/fetcher.cpp
-    slave/containerizer/mesos/provisioner/appc/paths.cpp
-    slave/containerizer/mesos/provisioner/appc/store.cpp
-    slave/containerizer/mesos/provisioner/backend.cpp
-    slave/containerizer/mesos/provisioner/backends/copy.cpp
+    slave/containerizer/mesos/provisioner/docker/message.proto
     slave/containerizer/mesos/provisioner/docker/metadata_manager.cpp
     slave/containerizer/mesos/provisioner/docker/paths.cpp
     slave/containerizer/mesos/provisioner/docker/puller.cpp
@@ -345,6 +356,17 @@ set(MESOS_SRC
   ${MESOS_SRC}
   ${AGENT_SRC}
   ${MESOS_PROTOBUF_SRC}
+  ${MODULE_SRC}
+  ${COMMON_SRC}
+  ${V1_SRC}
+  ${HOOK_SRC}
+  ${INTERNAL_SRC}
+  ${FILES_SRC}
+  ${MESSAGES_SRC}
+  ${LOGGING_SRC}
+  ${VERSION_SRC}
+  ${ZOOKEEPER_SRC}
+  ${MASTER_SRC}
   )
 
 if (NOT WIN32)
@@ -353,28 +375,17 @@ if (NOT WIN32)
     ${APPC_SRC}
     ${AUTHENTICATION_SRC}
     ${AUTHORIZER_SRC}
-    ${COMMON_SRC}
     ${DOCKER_SRC}
     ${EXEC_SRC}
-    ${FILES_SRC}
     ${HDFS_SRC}
-    ${HOOK_SRC}
-    ${INTERNAL_SRC}
     ${LOCAL_SRC}
     ${LOG_SRC}
-    ${LOGGING_SRC}
-    ${MESSAGES_SRC}
-    ${MASTER_SRC}
-    ${MODULE_SRC}
     ${SCHED_SRC}
     ${SCHEDULER_SRC}
     ${STATE_SRC}
     ${URI_SRC}
     ${USAGE_SRC}
-    ${V1_SRC}
-    ${VERSION_SRC}
     ${WATCHER_SRC}
-    ${ZOOKEEPER_SRC}
     )
 endif (NOT WIN32)
 
@@ -408,3 +419,5 @@ add_dependencies(${MESOS_TARGET} ${AGENT_DEPENDENCIES})
 # ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
 ######################################################
 target_link_libraries(${MESOS_TARGET} ${AGENT_LIBS})
+
+add_subdirectory(slave)
