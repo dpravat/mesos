@@ -863,7 +863,7 @@ void Slave::authenticate()
   LOG(INFO) << "Authenticating with master " << master.get();
 
   CHECK(authenticatee == NULL);
-
+/*
   if (authenticateeName == DEFAULT_AUTHENTICATEE) {
     LOG(INFO) << "Using default CRAM-MD5 authenticatee";
     authenticatee = new cram_md5::CRAMMD5Authenticatee();
@@ -879,7 +879,7 @@ void Slave::authenticate()
   }
 
   CHECK_SOME(credential);
-
+*/
   authenticating =
     authenticatee->authenticate(master.get(), self(), credential.get())
       .onAny(defer(self(), &Self::_authenticate));
@@ -978,11 +978,11 @@ void Slave::registered(
 
       // TODO(bernd-mesos): Make this an instance method call, see comment
       // in "fetcher.hpp"".
-      Try<Nothing> recovered = Fetcher::recover(slaveId, flags);
-      if (recovered.isError()) {
-        LOG(FATAL) << "Could not initialize fetcher cache: "
-                   << recovered.error();
-      }
+//      Try<Nothing> recovered = Fetcher::recover(slaveId, flags);
+//      if (recovered.isError()) {
+//        LOG(FATAL) << "Could not initialize fetcher cache: "
+//                   << recovered.error();
+//      }
 
       state = RUNNING;
 
@@ -4463,10 +4463,10 @@ Future<Nothing> Slave::recover(const Result<state::State>& state)
 
     // TODO(bernd-mesos): Make this an instance method call, see comment
     // in "fetcher.hpp"".
-    Try<Nothing> recovered = Fetcher::recover(slaveState.get().id, flags);
-    if (recovered.isError()) {
-      return Failure(recovered.error());
-    }
+//    Try<Nothing> recovered = Fetcher::recover(slaveState.get().id, flags);
+//    if (recovered.isError()) {
+//      return Failure(recovered.error());
+//    }
 
     // Recover the frameworks.
     foreachvalue (const FrameworkState& frameworkState,
