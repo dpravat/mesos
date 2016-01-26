@@ -44,8 +44,9 @@ Try<hashmap<Image::Type, Owned<Store>>> Store::create(const Flags& flags)
 
   hashmap<Image::Type, Try<Owned<Store>>(*)(const Flags&)> creators;
   creators.put(Image::APPC, &appc::Store::create);
+#ifndef __WINDOWS__
   creators.put(Image::DOCKER, &docker::Store::create);
-
+#endif
   hashmap<Image::Type, Owned<Store>> stores;
 
   foreach (const string& type,
