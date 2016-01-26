@@ -335,6 +335,7 @@ set(MESOS_SRC
   ${MESOS_SRC}
   ${AGENT_SRC}
   ${MESOS_PROTOBUF_SRC}
+  ${MODULE_SRC}
   )
 
 if (NOT WIN32)
@@ -355,7 +356,6 @@ if (NOT WIN32)
     ${LOGGING_SRC}
     ${MESSAGES_SRC}
     ${MASTER_SRC}
-    ${MODULE_SRC}
     ${SCHED_SRC}
     ${SCHEDULER_SRC}
     ${STATE_SRC}
@@ -397,6 +397,6 @@ add_dependencies(${MESOS_TARGET} ${AGENT_DEPENDENCIES})
 
 # ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
 ######################################################
-#target_link_libraries(${MESOS_TARGET} ${AGENT_LIBS})
+target_link_libraries(${MESOS_TARGET} ${AGENT_LIBS})
 
 add_subdirectory(slave)

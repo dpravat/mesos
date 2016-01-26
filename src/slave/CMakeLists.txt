@@ -19,6 +19,7 @@
 set(PROCESS_AGENT_SRC
   ${PROCESS_AGENT_SRC}
   slave.cpp
+  main.cpp
   )
 
 # INCLUDE DIRECTIVES FOR PROCESS TEST BINARY (generates, e.g., -I/path/to/thing
@@ -36,10 +37,23 @@ link_directories(${PROCESS_AGENT_LIB_DIRS})
 ###############################################################################
 add_executable(${PROCESS_AGENT_TARGET} ${PROCESS_AGENT_SRC})
 
+if (WIN32)
+  set(PROCESS_AGENT_LIBS
+    ${PROCESS_AGENT_LIBS}
+    ${AGENT_LIBS}
+    ${MESOS_TARGET}
+    ${PROCESS_TARGET}
+    ws2_32
+  )
+endif (WIN32)
+
 # ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
 ######################################################
 target_link_libraries(${PROCESS_AGENT_TARGET} ${PROCESS_AGENT_LIBS})
 
+
+# ${GLOG_LFLAG}
+#${PROTOBUF_LFLAG}
 # ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
 ####################################################################
 add_dependencies(${PROCESS_AGENT_TARGET} ${PROCESS_AGENT_DEPENDENCIES})
