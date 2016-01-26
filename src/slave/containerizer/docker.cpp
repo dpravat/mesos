@@ -35,6 +35,7 @@
 #include <stout/hashmap.hpp>
 #include <stout/hashset.hpp>
 #include <stout/os.hpp>
+#include <stout/os/killtree.hpp>
 
 #include "common/status_utils.hpp"
 
@@ -55,7 +56,9 @@
 
 #include "slave/containerizer/mesos/isolators/cgroups/constants.hpp"
 
+#ifndef __WINDOWS__
 #include "usage/usage.hpp"
+#endif // __WINDOWS__
 
 
 using std::list;
@@ -242,6 +245,7 @@ DockerContainerizerProcess::Container::create(
     return Error("Failed to touch 'stderr': " + touch.error());
   }
 
+#ifndef __WINDOWS__
   if (user.isSome()) {
     Try<Nothing> chown = os::chown(user.get(), directory);
 
@@ -249,6 +253,7 @@ DockerContainerizerProcess::Container::create(
       return Error("Failed to chown: " + chown.error());
     }
   }
+#endif // __WINDOWS__
 
   string dockerSymlinkPath = path::join(
       paths::getSlavePath(flags.work_dir, slaveId),
@@ -691,11 +696,13 @@ Future<hashset<ContainerID>> DockerContainerizer::containers()
 // that does a 'setsid' and then synchronizes with the parent.
 static int setup(const string& directory)
 {
+#ifndef __WINDOWS__
   // Put child into its own process session to prevent slave suicide
   // on child process SIGKILL/SIGTERM.
   if (::setsid() == -1) {
     return errno;
   }
+#endif // __WINDOWS__
 
   // Run the process in the specified directory.
   if (!directory.empty()) {
@@ -1244,7 +1251,7 @@ Future<pid_t> DockerContainerizerProcess::checkpointExecutor(
   // after we set Container::status.
   CHECK(containers_.contains(containerId));
 
-  Option<int> pid = dockerContainer.pid;
+  Option<pid_t> pid = dockerContainer.pid;
 
   if (!pid.isSome()) {
     return Failure("Unable to get executor pid after launch");
