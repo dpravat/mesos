@@ -79,6 +79,30 @@ Future<hashset<ContainerID>> PosixLauncher::recover(
 }
 
 
+// The setup function in child before the exec.
+static int childSetup(const Option<lambda::function<int()>>& setup)
+{
+#ifndef __WINDOWS__
+  // POSIX guarantees a forked child's pid does not match any existing
+  // process group id so only a single setsid() is required and the
+  // session id will be the pid.
+  // TODO(idownes): perror is not listed as async-signal-safe and
+  // should be reimplemented safely.
+  // TODO(jieyu): Move this logic to the subprocess (i.e.,
+  // mesos-containerizer launch).
+  if (::setsid() == -1) {
+    perror("Failed to put child in a new session");
+    _exit(1);
+  }
+
+  if (setup.isSome()) {
+    return setup.get()();
+  }
+#endif // __WINDOWS__
+  return 0;
+}
+
+
 Try<pid_t> PosixLauncher::fork(
     const ContainerID& containerId,
     const string& path,

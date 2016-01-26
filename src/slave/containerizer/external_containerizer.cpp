@@ -15,7 +15,11 @@
 // limitations under the License.
 
 #include <errno.h>
+
+#ifndef __WINDOWS__
 #include <poll.h>
+#endif // __WINDOWS__
+
 #include <signal.h>
 #include <stdio.h>
 
@@ -40,6 +44,7 @@
 #include <stout/os.hpp>
 #include <stout/strings.hpp>
 #include <stout/uuid.hpp>
+#include <stout/os/killtree.hpp>
 
 #include "common/status_utils.hpp"
 
@@ -343,6 +348,7 @@ Future<Nothing> ExternalContainerizerProcess::__recover(
                   << "' of framework " << framework.id;
 
         Option<string> user = None();
+#ifndef __WINDOWS__
         if (flags.switch_user) {
           // The command (either in form of task or executor command)
           // can define a specific user to run as. If present, this
@@ -354,6 +360,7 @@ Future<Nothing> ExternalContainerizerProcess::__recover(
             user = framework.info.get().user();
           }
         }
+#endif // __WINDOWS__
 
         // Re-create the sandbox for this container.
         const string directory = paths::createExecutorDirectory(
@@ -1045,6 +1052,35 @@ void ExternalContainerizerProcess::unwait(const ContainerID& containerId)
 }
 
 
+// Post fork, pre exec function.
+// TODO(tillt): Consider having the kernel notify us when our parent
+// process dies e.g. by invoking prctl(PR_SET_PDEATHSIG, ..) on linux.
+static int setup(const string& directory)
+{
+#ifndef __WINDOWS__
+  // Put child into its own process session to prevent slave suicide
+  // on child process SIGKILL/SIGTERM.
+  if (::setsid() == -1) {
+    return errno;
+  }
+#endif // __WINDOWS__
+
+  // Re/establish the sandbox conditions for the containerizer.
+  if (!directory.empty()) {
+    if (::chdir(directory.c_str()) == -1) {
+      return errno;
+    }
+  }
+
+  // Sync parent and child process.
+  int sync = 0;
+  while (::write(STDOUT_FILENO, &sync, sizeof(sync)) == -1 &&
+         errno == EINTR);
+
+  return 0;
+}
+
+
 Try<Subprocess> ExternalContainerizerProcess::invoke(
     const string& command,
     const Option<Sandbox>& sandbox,
@@ -1075,6 +1111,7 @@ Try<Subprocess> ExternalContainerizerProcess::invoke(
   VLOG_IF(2, sandbox.isSome() &&
       sandbox.get().user.isSome()) << "user: " << sandbox.get().user.get();
 
+#ifndef __WINDOWS__
   // Re/establish the sandbox conditions for the containerizer.
   if (sandbox.isSome() && sandbox.get().user.isSome()) {
     Try<Nothing> chown = os::chown(
@@ -1084,6 +1121,7 @@ Try<Subprocess> ExternalContainerizerProcess::invoke(
       return Error("Failed to chown work directory: " + chown.error());
     }
   }
+#endif // __WINDOWS__
 
   // Fork exec of external process. Run a chdir and a setsid within
   // the child-context.
@@ -1130,6 +1168,7 @@ Try<Subprocess> ExternalContainerizerProcess::invoke(
         err.error());
   }
 
+#ifndef __WINDOWS__
   if (sandbox.isSome() && sandbox.get().user.isSome()) {
     Try<Nothing> chown = os::chown(
         sandbox.get().user.get(),
@@ -1141,6 +1180,7 @@ Try<Subprocess> ExternalContainerizerProcess::invoke(
           chown.error());
     }
   }
+#endif // __WINDOWS__
 
   // TODO(tillt): Consider adding an overload to io::redirect
   // that accepts a file path as 'to' for further reducing code.
