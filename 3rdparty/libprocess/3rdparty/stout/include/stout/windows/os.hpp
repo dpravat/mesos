@@ -339,7 +339,8 @@ inline Try<long> cpus()
 // uptime(1).
 inline Try<Load> loadavg()
 {
-  return Load();
+  // no Windows equivalent, return an error until there is a need
+  return ErrnoError("Failed to determine system load averages");
 }
 
 
@@ -439,12 +440,14 @@ inline size_t recv(int sockfd, void *buf, size_t len, int flags) {
 
 inline int setsockopt(int socket, int level, int option_name,
        const void *option_value, socklen_t option_len) {
-  return ::setsockopt(socket, level, option_name, (const char*)option_value, option_len);
+  return ::setsockopt(
+            socket, level, option_name, (const char*)option_value, option_len);
 }
 
 inline int getsockopt(int socket, int level, int option_name,
   void* option_value, socklen_t* option_len) {
-  return ::getsockopt(socket, level, option_name, (char*)option_value, option_len);
+  return ::getsockopt(
+            socket, level, option_name, (char*)option_value, option_len);
 }
 
 // Looks in the environment variables for the specified key and
