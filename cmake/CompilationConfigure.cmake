@@ -70,19 +70,13 @@ if (WIN32)
 
   # COFF/PE and friends are somewhat limited in the number of sections they
   # allow for an object file. We use this to avoid those problems.
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj -DGOOGLE_GLOG_DLL_DECL=")
 
-  if (BUILD_SHARED_LIBS)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".dll")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
-  else (BUILD_SHARED_LIBS)
-    # Some of our dependencies, like glog, will require some more hours to get
-    # static builds to work correctly on Windows.
-    message(
-      FATAL_ERROR
-      "Windows builds do not currently support building static libraries.")
-  endif (BUILD_SHARED_LIBS)
+
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".dll")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
+
 elseif (COMPILER_SUPPORTS_CXX11)
   # Finally, on non-Windows platforms, we must check that the current compiler
   # supports C++11.
