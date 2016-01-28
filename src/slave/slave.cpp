@@ -483,8 +483,8 @@ void Slave::initialize()
   // Ensure disk `source`s are accessible.
   foreach (
       const Resource& resource,
-      resources->filter([](const Resource& resource) {
-        return resource.has_disk() && resource.disk().has_source();
+      resources->filter([](const Resource& _resource) {
+        return _resource.has_disk() && _resource.disk().has_source();
       })) {
     // For `PATH` sources we create them if they do not exist.
     const Resource::DiskInfo::Source& source = resource.disk().source();
@@ -957,6 +957,7 @@ void Slave::detected(const Future<Option<MasterInfo>>& _master)
     Duration duration =
       flags.registration_backoff_factor * ((double) os::random() / RAND_MAX);
 
+#ifdef HAS_AUTHENTICATION
     if (credential.isSome()) {
       // Authenticate with the master.
       // TODO(vinod): Do a backoff for authentication similar to what
@@ -977,6 +978,14 @@ void Slave::detected(const Future<Option<MasterInfo>>& _master)
             &Slave::doReliableRegistration,
             flags.registration_backoff_factor * 2); // Backoff.
     }
+#else
+    reauthenticate = false;
+
+    delay(duration,
+          self(),
+          &Slave::doReliableRegistration,
+          flags.registration_backoff_factor * 2); // Backoff.
+#endif
   }
 
   // Keep detecting masters.
@@ -986,6 +995,7 @@ void Slave::detected(const Future<Option<MasterInfo>>& _master)
 }
 
 
+#ifdef HAS_AUTHENTICATION
 void Slave::authenticate()
 {
   authenticated = false;
@@ -1010,7 +1020,7 @@ void Slave::authenticate()
   LOG(INFO) << "Authenticating with master " << master.get();
 
   CHECK(authenticatee == NULL);
-
+/*
   if (authenticateeName == DEFAULT_AUTHENTICATEE) {
     LOG(INFO) << "Using default CRAM-MD5 authenticatee";
     authenticatee = new cram_md5::CRAMMD5Authenticatee();
@@ -1027,7 +1037,7 @@ void Slave::authenticate()
   }
 
   CHECK_SOME(credential);
-
+*/
   authenticating =
     authenticatee->authenticate(master.get(), self(), credential.get())
       .onAny(defer(self(), &Self::_authenticate));
@@ -1097,6 +1107,7 @@ void Slave::authenticationTimeout(Future<bool> future)
     LOG(WARNING) << "Authentication timed out";
   }
 }
+#endif
 
 
 void Slave::registered(
@@ -1126,11 +1137,11 @@ void Slave::registered(
 
       // TODO(bernd-mesos): Make this an instance method call, see comment
       // in "fetcher.hpp"".
-      Try<Nothing> recovered = Fetcher::recover(slaveId, flags);
-      if (recovered.isError()) {
-        LOG(FATAL) << "Could not initialize fetcher cache: "
-                   << recovered.error();
-      }
+//      Try<Nothing> recovered = Fetcher::recover(slaveId, flags);
+//      if (recovered.isError()) {
+//        LOG(FATAL) << "Could not initialize fetcher cache: "
+//                   << recovered.error();
+//      }
 
       state = RUNNING;
 
@@ -4695,10 +4706,10 @@ Future<Nothing> Slave::recover(const Result<state::State>& state)
 
     // TODO(bernd-mesos): Make this an instance method call, see comment
     // in "fetcher.hpp"".
-    Try<Nothing> recovered = Fetcher::recover(slaveState.get().id, flags);
-    if (recovered.isError()) {
-      return Failure(recovered.error());
-    }
+//    Try<Nothing> recovered = Fetcher::recover(slaveState.get().id, flags);
+//    if (recovered.isError()) {
+//      return Failure(recovered.error());
+//    }
 
     // Recover the frameworks.
     foreachvalue (const FrameworkState& frameworkState,
