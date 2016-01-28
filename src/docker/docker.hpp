@@ -112,15 +112,15 @@ public:
 
   // Performs 'docker run IMAGE'.
   virtual process::Future<Nothing> run(
-      const mesos::ContainerInfo& containerInfo,
-      const mesos::CommandInfo& commandInfo,
-      const std::string& containerName,
-      const std::string& sandboxDirectory,
-      const std::string& mappedDirectory,
-      const Option<mesos::Resources>& resources = None(),
-      const Option<std::map<std::string, std::string>>& env = None(),
-      const process::Subprocess::IO& stdout = process::Subprocess::PIPE(),
-      const process::Subprocess::IO& stderr = process::Subprocess::PIPE())
+    const mesos::ContainerInfo& containerInfo,
+    const mesos::CommandInfo& commandInfo,
+    const std::string& containerName,
+    const std::string& sandboxDirectory,
+    const std::string& mappedDirectory,
+    const Option<mesos::Resources>& resources = None(),
+    const Option<std::map<std::string, std::string>>& env = None(),
+    const process::Subprocess::IO& stdout_param = process::Subprocess::PIPE(),
+    const process::Subprocess::IO& stderr_param = process::Subprocess::PIPE())
     const;
 
   // Returns the current docker version.
