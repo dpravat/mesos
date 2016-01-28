@@ -109,7 +109,7 @@ if (WIN32)
   set(PROTOBUF_LFLAG libprotobuf)
 
   # Necessary to indicate what library to use for zlib for linking on Windows.
-  set(ZLIB_LFLAG     zlibd)
+  set(ZLIB_LFLAG     zlibstaticd)
 else (WIN32)
   set(CURL_LFLAG     curl)
   set(DL_LFLAG       dl)
