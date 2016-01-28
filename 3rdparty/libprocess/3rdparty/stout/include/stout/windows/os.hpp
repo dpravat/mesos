@@ -252,6 +252,71 @@ inline pid_t waitpid(pid_t pid, int *status, int options)
 {
     return 0;
 }
+
+namespace libraries {
+
+  // Returns the full library name by adding prefix and extension to
+  // library name.
+  inline std::string expandName(const std::string& libraryName)
+  {
+    const char* prefix = "lib";
+    const char* extension =
+#ifdef __APPLE__
+      ".dylib";
+#else
+      ".so";
+#endif
+
+    return prefix + libraryName + extension;
+  }
+
+
+  // Returns the current value of LD_LIBRARY_PATH environment variable.
+  inline std::string paths()
+  {
+    const char* environmentVariable =
+#ifdef __APPLE__
+      "DYLD_LIBRARY_PATH";
+#else
+      "LD_LIBRARY_PATH";
+#endif
+    const Option<std::string> path = getenv(environmentVariable);
+    return path.isSome() ? path.get() : std::string();
+  }
+
+
+  // Updates the value of LD_LIBRARY_PATH environment variable.
+  inline void setPaths(const std::string& newPaths)
+  {
+    const char* environmentVariable =
+#ifdef __APPLE__
+      "DYLD_LIBRARY_PATH";
+#else
+      "LD_LIBRARY_PATH";
+#endif
+    os::setenv(environmentVariable, newPaths);
+  }
+
+
+  // Append newPath to the current value of LD_LIBRARY_PATH environment
+  // variable.
+  inline void appendPaths(const std::string& newPaths)
+  {
+    if (paths().empty()) {
+      setPaths(newPaths);
+    }
+    else {
+      setPaths(paths() + ":" + newPaths);
+    }
+  }
+
+} // namespace libraries {
+
+inline auto access(const std::string& fileName, int accessMode) ->
+decltype(_access(fileName.c_str(), accessMode))
+{
+  return _access(fileName.c_str(), accessMode);
+}
 } // namespace os {
 
 
