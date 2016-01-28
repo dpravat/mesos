@@ -350,6 +350,74 @@ inline struct tm* gmtime_r(const time_t* timep, struct tm* result)
   return NULL;
 }
 
+
+namespace libraries {
+
+  // Returns the full library name by adding prefix and extension to
+  // library name.
+  inline std::string expandName(const std::string& libraryName)
+  {
+    const char* prefix = "lib";
+    const char* extension =
+#ifdef __APPLE__
+      ".dylib";
+#else
+      ".so";
+#endif
+
+    return prefix + libraryName + extension;
+  }
+
+
+  // Returns the current value of LD_LIBRARY_PATH environment variable.
+  inline std::string paths()
+  {
+    const char* environmentVariable =
+#ifdef __APPLE__
+      "DYLD_LIBRARY_PATH";
+#else
+      "LD_LIBRARY_PATH";
+#endif
+    const Option<std::string> path = getenv(environmentVariable);
+    return path.isSome() ? path.get() : std::string();
+  }
+
+
+  // Updates the value of LD_LIBRARY_PATH environment variable.
+  inline void setPaths(const std::string& newPaths)
+  {
+    const char* environmentVariable =
+#ifdef __APPLE__
+      "DYLD_LIBRARY_PATH";
+#else
+      "LD_LIBRARY_PATH";
+#endif
+    os::setenv(environmentVariable, newPaths);
+  }
+
+
+  // Append newPath to the current value of LD_LIBRARY_PATH environment
+  // variable.
+  inline void appendPaths(const std::string& newPaths)
+  {
+    if (paths().empty()) {
+      setPaths(newPaths);
+    }
+    else {
+      setPaths(paths() + ":" + newPaths);
+    }
+  }
+
+} // namespace libraries {
+
+inline Try<bool> access(const std::string& fileName, int how)
+{
+  if (::_access(fileName.c_str(), how) != 0) {
+    return ErrnoError("access: Could not access path '" + fileName + "'");
+  }
+
+  return true;
+}
 } // namespace os {
 
 
