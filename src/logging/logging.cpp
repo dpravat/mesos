@@ -197,6 +197,8 @@ void initialize(
     (flags.log_dir.isSome() ? flags.log_dir.get() : "STDERR");
 
   if (installFailureSignalHandler) {
+// glog on Windows does not support InstallFailureSignalHandler()
+#ifndef __WINDOWS__
     // Handles SIGSEGV, SIGILL, SIGFPE, SIGABRT, SIGBUS, SIGTERM
     // by default.
     google::InstallFailureSignalHandler();
@@ -206,7 +208,7 @@ void initialize(
 // and handled differently on Windows[1], so this code would not work.
 //
 // [1] https://msdn.microsoft.com/en-us/library/xdkz3x12.aspx
-#ifndef __WINDOWS__
+
     // Set up our custom signal handlers.
     struct sigaction action;
     action.sa_sigaction = handler;
