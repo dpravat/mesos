@@ -107,6 +107,7 @@ set(COMMON_SRC
   common/resources_utils.cpp
   common/type_utils.cpp
   common/values.cpp
+  common/build.cpp
   )
 
 set(HDFS_SRC
@@ -215,6 +216,9 @@ set(AGENT_SRC
   slave/validation.cpp
   slave/monitor.cpp
   slave/containerizer/mesos/launch.cpp
+  slave/containerizer/containerizer.cpp
+#  slave/containerizer/fetcher.cpp
+   slave/resource_estimator.cpp
   )
 
 if (NOT WIN32)
@@ -223,12 +227,9 @@ if (NOT WIN32)
     slave/slave.cpp
     slave/containerizer/composing.cpp
     slave/containerizer/composing.hpp
-    slave/containerizer/containerizer.cpp
     slave/containerizer/docker.cpp
     slave/containerizer/docker.hpp
     slave/containerizer/external_containerizer.cpp
-    slave/containerizer/fetcher.cpp
-    slave/containerizer/mesos/containerizer.cpp
     slave/containerizer/mesos/isolator.cpp
     slave/containerizer/mesos/launcher.cpp
     slave/containerizer/mesos/mount.cpp
@@ -297,6 +298,16 @@ set(MESOS_SRC
   ${MESOS_SRC}
   ${AGENT_SRC}
   ${MODULE_SRC}
+  ${COMMON_SRC}
+  ${V1_SRC}
+  ${HOOK_SRC}
+  ${INTERNAL_SRC}
+  ${FILES_SRC}
+  ${MESSAGES_SRC}
+  ${COMMON_SRC}
+  ${LOGGING_SRC}
+  ${VERSION_SRC}
+#  ${ZOOKEEPER_SRC}
   )
 
 if (NOT WIN32)
@@ -304,25 +315,16 @@ if (NOT WIN32)
     ${MESOS_SRC}
     ${AUTHENTICATION_SRC}
     ${AUTHORIZER_SRC}
-    ${COMMON_SRC}
     ${DOCKER_SRC}
     ${EXEC_SRC}
-    ${FILES_SRC}
     ${HDFS_SRC}
-    ${HOOK_SRC}
-    ${INTERNAL_SRC}
     ${LOCAL_SRC}
-    ${LOGGING_SRC}
-    ${MESSAGES_SRC}
     ${MASTER_SRC}
     ${SCHED_SRC}
     ${SCHEDULER_SRC}
     ${URI_SRC}
     ${USAGE_SRC}
-    ${V1_SRC}
-    ${VERSION_SRC}
     ${WATCHER_SRC}
-    ${ZOOKEEPER_SRC}
     )
 endif (NOT WIN32)
 
