@@ -14,12 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set(BUILD_DATE "")
+set(BUILD_TIME "")
+set(BUILD_FLAGS "")
+set(BUILD_JAVA_JVM_LIBRARY "")
+
 # PROCESS TESTS.
 ################
 set(PROCESS_AGENT_SRC
   ${PROCESS_AGENT_SRC}
   slave.cpp
   main.cpp
+  ../master/constants.cpp
+#  ../master/detector.cpp
   )
 
 # INCLUDE DIRECTIVES FOR PROCESS TEST BINARY (generates, e.g., -I/path/to/thing
@@ -43,7 +50,8 @@ if (WIN32)
     ${AGENT_LIBS}
     ${MESOS_TARGET}
     ${PROCESS_TARGET}
-    ws2_32
+    ${HTTP_PARSER_LFLAG}
+      ws2_32
   )
 endif (WIN32)
 
