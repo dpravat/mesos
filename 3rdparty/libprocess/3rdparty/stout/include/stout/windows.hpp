@@ -13,15 +13,14 @@
 #ifndef __STOUT_WINDOWS_HPP__
 #define __STOUT_WINDOWS_HPP__
 
-
+#include <BaseTsd.h>  // For `SSIZE_T`.
 #include <direct.h>   // For `_mkdir`.
 #include <fcntl.h>    // For file access flags like `_O_CREAT`.
 #include <io.h>       // For `_read`, `_write`.
 #include <stdlib.h>   // For `_PATH_MAX`.
-
+#include <process.h>  // For `_getpid`
 #include <sys/stat.h> // For permissions flags.
 
-#include <BaseTsd.h> // For `SSIZE_T`.
 // We include `Winsock2.h` before `Windows.h` explicitly to avoid symbold
 // re-definitions. This is a known pattern in the windows community.
 #include <Winsock2.h>
@@ -299,9 +298,12 @@ const mode_t S_ISGID = 0x04000000;        // No-op.
 const mode_t S_ISVTX = 0x02000000;        // No-op.
 
 
-// Flags not supported by Windows.
-const mode_t O_SYNC = 0x00000000;         // No-op.
-
+// Flags not supported by Windows
+const mode_t O_SYNC     = 0x00000000;     // No-op.
+const mode_t O_NONBLOCK = 0x00000000;     // No-op.
+const mode_t SIGCONT    = 0x00000000;     // No-op
+const mode_t SIGSTOP    = 0x00000000;     // No-op
+const mode_t SIGKILL    = 0x00000000;     // No-op
 
 inline auto strerror_r(int errnum, char* buffer, size_t length) ->
 decltype(strerror_s(buffer, length, errnum))
@@ -351,6 +353,11 @@ decltype(_getcwd(path, maxlen))
   return _getcwd(path, maxlen);
 }
 
+inline auto getpid() ->
+decltype(_getpid())
+{
+    return _getpid();
+}
 
 inline auto mkdir(const char* path, mode_t mode) ->
 decltype(_mkdir(path))
