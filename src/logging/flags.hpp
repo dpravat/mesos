@@ -29,7 +29,8 @@ namespace logging {
 class Flags : public virtual flags::FlagsBase
 {
 public:
-  Flags();
+  Flags() {};
+  void initialize();
 
   bool quiet;
   std::string logging_level;
