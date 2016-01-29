@@ -410,6 +410,7 @@ int main(int argc, char* argv[])
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   mesos::internal::logging::Flags flags;
+  flags.initialize();
 
   Try<Nothing> load = flags.load("MESOS_", argc, argv);
 
