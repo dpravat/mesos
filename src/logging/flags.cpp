@@ -17,7 +17,7 @@
 #include "logging/flags.hpp"
 
 
-mesos::internal::logging::Flags::Flags()
+void mesos::internal::logging::Flags::initialize()
 {
   add(&Flags::quiet,
       "quiet",
