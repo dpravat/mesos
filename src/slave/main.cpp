@@ -221,7 +221,7 @@ int main(int argc, char** argv)
     LOG(INFO) << "Git SHA: " << build::GIT_SHA.get();
   }
 
- // Fetcher fetcher;
+  Fetcher fetcher;
 
   Try<Containerizer*> containerizer = (Containerizer*)0;
  //   Containerizer::create(flags, false, &fetcher);
