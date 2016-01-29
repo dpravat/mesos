@@ -233,7 +233,7 @@ int main(int argc, char** argv)
     LOG(INFO) << "Git SHA: " << build::GIT_SHA.get();
   }
 
- // Fetcher fetcher;
+  Fetcher fetcher;
 
 #ifdef __linux__
   // Initialize systemd if it exists.

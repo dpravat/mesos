@@ -541,7 +541,8 @@ Future<Nothing> FetcherProcess::__fetch(
       }
 
       return future; // Always propagate the failure!
-    }))
+    }).operator std::function<process::Future<Nothing> (const process::Future<Nothing> &)>()
+    )
     .then(defer(self(), [=]() {
       foreachvalue (const Option<shared_ptr<Cache::Entry>>& entry, entries) {
         if (entry.isSome()) {
