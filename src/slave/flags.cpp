@@ -30,7 +30,11 @@
 using std::string;
 
 mesos::internal::slave::Flags::Flags()
+
+void mesos::internal::slave::Flags::initialize()
 {
+  logging::Flags::initialize();
+
   add(&Flags::hostname,
       "hostname",
       "The hostname the agent should report.\n"
