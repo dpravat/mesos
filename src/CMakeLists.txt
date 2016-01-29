@@ -217,8 +217,8 @@ set(AGENT_SRC
   slave/monitor.cpp
   slave/containerizer/mesos/launch.cpp
   slave/containerizer/containerizer.cpp
-#  slave/containerizer/fetcher.cpp
-   slave/resource_estimator.cpp
+  slave/containerizer/fetcher.cpp
+  slave/resource_estimator.cpp
   )
 
 if (NOT WIN32)
