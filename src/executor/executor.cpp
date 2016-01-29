@@ -154,6 +154,7 @@ public:
 
     // Load any logging flags from the environment.
     logging::Flags flags;
+     flags.initialize();
 
     Try<Nothing> load = flags.load("MESOS_");
 
