@@ -41,6 +41,66 @@
 
 namespace os {
 
+  inline Try<std::list<Process>> processes()
+  {
+    return std::list<Process>();
+  }
+
+  inline Option<Process> process(
+    pid_t pid,
+    const std::list<Process>& processes)
+     {
+  foreach(const Process& process, processes) {
+    if (process.pid == pid) {
+      return process;
+    }
+  }
+  return None();
+}
+
+    inline std::set<pid_t> children(
+      pid_t pid,
+      const std::list<Process>& processes,
+      bool recursive = true)
+     {
+      // Perform a breadth first search for descendants.
+      std::set<pid_t> descendants;
+    std::queue<pid_t> parents;
+    parents.push(pid);
+      do {
+      pid_t parent = parents.front();
+      parents.pop();
+
+       // Search for children of parent.
+        foreach(const Process& process, processes) {
+        if (process.parent == parent) {
+                  // Have we seen this child yet?
+            if (descendants.insert(process.pid).second) {
+            parents.push(process.pid);
+
+          }
+
+        }
+
+      }
+
+    } while (recursive && !parents.empty());
+        return descendants;
+      }
+
+    inline Try<std::set<pid_t> > children(pid_t pid, bool recursive = true)
+     {
+    const Try<std::list<Process>> processes = os::processes();
+
+      if (processes.isError()) {
+      return Error(processes.error());
+
+    }
+
+      return children(pid, processes.get(), recursive);
+    }
+
+
   inline int pagesize()
   {
     SYSTEM_INFO si = {0};
@@ -195,11 +255,6 @@ inline Try<UTSInfo> uname()
 }
 
 
-inline Try<std::list<Process>> processes()
-{
-  return std::list<Process>();
-}
-
 inline size_t recv(int sockfd, void *buf, size_t len, int flags) {
   return ::recv(sockfd, (char*)buf, len, flags);
 }
@@ -316,6 +371,41 @@ inline auto access(const std::string& fileName, int accessMode) ->
 decltype(_access(fileName.c_str(), accessMode))
 {
   return _access(fileName.c_str(), accessMode);
+}
+
+inline Result<Process> process(pid_t pid)
+{
+  /*
+  // Page size, used for memory accounting.
+  SYSTEM_INFO systemInfo;
+  GetNativeSystemInfo (&systemInfo);
+  static const long pageSize = systemInfo.dwPageSize;
+  if (pageSize <= 0) {
+  return Error("Failed to get SYSTEM_INFO::dwPageSize");
+  }
+
+  // Number of clock ticks per second, used for cpu accounting.
+  long tmpTicks = 0;
+  QueryPerformanceFrequency((LARGE_INTEGER*)&tmpTicks);
+  static const long ticks = tmpTicks;
+  if (ticks <= 0) {
+  return Error("Failed to get QueryPerformanceFrequency");
+  }
+  */
+
+  //
+  // TODO: What we need to do here is:
+  // - Check if process still exists based on pid
+  // - Get windows process stats and fill up process struct properly
+  return Process(pid,
+    0,
+    0,
+    0,
+    0,
+    Option<Duration>::none(),
+    Option<Duration>::none(),
+    "",
+    false);
 }
 } // namespace os {
 
