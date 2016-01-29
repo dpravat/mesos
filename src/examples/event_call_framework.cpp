@@ -382,6 +382,7 @@ int main(int argc, char** argv)
   }
 
   mesos::internal::logging::Flags flags;
+  flags.initialize();
 
   string role;
   flags.add(&role,
