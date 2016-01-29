@@ -27,9 +27,10 @@
 
 #include "slave/constants.hpp"
 
-
-mesos::internal::slave::Flags::Flags()
+void mesos::internal::slave::Flags::initialize()
 {
+  logging::Flags::initialize();
+  
   add(&Flags::hostname,
       "hostname",
       "The hostname the slave should report.\n"
