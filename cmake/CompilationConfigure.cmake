@@ -70,7 +70,7 @@ if (WIN32)
 
   # COFF/PE and friends are somewhat limited in the number of sections they
   # allow for an object file. We use this to avoid those problems.
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj -DGOOGLE_GLOG_DLL_DECL=")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj -DGOOGLE_GLOG_DLL_DECL= -DCURL_STATICLIB")
 
 
   set(CMAKE_FIND_LIBRARY_SUFFIXES ".dll")
