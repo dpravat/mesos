@@ -38,7 +38,8 @@ namespace slave {
 class Flags : public logging::Flags
 {
 public:
-  Flags();
+  Flags() {};
+  void initialize();
 
   bool version;
   Option<std::string> hostname;
