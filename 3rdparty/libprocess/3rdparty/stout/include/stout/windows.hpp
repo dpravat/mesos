@@ -13,15 +13,14 @@
 #ifndef __STOUT_WINDOWS_HPP__
 #define __STOUT_WINDOWS_HPP__
 
-
+#include <BaseTsd.h>  // For `SSIZE_T`.
 #include <direct.h>   // For `_mkdir`.
 #include <fcntl.h>    // For file access flags like `_O_CREAT`.
 #include <io.h>       // For `_read`, `_write`.
 #include <stdlib.h>   // For `_PATH_MAX`.
-
+#include <process.h>  // For `_getpid`
 #include <sys/stat.h> // For permissions flags.
 
-#include <BaseTsd.h> // For `SSIZE_T`.
 // We include `Winsock2.h` before `Windows.h` explicitly to avoid symbold
 // re-definitions. This is a known pattern in the windows community.
 #include <WS2tcpip.h>
@@ -315,9 +314,16 @@ const mode_t S_ISGID = 0x04000000;        // No-op.
 const mode_t S_ISVTX = 0x02000000;        // No-op.
 
 
-// Flags not supported by Windows.
-const mode_t O_SYNC = 0x00000000;         // No-op.
+// Flags not supported by Windows
+const mode_t O_SYNC     = 0x00000000;     // No-op.
+const mode_t O_NONBLOCK = 0x00000000;     // No-op.
 
+// Linux signal flags not used in Windows but will
+// define them per Linux sys/signal.h to branch
+// properly for Windows processes' stop, resume and kill.
+const mode_t SIGCONT = 0x00000009;     // Signal Cont - Dec 19.
+const mode_t SIGSTOP = 0x00000011;     // Signal Stop - Dec 17.
+const mode_t SIGKILL = 0x00000013;     // Signal Kill - Dec 9.
 
 inline auto strerror_r(int errnum, char* buffer, size_t length) ->
 decltype(strerror_s(buffer, length, errnum))
@@ -360,6 +366,11 @@ decltype(_getcwd(path, maxlen))
   return _getcwd(path, maxlen);
 }
 
+inline auto getpid() ->
+decltype(_getpid())
+{
+    return _getpid();
+}
 
 inline auto mkdir(const char* path, mode_t mode) ->
 decltype(_mkdir(path))
@@ -388,8 +399,9 @@ decltype(_mktemp_s(path, strlen(path) + 1))
   }
 
   // NOTE: We open the file with read / write access for the given user, an
-  // attempt to match POSIX's specification of `mkstemp`.
-  return _open(path, S_IRUSR | S_IWUSR);
+  // attempt to match POSIX's specification of `mkstemp`. We use _S_IREAD and
+  // _S_IWRITE here instead of the POSIX equivalents.
+  return _open(path, _O_CREAT, _S_IREAD | _S_IWRITE);
 }
 
 
