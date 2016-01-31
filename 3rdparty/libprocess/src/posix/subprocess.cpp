@@ -38,7 +38,28 @@ using std::string;
 using std::vector;
 
 namespace process {
+
+using InputFileDescriptors = Subprocess::IO::InputFileDescriptors;
+using OutputFileDescriptors = Subprocess::IO::OutputFileDescriptors;
+
 namespace internal {
+
+static void cleanup(
+    const Future<Option<int>>& result,
+    Promise<Option<int>>* promise,
+    const Subprocess& subprocess)
+{
+  CHECK(!result.isPending());
+  CHECK(!result.isDiscarded());
+
+  if (result.isFailed()) {
+    promise->fail(result.failure());
+  } else {
+    promise->set(result.get());
+  }
+
+  delete promise;
+}
 
 
 // This function will invoke `os::close` on all specified file
