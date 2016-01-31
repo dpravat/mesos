@@ -347,8 +347,8 @@ void Slave::initialize()
   // Ensure disk `source`s are accessible.
   foreach (
       const Resource& resource,
-      resources->filter([](const Resource& resource) {
-        return resource.has_disk() && resource.disk().has_source();
+      resources->filter([](const Resource& res) {
+        return res.has_disk() && res.disk().has_source();
       })) {
     // For `PATH` sources we create them if they do not exist.
     const Resource::DiskInfo::Source& source = resource.disk().source();
