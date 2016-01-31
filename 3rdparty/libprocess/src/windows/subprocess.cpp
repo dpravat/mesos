@@ -38,6 +38,10 @@ using std::string;
 using std::vector;
 
 namespace process {
+
+using InputFileDescriptors = Subprocess::IO::InputFileDescriptors;
+using OutputFileDescriptors = Subprocess::IO::OutputFileDescriptors;
+
 namespace internal {
 
 extern void cleanup(
@@ -46,15 +50,15 @@ extern void cleanup(
     const Subprocess& subprocess);
 
 static void close(
-    HANDLE stdinHandle[2],
-    HANDLE stdoutHandle[2],
-    HANDLE stderrHandle[2])
+    const InputFileDescriptors& stdinfds,
+    const OutputFileDescriptors& stdoutfds,
+    const OutputFileDescriptors& stderrfds)
 {
   HANDLE handles[6] = {
-    stdinHandle[0], stdinHandle[1],
-    stdoutHandle[0], stdoutHandle[1],
-    stderrHandle[0], stderrHandle[1]
-  };
+    stdinfds.read, stdinfds.write.getOrElse(INVALID_HANDLE_VALUE),
+    stdoutfds.read.getOrElse(INVALID_HANDLE_VALUE), stdoutfds.write,
+    stderrfds.read.getOrElse(INVALID_HANDLE_VALUE), stderrfds.write
+};
 
   foreach(HANDLE handle, handles) {
     if (handle != INVALID_HANDLE_VALUE) {
@@ -79,11 +83,11 @@ Try<Nothing> CreatePipeHandles(HANDLE handles[2])
 
 Try<pid_t> CreateChildProcess(
   const string& path,
-  vector<string> argv,
+  char** argv,
   LPVOID environment,
-  HANDLE* stdinPipe,
-  HANDLE* stdoutPipe,
-  HANDLE* stderrPipe)
+  InputFileDescriptors stdinFds,
+  OutputFileDescriptors stdoutFds,
+  OutputFileDescriptors stderrFds)
 {
   PROCESS_INFORMATION processInfo;
   STARTUPINFO startupInfo;
@@ -92,27 +96,10 @@ Try<pid_t> CreateChildProcess(
   ::ZeroMemory(&startupInfo, sizeof(STARTUPINFO));
 
   startupInfo.cb = sizeof(STARTUPINFO);
-  startupInfo.hStdError = stderrPipe[1];
-  startupInfo.hStdOutput = stdoutPipe[1];
-  startupInfo.hStdInput = stdinPipe[0];
+  startupInfo.hStdError = stderrFds.write;
+  startupInfo.hStdOutput = stdoutFds.write;
+  startupInfo.hStdInput = stdinFds.read;
   startupInfo.dwFlags |= STARTF_USESTDHANDLES;
-
-  // Build child process arguments (as a NULL-terminated string).
-  size_t argLength = 0;
-  foreach(string arg, argv) {
-    argLength += arg.size() + 1;  // extra char for 'space' or NULL.
-  }
-
-  char *arguments = new char[argLength];
-  size_t index = 0;
-  foreach(string arg, argv) {
-    strncpy(arguments + index, arg.c_str(), arg.size());
-    index += arg.size();
-    arguments[index] = ' ';
-  }
-
-  // NULL-terminate the arguments string.
-  arguments[index] = '\0';
 
   // See the `CreateProcess` MSDN page[1] for details on how `path` and
   // `args` work together in this case.
@@ -120,7 +107,7 @@ Try<pid_t> CreateChildProcess(
   // [1] https://msdn.microsoft.com/en-us/library/windows/desktop/ms682425(v=vs.85).aspx
   BOOL createProcessResult = CreateProcess(
       (LPSTR)path.c_str(),  // Path of module to load[1].
-      (LPSTR)arguments,     // Command line arguments[1].
+      (LPSTR)argv,     // Command line arguments[1].
       NULL,                 // Default security attributes.
       NULL,                 // Default primary thread security attributes.
       TRUE,                 // Inherited parent process handles.
@@ -129,9 +116,6 @@ Try<pid_t> CreateChildProcess(
       NULL,                 // Use parent's current directory.
       &startupInfo,         // STARTUPINFO pointer.
       &processInfo);        // PROCESS_INFORMATION pointer.
-
-  // Release memory taken by the `arguments` string.
-  delete arguments;
 
   if (!createProcessResult) {
     return WindowsError("CreateChildProcess: failed to call 'CreateProcess'");
@@ -142,7 +126,127 @@ Try<pid_t> CreateChildProcess(
   ::CloseHandle(processInfo.hThread);
   return processInfo.dwProcessId;
 }
-} // namespace internal {
+
+}  // namespace internal {
+
+Subprocess::IO Subprocess::PIPE()
+{
+  return Subprocess::IO(
+      []() -> Try<InputFileDescriptors> {
+        HANDLE stdinHandle[2] = { INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };
+        // Create STDIN pipe and set the 'write' component to not be inheritable.
+        internal::CreatePipeHandles(stdinHandle);
+        if (!::SetHandleInformation(&stdinHandle[1], HANDLE_FLAG_INHERIT, 0)) {
+          return WindowsError("CreatePipes: Failed to call SetHandleInformation "
+            "on stdin pipe");
+        }
+
+        InputFileDescriptors fds;
+        fds.read = stdinHandle[0];
+        fds.write = stdinHandle[1];
+        return fds;
+      },
+      []() -> Try<OutputFileDescriptors> {
+        HANDLE stdinHandle[2] = { INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };
+        // Create STDIN pipe and set the 'read' component to not be inheritable.
+        internal::CreatePipeHandles(stdinHandle);
+        if (!::SetHandleInformation(&stdinHandle[0], HANDLE_FLAG_INHERIT, 0)) {
+          return WindowsError("CreatePipes: Failed to call SetHandleInformation "
+            "on stdin pipe");
+        }
+
+        OutputFileDescriptors fds;
+        fds.read = stdinHandle[0];
+        fds.write = stdinHandle[1];
+        return fds;
+      });
+}
+
+
+Subprocess::IO Subprocess::PATH(const string& path)
+{
+  return Subprocess::IO(
+      [path]() -> Try<InputFileDescriptors> {
+        HANDLE open = ::CreateFile(
+            path.c_str(),
+            GENERIC_READ,
+            FILE_SHARE_READ,
+            NULL,
+            CREATE_NEW,
+            FILE_ATTRIBUTE_NORMAL,
+            NULL);
+
+        if (open == INVALID_HANDLE_VALUE) {
+          return WindowsError("Failed to open '" + path + "'");
+        }
+        InputFileDescriptors fds;
+        fds.read = open;
+        return fds;
+      },
+      [path]() -> Try<OutputFileDescriptors> {
+        HANDLE open = ::CreateFile(
+            path.c_str(),
+            GENERIC_WRITE,
+            0,
+            NULL,
+            CREATE_NEW,
+            FILE_ATTRIBUTE_NORMAL,
+            NULL);
+
+        if (open == INVALID_HANDLE_VALUE) {
+          return WindowsError("Failed to open '" + path + "'");
+        }
+
+        OutputFileDescriptors fds;
+        fds.write = open;
+        return fds;
+      });
+}
+
+
+Subprocess::IO Subprocess::FD(int fd, IO::FDType type)
+{
+  return Subprocess::IO(
+      [fd, type]() -> Try<InputFileDescriptors> {
+        HANDLE prepared_handle = INVALID_HANDLE_VALUE;
+        switch (type) {
+          case IO::DUPLICATED:
+          case IO::OWNED:
+            // Extract handle from file descriptor.
+            prepared_handle = (HANDLE)::_get_osfhandle(fd);
+            if (prepared_handle == INVALID_HANDLE_VALUE) {
+            return WindowsError("Failed to get handle of stdin file");
+            }
+            break;
+          // NOTE: By not setting a default we leverage the compiler
+          // errors when the enumeration is augmented to find all
+          // the cases we need to provide.  Same for below.
+        }
+
+        InputFileDescriptors fds;
+        fds.read = prepared_handle;
+        return fds;
+      },
+      [fd, type]() -> Try<OutputFileDescriptors> {
+        HANDLE prepared_handle = INVALID_HANDLE_VALUE;
+        switch (type) {
+        case IO::DUPLICATED:
+        case IO::OWNED:
+          // Extract handle from file descriptor.
+          prepared_handle = (HANDLE)::_get_osfhandle(fd);
+          if (prepared_handle == INVALID_HANDLE_VALUE) {
+            return WindowsError("Failed to get handle of stdin file");
+          }
+            break;
+          }
+
+        OutputFileDescriptors fds;
+        fds.write = prepared_handle;
+        return fds;
+      });
+}
+
+
 
 // TODO(alexnaparu): use RAII handles
 Try<Subprocess> subprocess(
@@ -157,132 +261,62 @@ Try<Subprocess> subprocess(
     const Option<lambda::function<
         pid_t(const lambda::function<int()>&)>>& _clone)
 {
-  // File descriptors for redirecting stdin/stdout/stderr. These file
-  // descriptors are used for different purposes depending on the
-  // specified I/O modes. If the mode is PIPE, the two file
-  // descriptors represent two ends of a pipe. If the mode is PATH or
-  // FD, only one of the two file descriptors is used. Our protocol
-  // here is that index 0 is always for reading, and index 1 is always
-  // for writing (similar to the pipe semantics).
-  HANDLE stdinHandle[2] = { INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };
-  HANDLE stdoutHandle[2] = { INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };
-  HANDLE stderrHandle[2] = { INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };
-
+  // File descriptors for redirecting stdin/stdout/stderr.
+  // These file descriptors are used for different purposes depending
+  // on the specified I/O modes.
+  // See `Subprocess::PIPE`, `Subprocess::PATH`, and `Subprocess::FD`.
+  InputFileDescriptors stdinfds;
+  OutputFileDescriptors stdoutfds;
+  OutputFileDescriptors stderrfds;
   // Prepare the file descriptor(s) for stdin.
-  switch (in.mode) {
-    case Subprocess::IO::FD: {
-      // Extract handle from file descriptor.
-      stdinHandle[0] = (HANDLE)::_get_osfhandle(in.fd.get());
-      if (stdinHandle[0] == INVALID_HANDLE_VALUE) {
-        return WindowsError("Failed to get handle of stdin file");
-      }
-      break;
-    }
-    case Subprocess::IO::PIPE: {
-      // Create STDIN pipe and set the 'write' component to not be inheritable.
-      internal::CreatePipeHandles(stdinHandle);
-      if (!::SetHandleInformation(&stdinHandle[1], HANDLE_FLAG_INHERIT, 0)) {
-        return WindowsError("CreatePipes: Failed to call SetHandleInformation "
-          "on stdin pipe");
-      }
-      break;
-    }
-    case Subprocess::IO::PATH: {
-      stdinHandle[0] = ::CreateFile(
-          in.path.get().c_str(),
-          GENERIC_READ,
-          FILE_SHARE_READ,
-          NULL,
-          CREATE_NEW,
-          FILE_ATTRIBUTE_NORMAL,
-          NULL);
-
-      if (stdinHandle[0] == INVALID_HANDLE_VALUE) {
-        return WindowsError("Failed to open '" + in.path.get() + "'");
-      }
-      break;
-    }
-    default:
-      UNREACHABLE();
+  Try<InputFileDescriptors> input = in.input();
+  if (input.isError()) {
+    return Error(input.error());
   }
+
+  stdinfds = input.get();
 
   // Prepare the file descriptor(s) for stdout.
-  switch (out.mode) {
-    case Subprocess::IO::FD: {
-      // Extract handle from file descriptor.
-      stdoutHandle[1] = (HANDLE)::_get_osfhandle(out.fd.get());
-      if (stdoutHandle[1] == INVALID_HANDLE_VALUE) {
-        return WindowsError("Failed to get handle of stdout file");
-      }
-      break;
-    }
-    case Subprocess::IO::PIPE: {
-      // Create STDOUT pipe and set the 'read' component to not be inheritable.
-      internal::CreatePipeHandles(stdoutHandle);
-      if (!::SetHandleInformation(&stdoutHandle[0], HANDLE_FLAG_INHERIT, 0)) {
-        return WindowsError("CreatePipes: Failed to call SetHandleInformation "
-          "on stdout pipe");
-      }
-      break;
-    }
-    case Subprocess::IO::PATH: {
-      stdoutHandle[1] = ::CreateFile(
-          in.path.get().c_str(),
-          GENERIC_WRITE,
-          0,
-          NULL,
-          CREATE_ALWAYS,
-          FILE_ATTRIBUTE_NORMAL,
-          NULL);
-
-      if (stdoutHandle[1] == INVALID_HANDLE_VALUE) {
-        return WindowsError("Failed to open '" + in.path.get() + "'");
-      }
-      break;
-    }
-    default:
-      UNREACHABLE();
+  Try<OutputFileDescriptors> output = out.output();
+  if (output.isError()) {
+    internal::close(stdinfds, stdoutfds, stderrfds);
+    return Error(output.error());
   }
+
+  stdoutfds = output.get();
 
   // Prepare the file descriptor(s) for stderr.
-  switch (err.mode) {
-    case Subprocess::IO::FD: {
-      // Extract handle from file descriptor.
-      stderrHandle[1] = (HANDLE)::_get_osfhandle(err.fd.get());
-      if (stderrHandle[1] == INVALID_HANDLE_VALUE) {
-        return WindowsError("Failed to get handle of stderr file");
-      }
-      break;
-    }
-    case Subprocess::IO::PIPE: {
-      // Create STDERR pipe and set the 'read' component to not be inheritable.
-      internal::CreatePipeHandles(stderrHandle);
-      if (!::SetHandleInformation(&stderrHandle[0], HANDLE_FLAG_INHERIT, 0)) {
-        return WindowsError("CreatePipes: Failed to call SetHandleInformation "
-          "on stderr pipe");
-      }
-      break;
-    }
-    case Subprocess::IO::PATH: {
-      stderrHandle[1] = ::CreateFile(
-          in.path.get().c_str(),
-          GENERIC_WRITE,
-          0,
-          NULL,
-          CREATE_NEW,
-          FILE_ATTRIBUTE_NORMAL,
-          NULL);
-
-      if (stderrHandle[1] == INVALID_HANDLE_VALUE) {
-        return WindowsError("Failed to open '" + in.path.get() + "'");
-      }
-      break;
-    }
-    default:
-      UNREACHABLE();
+  output = err.output();
+  if (output.isError()) {
+    internal::close(stdinfds, stdoutfds, stderrfds);
+    return Error(output.error());
   }
 
-  // Build environment
+  stderrfds = output.get();
+
+  // Prepare the arguments. If the user specifies the 'flags', we will
+  // stringify them and append them to the existing arguments.
+  if (flags.isSome()) {
+    foreachpair (const string& name, const flags::Flag& flag, flags.get()) {
+      Option<string> value = flag.stringify(flags.get());
+      if (value.isSome()) {
+        argv.push_back("--" + name + "=" + value.get());
+      }
+    }
+  }
+
+  // The real arguments that will be passed to 'os::execvpe'. We need
+  // to construct them here before doing the clone as it might not be
+  // async signal safe to perform the memory allocation.
+  char** _argv = new char*[argv.size() + 1];
+  for (int i = 0; i < argv.size(); i++) {
+    _argv[i] = (char*) argv[i].c_str();
+  }
+  _argv[argv.size()] = NULL;
+
+  // Like above, we need to construct the environment that we'll pass
+  // to 'os::execvpe' as it might not be async-safe to perform the
+  // memory allocations.
   char** envp = os::raw::environment();
 
   if (environment.isSome()) {
@@ -305,11 +339,13 @@ Try<Subprocess> subprocess(
   // Create the child process and pass the stdin/stdout/stderr handles.
   Try<pid_t> pid = internal::CreateChildProcess(
       path,
-      argv,
+      _argv,
       (LPVOID)envp,
-      stdinHandle,
-      stdoutHandle,
-      stderrHandle);
+      stdinfds,
+      stdoutfds,
+      stderrfds);
+
+  delete[] _argv;
 
   // Need to delete 'envp' if we had environment variables passed to
   // us and we needed to allocate the space.
@@ -325,7 +361,7 @@ Try<Subprocess> subprocess(
   if (pid.get() == -1) {
     // Save the errno as 'close' below might overwrite it.
     ErrnoError error("Failed to clone");
-    internal::close(stdinHandle, stdoutHandle, stderrHandle);
+    internal::close(stdinfds, stdoutfds, stderrfds);
     return error;
   }
 
@@ -334,31 +370,25 @@ Try<Subprocess> subprocess(
 
   // Close the handles that are created by this function. For pipes, we close
   // the child ends and store the parent ends (see thecode below).
-  ::CloseHandle(stdinHandle[0]);  // os::close(stdinHandle[0]);
-  ::CloseHandle(stdoutHandle[1]); // os::close(stdoutHandle[1]);
-  ::CloseHandle(stderrHandle[1]); // os::close(stderrHandle[1]);
+  ::CloseHandle(stdinfds.read);
+  ::CloseHandle(stdoutfds.write);
+  ::CloseHandle(stderrfds.write);
 
   // If the mode is PIPE, store the parent side of the pipe so that
   // the user can communicate with the subprocess. Windows uses handles for all
   // of these, so we need to associate them to file descriptors first.
   int stdinFd =
-    ::_open_osfhandle((intptr_t)stdinHandle[1], _O_APPEND | _O_TEXT);
+    ::_open_osfhandle((intptr_t)stdinfds.write.getOrElse(INVALID_HANDLE_VALUE), _O_APPEND | _O_TEXT);
 
   int stdoutFd =
-    ::_open_osfhandle((intptr_t)stdoutHandle[0], _O_RDONLY | _O_TEXT);
+    ::_open_osfhandle((intptr_t)stdoutfds.read.getOrElse(INVALID_HANDLE_VALUE), _O_RDONLY | _O_TEXT);
 
   int stderrFd =
-    ::_open_osfhandle((intptr_t)stderrHandle[0], _O_RDONLY | _O_TEXT);
+    ::_open_osfhandle((intptr_t)stderrfds.read.getOrElse(INVALID_HANDLE_VALUE), _O_RDONLY | _O_TEXT);
 
-  if (in.mode == Subprocess::IO::PIPE) {
-    process.data->in = stdinFd;
-  }
-  if (out.mode == Subprocess::IO::PIPE) {
-    process.data->out = stdoutFd;
-  }
-  if (err.mode == Subprocess::IO::PIPE) {
-    process.data->err = stderrFd;
-  }
+  process.data->in = stdinFd;
+  process.data->out = stdinFd;
+  process.data->err = stderrFd;
 
   // Rather than directly exposing the future from process::reap, we
   // must use an explicit promise so that we can ensure we can receive
