@@ -118,6 +118,7 @@ set(COMMON_SRC
   common/type_utils.cpp
   common/values.cpp
   common/build.cpp
+  common/roles.cpp
   )
 
 set(HDFS_SRC
@@ -194,6 +195,12 @@ set(LOGGING_SRC
   )
 
 set(MASTER_SRC
+  master/validation.cpp
+  )
+
+if (NOT WIN32)
+set(MASTER_SRC
+  ${MASTER_SRC}
   master/contender.cpp
   master/constants.cpp
   master/detector.cpp
@@ -208,11 +215,11 @@ set(MASTER_SRC
   master/registry.proto
   master/registrar.cpp
   master/repairer.cpp
-  master/validation.cpp
   master/allocator/allocator.cpp
   master/allocator/mesos/hierarchical.cpp
   master/allocator/sorter/drf/sorter.cpp
   )
+endif (NOT WIN32)
 
 set(MODULE_SRC
   module/manager.cpp
@@ -262,9 +269,7 @@ if (NOT WIN32)
     slave/resource_estimator.cpp
     slave/slave.cpp
     slave/containerizer/composing.cpp
-    slave/containerizer/composing.hpp
     slave/containerizer/docker.cpp
-    slave/containerizer/docker.hpp
     slave/containerizer/external_containerizer.cpp
     slave/containerizer/mesos/isolator.cpp
     slave/containerizer/mesos/launcher.cpp
@@ -346,6 +351,7 @@ set(MESOS_SRC
   ${LOGGING_SRC}
   ${VERSION_SRC}
   ${ZOOKEEPER_SRC}
+  ${MASTER_SRC}
   )
 
 if (NOT WIN32)
@@ -359,7 +365,6 @@ if (NOT WIN32)
     ${HDFS_SRC}
     ${LOCAL_SRC}
     ${LOG_SRC}
-    ${MASTER_SRC}
     ${SCHED_SRC}
     ${SCHEDULER_SRC}
     ${STATE_SRC}
