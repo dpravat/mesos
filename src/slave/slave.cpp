@@ -957,6 +957,7 @@ void Slave::detected(const Future<Option<MasterInfo>>& _master)
     Duration duration =
       flags.registration_backoff_factor * ((double) os::random() / RAND_MAX);
 
+#ifdef HAS_AUTHENTICATION
     if (credential.isSome()) {
       // Authenticate with the master.
       // TODO(vinod): Do a backoff for authentication similar to what
@@ -977,6 +978,14 @@ void Slave::detected(const Future<Option<MasterInfo>>& _master)
             &Slave::doReliableRegistration,
             flags.registration_backoff_factor * 2); // Backoff.
     }
+#else
+    reauthenticate = false;
+
+    delay(duration,
+          self(),
+          &Slave::doReliableRegistration,
+          flags.registration_backoff_factor * 2); // Backoff.
+#endif
   }
 
   // Keep detecting masters.
@@ -986,6 +995,7 @@ void Slave::detected(const Future<Option<MasterInfo>>& _master)
 }
 
 
+#ifdef HAS_AUTHENTICATION
 void Slave::authenticate()
 {
   authenticated = false;
@@ -1097,6 +1107,7 @@ void Slave::authenticationTimeout(Future<bool> future)
     LOG(WARNING) << "Authentication timed out";
   }
 }
+#endif
 
 
 void Slave::registered(
