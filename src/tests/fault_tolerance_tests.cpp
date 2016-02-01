@@ -125,8 +125,10 @@ TEST_F(FaultToleranceTest, MasterFailover)
 
   EXPECT_CALL(sched, disconnected(&driver));
 
+#ifdef HAS_AUTHENTICATION
   Future<AuthenticateMessage> authenticateMessage =
     FUTURE_PROTOBUF(AuthenticateMessage(), _, _);
+#endif
 
   Future<Nothing> registered2;
   EXPECT_CALL(sched, registered(&driver, _, _))
@@ -135,8 +137,10 @@ TEST_F(FaultToleranceTest, MasterFailover)
   // Simulate a new master detected message to the scheduler.
   detector.appoint(master.get());
 
+#ifdef HAS_AUTHENTICATION
   // Scheduler should retry authentication.
   AWAIT_READY(authenticateMessage);
+#endif
 
   // Framework should get a registered callback.
   AWAIT_READY(registered2);
@@ -702,8 +706,10 @@ TEST_F(FaultToleranceTest, FrameworkReliableRegistration)
   EXPECT_CALL(sched, offerRescinded(&driver, _))
     .Times(AtMost(1));
 
+#ifdef HAS_AUTHENTICATION
   Future<AuthenticateMessage> authenticateMessage =
     FUTURE_PROTOBUF(AuthenticateMessage(), _, master.get());
+#endif
 
   // Drop the first framework registered message, allow subsequent messages.
   Future<FrameworkRegisteredMessage> frameworkRegisteredMessage =
@@ -711,8 +717,10 @@ TEST_F(FaultToleranceTest, FrameworkReliableRegistration)
 
   driver.start();
 
+#ifdef HAS_AUTHENTICATION
   // Ensure authentication occurs.
   AWAIT_READY(authenticateMessage);
+#endif
 
   AWAIT_READY(frameworkRegisteredMessage);
 
