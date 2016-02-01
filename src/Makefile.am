@@ -187,6 +187,14 @@ LIB_NVIDIA = -lnvidia-ml
 LDADD += -lnvidia-ml
 endif
 
+# TODO(hausdorff): (MESOS-5450) Transition Mesos to have a pluggable
+# authentication layer, because Windows builds will not support SASL in the
+# forseeable future. Here, `HAS_AUTHENTICATION` is set by default, which means
+# that non-Windows builds take a hard dependency on SASL. This is a stop-gap:
+# by not setting this flag on Windows builds, we can avoid building the code
+# that depends on SASL, but the dependency is assumed throughout the tests, so
+# we don't yet support turning off the dependency for Unix builds.
+MESOS_CPPFLAGS += -DHAS_AUTHENTICATION=1
 
 # README: we build the Mesos library out of a collection of
 # convenience libraries (that is, libraries that do not get installed

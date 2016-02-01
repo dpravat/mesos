@@ -128,6 +128,15 @@ if (WIN32)
   # [2] https://code.google.com/p/google-glog/source/browse/trunk/src/windows/glog/logging.h?r=113
   add_definitions(-DNOGDI)
   add_definitions(-DNOMINMAX)
+else (WIN32)
+  # TODO(hausdorff): (MESOS-5450) Transition Mesos to have a pluggable
+  # authentication layer, because Windows builds will not support SASL in the
+  # forseeable future. Here, `HAS_AUTHENTICATION` is set by default, which
+  # means that non-Windows builds take a hard dependency on SASL. This is a
+  # stop-gap: by not setting this flag on Windows builds, we can avoid building
+  # the code that depends on SASL, but the dependency is assumed throughout the
+  # tests, so we don't yet support turning off the dependency for Unix builds.
+  add_definitions(-DHAS_AUTHENTICATION=1)
 endif (WIN32)
 
 # Enable the INT64 support for PicoJSON.
