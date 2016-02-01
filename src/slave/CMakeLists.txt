@@ -51,6 +51,7 @@ if (WIN32)
     ${MESOS_TARGET}
     ${PROCESS_TARGET}
     ${HTTP_PARSER_LFLAG}
+    ${ZOOKEEPER_LFLAG}
       ws2_32
   )
 endif (WIN32)
