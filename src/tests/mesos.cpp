@@ -96,8 +96,14 @@ master::Flags MesosTest::CreateMasterFlags()
   CHECK_SOME(os::mkdir(flags.work_dir.get()));
 
   flags.authenticate_http = true;
+
+#ifdef HAS_AUTHENTICATION
   flags.authenticate_frameworks = true;
   flags.authenticate_slaves = true;
+#else
+  flags.authenticate_frameworks = false;
+  flags.authenticate_slaves = false;
+#endif
 
   // Create a default credentials file.
   const string& path =  path::join(os::getcwd(), "credentials");
@@ -165,16 +171,17 @@ slave::Flags MesosTest::CreateSlaveFlags()
 
   CHECK_SOME(fd);
 
+#ifdef HAS_AUTHENTICATION
   Credential credential;
   credential.set_principal(DEFAULT_CREDENTIAL.principal());
   credential.set_secret(DEFAULT_CREDENTIAL.secret());
-
   CHECK_SOME(os::write(fd.get(), stringify(JSON::protobuf(credential))))
      << "Failed to write slave credential to '" << path << "'";
 
   CHECK_SOME(os::close(fd.get()));
 
   flags.credential = path;
+#endif
 
   flags.resources = defaultAgentResourcesString;
 
