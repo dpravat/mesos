@@ -428,6 +428,7 @@ void Master::initialize()
       << " Must be within [0%-100%]";
   }
 
+#ifdef HAS_AUTHENTICATION
   // Log authentication state.
   if (flags.authenticate_frameworks) {
     LOG(INFO) << "Master only allowing authenticated frameworks to register";
@@ -440,6 +441,7 @@ void Master::initialize()
   } else {
     LOG(INFO) << "Master allowing unauthenticated agents to register";
   }
+#endif
 
   if (flags.authenticate_http_frameworks) {
     LOG(INFO) << "Master only allowing authenticated HTTP frameworks to "
@@ -465,6 +467,7 @@ void Master::initialize()
     credentials = _credentials.get();
   }
 
+#ifdef HAS_AUTHENTICATION
   // Extract authenticator names and validate them.
   authenticatorNames = strings::split(flags.authenticators, ",");
   if (authenticatorNames.empty()) {
@@ -522,6 +525,7 @@ void Master::initialize()
       authenticator = None();
     }
   }
+#endif
 
   // TODO(arojas): Consider creating a factory function for the instantiation
   // of the HTTP authenticator the same way the allocator does.
