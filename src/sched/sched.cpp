@@ -326,6 +326,7 @@ protected:
       LOG(INFO) << "New master detected at " << master.get().pid();
       link(master.get().pid());
 
+#ifdef HAS_AUTHENTICATION
       if (credential.isSome()) {
         // Authenticate with the master.
         // TODO(vinod): Do a backoff for authentication similar to what
@@ -342,6 +343,11 @@ protected:
         // (e.g., rate limiting tests).
         doReliableRegistration(flags.registration_backoff_factor);
       }
+#else
+      reauthenticate = false;
+      LOG(INFO) << "Reliable registration yo!";
+      doReliableRegistration(flags.registration_backoff_factor);
+#endif
     } else {
       // In this case, we don't actually invoke Scheduler::error
       // since we might get reconnected to a master imminently.
@@ -353,7 +359,7 @@ protected:
       .onAny(defer(self(), &SchedulerProcess::detected, lambda::_1));
   }
 
-
+#ifdef HAS_AUTHENTICATION
   void authenticate()
   {
     if (!running.load()) {
@@ -493,6 +499,7 @@ protected:
       LOG(WARNING) << "Authentication timed out";
     }
   }
+#endif
 
   void drop(const Event& event, const string& message)
   {
@@ -773,9 +780,13 @@ protected:
       return;
     }
 
+#ifdef HAS_AUTHENTICATION
     if (credential.isSome() && !authenticated) {
       return;
     }
+#else
+    authenticated = false;
+#endif
 
     VLOG(1) << "Sending SUBSCRIBE call to " << master.get().pid();
 

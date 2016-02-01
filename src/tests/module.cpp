@@ -71,7 +71,7 @@ static void addIsolatorModules(Modules* modules)
   addModule(library, TestMemIsolator, "org_apache_mesos_TestMemIsolator");
 }
 
-
+#ifdef HAS_AUTHENTICATION
 // Add available Authentication modules.
 static void addAuthenticationModules(Modules* modules)
 {
@@ -96,7 +96,7 @@ static void addAuthenticationModules(Modules* modules)
             TestCRAMMD5Authenticator,
             "org_apache_mesos_TestCRAMMD5Authenticator");
 }
-
+#endif
 
 // Add available ContainerLogger modules.
 static void addContainerLoggerModules(Modules* modules)
@@ -294,8 +294,10 @@ Try<Nothing> initModules(const Option<Modules>& modules)
   // Add isolator modules from testisolator library.
   addIsolatorModules(&mergedModules);
 
+#ifdef HAS_AUTHENTICATION
   // Add authentication modules from testauthentication library.
   addAuthenticationModules(&mergedModules);
+#endif
 
   // Add container logger modules from testcontainer_logger library.
   addContainerLoggerModules(&mergedModules);

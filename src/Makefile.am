@@ -138,6 +138,10 @@ if WITH_BUNDLED_PROTOBUF
 MESOS_CPPFLAGS += -I../$(PROTOBUF)/src
 endif
 
+if HAS_AUTHENTICATION
+MESOS_CPPFLAGS += -DHAS_AUTHENTICATION=1
+endif
+
 # README: we build the Mesos library out of a collection of
 # convenience libraries (that is, libraries that do not get installed
 # but we can use as building blocks to vary compile flags as necessary
@@ -562,12 +566,16 @@ libmesos_no_3rdparty_la_SOURCES =					\
   messages/messages.proto						\
   slave/containerizer/mesos/provisioner/docker/message.proto
 
-# TODO(tillt): Remove authentication/cram_md5/* which will enable us to
-# lose the immediate cyrus-sasl2 dependency.
+if HAS_AUTHENTICATION
 libmesos_no_3rdparty_la_SOURCES +=					\
   authentication/cram_md5/authenticatee.cpp				\
   authentication/cram_md5/authenticator.cpp				\
-  authentication/cram_md5/auxprop.cpp					\
+  authentication/cram_md5/auxprop.cpp
+endif
+
+# TODO(tillt): Remove authentication/cram_md5/* which will enable us to
+# lose the immediate cyrus-sasl2 dependency.
+libmesos_no_3rdparty_la_SOURCES +=					\
   authentication/http/basic_authenticator_factory.cpp			\
   authorizer/authorizer.cpp						\
   authorizer/local/authorizer.cpp					\
@@ -1693,6 +1701,7 @@ libtestanonymous_la_SOURCES = examples/test_anonymous_module.cpp
 libtestanonymous_la_CPPFLAGS = $(MESOS_CPPFLAGS)
 libtestanonymous_la_LDFLAGS = $(MESOS_TEST_MODULE_LDFLAGS)
 
+if HAS_AUTHENTICATION
 # Library containing the test CRAM-MD5 authentication modules.
 # TODO(tillt): Add cyrus-sasl2 dependency while removing it from libmesos.
 # TODO(tillt): Enable optional building of this module library.
@@ -1701,6 +1710,7 @@ noinst_LTLIBRARIES += libtestauthentication.la
 libtestauthentication_la_SOURCES = examples/test_authentication_modules.cpp
 libtestauthentication_la_CPPFLAGS = $(MESOS_CPPFLAGS)
 libtestauthentication_la_LDFLAGS = $(MESOS_TEST_MODULE_LDFLAGS)
+endif # HAS_AUTHENTICATION
 
 # Library containing the test authorizer module.
 noinst_LTLIBRARIES += libtestauthorizer.la
@@ -1757,12 +1767,10 @@ mesos_tests_SOURCES =						\
   slave/qos_controllers/load.cpp				\
   tests/anonymous_tests.cpp					\
   tests/attributes_tests.cpp					\
-  tests/authentication_tests.cpp				\
   tests/authorization_tests.cpp					\
   tests/cluster.cpp						\
   tests/container_logger_tests.cpp				\
   tests/containerizer.cpp					\
-  tests/cram_md5_authentication_tests.cpp			\
   tests/credentials_tests.cpp					\
   tests/disk_quota_tests.cpp					\
   tests/environment.cpp						\
@@ -1842,6 +1850,12 @@ mesos_tests_SOURCES =						\
   tests/containerizer/provisioner_appc_tests.cpp		\
   tests/containerizer/provisioner_backend_tests.cpp		\
   tests/containerizer/provisioner_docker_tests.cpp
+
+if HAS_AUTHENTICATION
+mesos_tests_SOURCES +=						\
+  tests/authentication_tests.cpp  				\
+  tests/cram_md5_authentication_tests.cpp
+endif
 
 mesos_tests_CPPFLAGS = $(MESOS_CPPFLAGS)
 mesos_tests_CPPFLAGS += -DSOURCE_DIR=\"$(abs_top_srcdir)\"

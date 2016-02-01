@@ -116,6 +116,11 @@ AC_CONFIG_FILES([src/java/generated/org/apache/mesos/MesosNativeLibrary.java])
 AC_CONFIG_FILES([mpi/mpiexec-mesos], [chmod +x mpi/mpiexec-mesos])
 
 
+AC_ARG_ENABLE([authentication],
+              AS_HELP_STRING([--disable-authentication],
+                             [disable master/slave/framework authentication]),
+              [], [enable_authentication=yes])
+
 AC_ARG_ENABLE([java],
               AS_HELP_STRING([--disable-java],
                              [don't build Java bindings]),
@@ -743,6 +748,8 @@ libsubversion-1 is required for mesos to build.
 ])])
 
 
+if test "x$enable_authentication" = "xyes"; then
+
 # Check if Sasl2 prefix path was provided, and if so, add it to
 # the CPPFLAGS and LDFLAGS with respective /include and /lib path
 # suffixes.
@@ -829,6 +836,10 @@ AS_IF([test "x$crammd5test" = "xfound"],
 We need CRAM-MD5 support for SASL authentication.
 -------------------------------------------------------------------])])
 
+
+fi
+
+AM_CONDITIONAL([HAS_AUTHENTICATION], [test "x$enable_authentication" = "xyes"])
 
 # Perform necessary configuration for network isolator.
 if test "x$with_network_isolator" = "xyes"; then

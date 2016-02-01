@@ -465,7 +465,8 @@ void Slave::initialize()
 
   LOG(INFO) << "Slave hostname: " << info.hostname();
 
-  statusUpdateManager->initialize(defer(self(), &Slave::forward, lambda::_1).operator std::function<void(StatusUpdate)>());
+  statusUpdateManager->initialize(defer(self(), &Slave::forward, lambda::_1)
+    .operator std::function<void(StatusUpdate)>());
 
   // Start disk monitoring.
   // NOTE: We send a delayed message here instead of directly calling
@@ -625,7 +626,8 @@ void Slave::initialize()
             << ". Please run the slave with '--help' to see the valid options";
   }
 
-  auto signalHandler = defer(self(), &Slave::signaled, lambda::_1, lambda::_2).operator os::SignalHandler();
+  auto signalHandler = defer(self(), &Slave::signaled, lambda::_1, lambda::_2)
+    .operator os::SignalHandler();
   if (os::configureSignal(signalHandler) < 0) {
       EXIT(1) << "Failed to configure signals: " << os::strerror(errno);
     }
@@ -780,6 +782,7 @@ void Slave::detected(const Future<Option<MasterInfo>>& _master)
     Duration duration =
       flags.registration_backoff_factor * ((double) ::random() / RAND_MAX);
 
+#ifdef HAS_AUTHENTICATION
     if (credential.isSome()) {
       // Authenticate with the master.
       // TODO(vinod): Do a backoff for authentication similar to what
@@ -800,6 +803,14 @@ void Slave::detected(const Future<Option<MasterInfo>>& _master)
             &Slave::doReliableRegistration,
             flags.registration_backoff_factor * 2); // Backoff.
     }
+#else
+    reauthenticate = false;
+
+    delay(duration,
+          self(),
+          &Slave::doReliableRegistration,
+          flags.registration_backoff_factor * 2); // Backoff.
+#endif
   }
 
   // Keep detecting masters.
@@ -809,6 +820,7 @@ void Slave::detected(const Future<Option<MasterInfo>>& _master)
 }
 
 
+#ifdef HAS_AUTHENTICATION
 void Slave::authenticate()
 {
   authenticated = false;
@@ -918,6 +930,7 @@ void Slave::authenticationTimeout(Future<bool> future)
     LOG(WARNING) << "Authentication timed out";
   }
 }
+#endif
 
 
 void Slave::registered(

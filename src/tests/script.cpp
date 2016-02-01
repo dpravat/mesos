@@ -109,8 +109,10 @@ void execute(const string& script)
     // Enable replicated log based registry.
     os::setenv("MESOS_REGISTRY", "replicated_log");
 
+#ifdef HAS_AUTHENTICATION
     // Enable authentication.
     os::setenv("MESOS_AUTHENTICATE", "true");
+#endif
 
     // Create test credentials.
     const string& credentials =
