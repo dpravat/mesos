@@ -219,7 +219,7 @@ int main(int argc, char** argv)
 
   logging::initialize(argv[0], flags, true); // Catch signals.
 
-  //spawn(new VersionProcess(), true);
+  spawn(new VersionProcess(), true);
 
   LOG(INFO) << "Build: " << build::DATE << " by " << build::USER;
 
@@ -254,14 +254,15 @@ int main(int argc, char** argv)
 #endif // __linux__
 
   Try<Containerizer*> containerizer = (Containerizer*)0;
- //   Containerizer::create(flags, false, &fetcher);
+//  TODO(dpravat) Enable Containerizer
+//    Containerizer::create(flags, false, &fetcher);
 
   if (containerizer.isError()) {
     EXIT(EXIT_FAILURE)
       << "Failed to create a containerizer: " << containerizer.error();
   }
 
-  Try<MasterDetector*> detector = (MasterDetector*)0;//MasterDetector::create(master.get());
+  Try<MasterDetector*> detector = MasterDetector::create(master.get());
 
   if (detector.isError()) {
     EXIT(EXIT_FAILURE)
