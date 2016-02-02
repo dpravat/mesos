@@ -352,6 +352,8 @@ if (WIN32)
   set(MESOS_SRC ${MESOS_SRC} ${WIN32_SRC})
 endif (WIN32)
 
+add_definitions(-DUSE_STATIC_LIB)
+
 # INCLUDE DIRECTIVES FOR MESOS LIBRARY (generates, e.g., -I/path/to/thing
 # on Linux).
 #########################################################################

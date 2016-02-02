@@ -29,6 +29,8 @@ set(PROCESS_AGENT_SRC
 #  ../master/detector.cpp
   )
 
+add_definitions(-DUSE_STATIC_LIB)
+
 # INCLUDE DIRECTIVES FOR PROCESS TEST BINARY (generates, e.g., -I/path/to/thing
 # on Linux).
 ###############################################################################

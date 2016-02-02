@@ -36,7 +36,7 @@ set(ZOOKEEPER_INCLUDE_GENDIR ${ZOOKEEPER_C_ROOT}/generated)
 set(ZOOKEEPER_INCLUDE_DIR ${ZOOKEEPER_C_ROOT}/include)
 
 # Convenience variables for `lib` directories of built third-party dependencies.
-set(ZOOKEEPER_LIB_DIR ${ZOOKEEPER_LIB})
+set(ZOOKEEPER_LIB_DIR ${ZOOKEEPER_LIB}/x64/${CMAKE_BUILD_TYPE})
 
 # Convenience variables for "lflags", the symbols we pass to CMake to generate
 # things like `-L/path/to/glog` or `-lglog`.
