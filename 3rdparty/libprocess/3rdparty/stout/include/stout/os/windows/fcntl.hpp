@@ -21,25 +21,40 @@ namespace os {
 
 inline Try<Nothing> cloexec(int fd)
 {
-  return WindowsError(ERROR_NOT_SUPPORTED);
+  // This is not supported on Windows sockets.
+  // NOTE: May need to be implemented for files if needed.
+  return Nothing();
 }
 
 
 inline Try<bool> isCloexec(int fd)
 {
-  return WindowsError(ERROR_NOT_SUPPORTED);
+  // This is not supported on Windows sockets.
+  // NOTE: May need to be implemented for files if needed.
+  return true;
 }
 
 
 inline Try<Nothing> nonblock(int fd)
 {
-  return WindowsError(ERROR_NOT_SUPPORTED);
+  const u_long nonblockmode = 1;
+  u_long mode = nonblockmode;
+
+  int result = ioctlsocket(fd, FIONBIO, &mode);
+  if (result != NO_ERROR) {
+    return WindowsError(result);
+  }
+
+  return Nothing();
 }
 
 
 inline Try<bool> isNonblock(int fd)
 {
-  return WindowsError(ERROR_NOT_SUPPORTED);
+  // In windows there is no way to know if the socket is
+  // blocking or non blocking. However, we set sockets
+  // to non blocking on startup. Returning true.
+  return true;
 }
 
 } // namespace os {
