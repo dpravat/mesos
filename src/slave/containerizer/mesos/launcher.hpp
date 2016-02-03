@@ -106,12 +106,37 @@ public:
 
   virtual process::Future<Nothing> destroy(const ContainerID& containerId);
 
-private:
+protected:
   PosixLauncher() {}
 
   // The 'pid' is the process id of the first process and also the
   // process group id and session id.
   hashmap<ContainerID, pid_t> pids;
+};
+
+// Minimal implementation of a `Launcher` for the Windows platform. Does not
+// take into account process groups (jobs) or sessions.
+class WindowsLauncher : public PosixLauncher
+{
+public:
+  static Try<Launcher*> create(const Flags& flags);
+
+  virtual ~WindowsLauncher() {}
+
+  virtual Try<pid_t> fork(
+    const ContainerID& containerId,
+    const std::string& path,
+    const std::vector<std::string>& argv,
+    const process::Subprocess::IO& in,
+    const process::Subprocess::IO& out,
+    const process::Subprocess::IO& err,
+    const Option<flags::FlagsBase>& flags,
+    const Option<std::map<std::string, std::string>>& environment,
+    const Option<lambda::function<int()>>& setup,
+    const Option<int>& namespaces);
+
+private:
+  WindowsLauncher() {}
 };
 
 } // namespace slave {
