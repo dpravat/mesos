@@ -80,10 +80,10 @@ set(LIBEV_LIB_DIR       ${LIBEV_ROOT}-build/.libs)
 
 if (WIN32)
   set(HTTP_PARSER_LIB_DIR ${HTTP_PARSER_ROOT}-build/${CMAKE_BUILD_TYPE})
-  set(CURL_LIB_DIR        ${CURL_ROOT}/lib)
+  set(CURL_LIB_DIR        ${CURL_ROOT}-build/lib/${CMAKE_BUILD_TYPE})
   set(GLOG_LIB_DIR        ${GLOG_ROOT}-build/${CMAKE_BUILD_TYPE})
   set(LIBEVENT_LIB_DIR    ${LIBEVENT_ROOT}-build/lib)
-  set(PROTOBUF_LIB_DIR    ${PROTOBUF_ROOT}/vsprojects/${CMAKE_BUILD_TYPE})
+  set(PROTOBUF_LIB_DIR    ${PROTOBUF_ROOT}-build/${CMAKE_BUILD_TYPE})
   set(ZLIB_LIB_DIR        ${ZLIB_ROOT}-build/${CMAKE_BUILD_TYPE})
 else (WIN32)
   set(HTTP_PARSER_LIB_DIR ${HTTP_PARSER_ROOT}-build)
@@ -105,8 +105,8 @@ if (WIN32)
   # and on Windows it should be curl.lib. But on Windows, it's actually
   # libcurl.lib. Hence, we have to special case it here because CMake assumes
   # the library names are generated correctly.
-  set(CURL_LFLAG     libcurl_a)
-  set(PROTOBUF_LFLAG libprotobuf)
+  set(CURL_LFLAG     libcurl)
+  set(PROTOBUF_LFLAG libprotobufd)
 
   # Necessary to indicate what library to use for zlib for linking on Windows.
   set(ZLIB_LFLAG     zlibstaticd)
@@ -121,7 +121,7 @@ endif (WIN32)
 if (NOT WIN32)
   set(PROTOC ${PROTOBUF_LIB_ROOT}/bin/protoc)
 else (NOT WIN32)
-  set(PROTOC ${PROTOBUF_ROOT}/vsprojects/${CMAKE_BUILD_TYPE}/protoc.exe)
+  set(PROTOC ${PROTOBUF_ROOT}-build/${CMAKE_BUILD_TYPE}/protoc.exe)
 endif (NOT WIN32)
 
 # Configure the process library, the last of our third-party libraries.
