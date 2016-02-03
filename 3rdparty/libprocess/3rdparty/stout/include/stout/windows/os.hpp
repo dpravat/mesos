@@ -41,15 +41,15 @@
 
 namespace os {
 
-  inline Try<std::list<Process>> processes()
-  {
-    return std::list<Process>();
-  }
+inline Try<std::list<Process>> processes()
+{
+  return std::list<Process>();
+}
 
-  inline Option<Process> process(
+inline Option<Process> process(
     pid_t pid,
     const std::list<Process>& processes)
-     {
+{
   foreach(const Process& process, processes) {
     if (process.pid == pid) {
       return process;
@@ -58,60 +58,55 @@ namespace os {
   return None();
 }
 
-    inline std::set<pid_t> children(
-      pid_t pid,
-      const std::list<Process>& processes,
-      bool recursive = true)
-     {
-      // Perform a breadth first search for descendants.
-      std::set<pid_t> descendants;
-    std::queue<pid_t> parents;
-    parents.push(pid);
-      do {
-      pid_t parent = parents.front();
-      parents.pop();
+inline std::set<pid_t> children(
+    pid_t pid,
+    const std::list<Process>& processes,
+    bool recursive = true)
+{
+  // Perform a breadth first search for descendants.
+  std::set<pid_t> descendants;
+  std::queue<pid_t> parents;
+  parents.push(pid);
+  do {
+    pid_t parent = parents.front();
+    parents.pop();
 
-       // Search for children of parent.
-        foreach(const Process& process, processes) {
-        if (process.parent == parent) {
-                  // Have we seen this child yet?
-            if (descendants.insert(process.pid).second) {
-            parents.push(process.pid);
-
-          }
-
+    // Search for children of parent.
+    foreach(const Process& process, processes) {
+      if (process.parent == parent) {
+      // Have we seen this child yet?
+        if (descendants.insert(process.pid).second) {
+          parents.push(process.pid);
         }
-
       }
-
-    } while (recursive && !parents.empty());
-        return descendants;
-      }
-
-    inline Try<std::set<pid_t> > children(pid_t pid, bool recursive = true)
-     {
-    const Try<std::list<Process>> processes = os::processes();
-
-      if (processes.isError()) {
-      return Error(processes.error());
-
     }
+  } while (recursive && !parents.empty());
 
-      return children(pid, processes.get(), recursive);
-    }
+  return descendants;
+}
 
+inline Try<std::set<pid_t> > children(pid_t pid, bool recursive = true)
+{
+  const Try<std::list<Process>> processes = os::processes();
 
-  inline int pagesize()
-  {
-    SYSTEM_INFO si = {0};
-    GetSystemInfo(&si);
-    return si.dwPageSize;
-  };
+  if (processes.isError()) {
+    return Error(processes.error());
+  }
 
-  inline long cpu()
-  {
-    return 4;
-  };
+  return children(pid, processes.get(), recursive);
+}
+
+inline int pagesize()
+{
+  SYSTEM_INFO si = {0};
+  GetSystemInfo(&si);
+  return si.dwPageSize;
+};
+
+inline long cpu()
+{
+  return 4;
+};
 
 // Sets the value associated with the specified key in the set of
 // environment variables.
@@ -119,18 +114,33 @@ inline void setenv(const std::string& key,
                    const std::string& value,
                    bool overwrite = true)
 {
+  // Do not set the variable if already set and `overwrite` was not specified.
+  if (!overwrite) {
+    const DWORD bytes = ::GetEnvironmentVariable(key.c_str(), NULL, 0);
+    const DWORD result = ::GetLastError();
 
+    // Per MSDN[1], `GetEnvironmentVariable` returns 0 on error and sets the
+    // error code to `ERROR_ENVVAR_NOT_FOUND` if the variable was not found.
+    //
+    // [1] https://msdn.microsoft.com/en-us/library/windows/desktop/ms683188(v=vs.85).aspx
+    if (bytes != 0 || result != ERROR_ENVVAR_NOT_FOUND) {
+      return;
+    }
+  }
+
+  // `SetEnvironmentVariable` returns an error code, but we can't act on it.
+  ::SetEnvironmentVariable(key.c_str(), value.c_str());
 }
 
-/*
+
 // Unsets the value associated with the specified key in the set of
 // environment variables.
 inline void unsetenv(const std::string& key)
 {
-  UNIMPLEMENTED;
+  ::SetEnvironmentVariable(key.c_str(), NULL);
 }
 
-
+/*
 // Executes a command by calling "/bin/sh -c <command>", and returns
 // after the command has been completed. Returns 0 if succeeds, and
 // return -1 on error (e.g., fork/exec/waitpid failed). This function
