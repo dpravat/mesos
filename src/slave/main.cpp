@@ -253,9 +253,8 @@ int main(int argc, char** argv)
   }
 #endif // __linux__
 
-  Try<Containerizer*> containerizer = (Containerizer*)0;
-//  TODO(dpravat) Enable Containerizer
-//    Containerizer::create(flags, false, &fetcher);
+  Try<Containerizer*> containerizer =
+    Containerizer::create(flags, false, &fetcher);
 
   if (containerizer.isError()) {
     EXIT(EXIT_FAILURE)
