@@ -78,6 +78,7 @@ Future<hashset<ContainerID>> PosixLauncher::recover(
 // The setup function in child before the exec.
 static int childSetup(const Option<lambda::function<int()>>& setup)
 {
+#ifndef __WINDOWS__
   // POSIX guarantees a forked child's pid does not match any existing
   // process group id so only a single setsid() is required and the
   // session id will be the pid.
@@ -93,7 +94,7 @@ static int childSetup(const Option<lambda::function<int()>>& setup)
   if (setup.isSome()) {
     return setup.get()();
   }
-
+#endif // __WINDOWS__
   return 0;
 }
 

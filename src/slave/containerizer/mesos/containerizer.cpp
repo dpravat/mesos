@@ -190,6 +190,7 @@ Try<MesosContainerizer*> MesosContainerizer::create(
   // Create the isolators for the MesosContainerizer.
   const hashmap<string, lambda::function<Try<Isolator*>(const Flags&)>>
     creators = {
+#ifndef __WINDOWS__
     // Filesystem isolators.
     {"filesystem/posix", &PosixFilesystemIsolatorProcess::create},
 #ifdef __linux__
@@ -213,6 +214,7 @@ Try<MesosContainerizer*> MesosContainerizer::create(
 #ifdef WITH_NETWORK_ISOLATOR
     {"network/port_mapping", &PortMappingIsolatorProcess::create},
 #endif
+#endif // __WINDOWS__
   };
 
   vector<Owned<Isolator>> isolators;
@@ -951,7 +953,7 @@ Future<bool> MesosContainerizerProcess::__launch(
 
     // We assume this should not fail under reasonable conditions so we
     // use CHECK.
-    CHECK(pipe(pipes) == 0);
+    // CHECK(pipe(pipes) == 0);
 
     // Prepare the flags to pass to the launch process.
     MesosContainerizerLaunch::Flags launchFlags;

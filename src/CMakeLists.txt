@@ -225,28 +225,31 @@ set(AGENT_SRC
   slave/containerizer/mesos/launch.cpp
   slave/containerizer/fetcher.cpp
   slave/resource_estimator.cpp
-#  slave/containerizer/containerizer.cpp
-#  slave/containerizer/docker.cpp
-#  slave/containerizer/external_containerizer.cpp
+  slave/containerizer/containerizer.cpp
+  slave/containerizer/external_containerizer.cpp
+  slave/containerizer/composing.cpp
+  slave/containerizer/mesos/containerizer.cpp
+  slave/container_logger.cpp
+  slave/container_loggers/sandbox.cpp
+  slave/containerizer/mesos/launcher.cpp
+  slave/containerizer/mesos/provisioner/provisioner.cpp
+  slave/containerizer/mesos/provisioner/backend.cpp
+  slave/containerizer/mesos/provisioner/backends/copy.cpp
+  slave/containerizer/mesos/provisioner/paths.cpp
+  slave/containerizer/mesos/provisioner/store.cpp
+  slave/containerizer/mesos/provisioner/appc/store.cpp
+  slave/containerizer/mesos/provisioner/appc/paths.cpp
+  slave/containerizer/mesos/provisioner/appc/spec.cpp
   )
 
 if (NOT WIN32)
   set(AGENT_SRC
     ${AGENT_SRC}
     slave/slave.cpp
-    slave/containerizer/composing.cpp
+    slave/containerizer/docker.cpp
     slave/containerizer/mesos/isolator.cpp
-    slave/containerizer/mesos/launcher.cpp
     slave/containerizer/mesos/mount.cpp
     slave/containerizer/mesos/isolators/posix/disk.cpp
-    slave/containerizer/mesos/provisioner/paths.cpp
-    slave/containerizer/mesos/provisioner/provisioner.cpp
-    slave/containerizer/mesos/provisioner/store.cpp
-    slave/containerizer/mesos/provisioner/appc/paths.cpp
-    slave/containerizer/mesos/provisioner/appc/spec.cpp
-    slave/containerizer/mesos/provisioner/appc/store.cpp
-    slave/containerizer/mesos/provisioner/backend.cpp
-    slave/containerizer/mesos/provisioner/backends/copy.cpp
     slave/containerizer/mesos/provisioner/docker/message.proto
     slave/containerizer/mesos/provisioner/docker/metadata_manager.cpp
     slave/containerizer/mesos/provisioner/docker/paths.cpp
