@@ -173,8 +173,15 @@ Try<MesosContainerizer*> MesosContainerizer::create(
     if (flags_.launcher.isSome() && flags_.launcher.get() != "posix") {
       return Error("Unsupported launcher: " + flags_.launcher.get());
     }
+#ifndef __WINDOWS__
+    if (flags_.launcher.isSome() && flags_.launcher.get() != "posix") {
+      return Error("Unsupported launcher: " + flags_.launcher.get());
+    }
 
     return PosixLauncher::create(flags_);
+#else
+    return WindowsLauncher::create(flags_);
+#endif // !__WINDOWS__
 #endif // __linux__
   }();
 
