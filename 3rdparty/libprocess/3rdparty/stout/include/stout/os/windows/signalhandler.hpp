@@ -40,7 +40,7 @@ namespace os {
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT:
       if (signaledWrapper != NULL) {
-        (*signaledWrapper)(SIGINT, 0);
+        (*signaledWrapper)(SIGUSR1, 0);
         return TRUE;
       }
     default:
