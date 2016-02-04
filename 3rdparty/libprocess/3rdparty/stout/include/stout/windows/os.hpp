@@ -35,6 +35,9 @@
 #include <stout/os/os.hpp>
 #include <stout/os/config.hpp>
 
+#include <TlHelp32.h>
+#include <Psapi.h>
+
 #define WNOHANG 0
 #define hstrerror() ("")
 #define SIGPIPE 100
@@ -461,40 +464,190 @@ decltype(_access(fileName.c_str(), accessMode))
   return _access(fileName.c_str(), accessMode);
 }
 
+inline Result<bool> FindProcess(
+  pid_t pid,
+  bool& exists,
+  PPROCESSENTRY32 process_entry_ptr)
+{
+  // Initialize output paramter 'exists'.
+  exists = false;
+
+  if (NULL == process_entry_ptr) {
+    return WindowsError("os::FindProcess(): \
+      'process_entry_pointer' input parameter \
+      cannot be null");
+  }
+
+  // Get a snapshot of the proceses in the system.
+  HANDLE snapshot_handle = CreateToolhelp32Snapshot(
+    TH32CS_SNAPPROCESS,
+    pid);
+  if (snapshot_handle == INVALID_HANDLE_VALUE ||
+    snapshot_handle == NULL) {
+    return WindowsError("os::FindProcess(): \
+      Failed to call CreateToolhelp32Snapshot",
+      GetLastError());
+  }
+
+  std::shared_ptr<void> safe_snapshot_handle
+    (snapshot_handle,
+      ::CloseHandle);
+
+  // Initialize process entry.
+  ZeroMemory(process_entry_ptr, sizeof(PROCESSENTRY32));
+  process_entry_ptr->dwSize = sizeof(PROCESSENTRY32);
+
+  // Point to the first process and start loop to
+  // find process.
+  DWORD last_error = ERROR_SUCCESS;
+  bool bcontinue = Process32First(
+    safe_snapshot_handle.get(),
+    process_entry_ptr);
+  if (!bcontinue) {
+    // No processes returned. Most likely an error but
+    // will handle all paths.
+    last_error = GetLastError();
+    if (last_error != ERROR_NO_MORE_FILES &&
+      last_error != ERROR_SUCCESS) {
+      return WindowsError("os::FindProcess(): \
+        Failed to call Process32Next", last_error);
+    }
+
+    return true;
+  }
+
+  while (bcontinue) {
+    if (process_entry_ptr->th32ProcessID == pid) {
+      exists = true;
+      break;
+    }
+
+    bcontinue = Process32Next(safe_snapshot_handle.get(), process_entry_ptr);
+    if (!bcontinue) {
+      last_error = GetLastError();
+      if (last_error != ERROR_NO_MORE_FILES &&
+        last_error != ERROR_SUCCESS) {
+        return WindowsError("os::FindProcess(): \
+          Failed to call Process32Next", last_error);
+      }
+    }
+  }
+
+  return true;
+}
+
+inline Result<bool> FindProcess(
+  pid_t pid,
+  bool& exists)
+{
+  PROCESSENTRY32 process_entry;
+  return FindProcess(pid, exists, &process_entry);
+}
+
 inline Result<Process> process(pid_t pid)
 {
-  /*
-  // Page size, used for memory accounting.
-  SYSTEM_INFO systemInfo;
-  GetNativeSystemInfo (&systemInfo);
-  static const long pageSize = systemInfo.dwPageSize;
-  if (pageSize <= 0) {
-  return Error("Failed to get SYSTEM_INFO::dwPageSize");
+  pid_t process_id = 0;
+  pid_t parent_process_id = 0;
+  pid_t session_id = 0;
+  std::string executable_filename = "";
+  size_t wss = 0;
+  double user_time = 0;
+  double system_time = 0;
+
+  // Find process with pid.
+  PROCESSENTRY32 process_entry;
+  bool process_exists = false;
+  Result<bool> findprocess_result = FindProcess(
+    pid,
+    process_exists,
+    &process_entry);
+
+  if (findprocess_result.isError()) {
+    return WindowsError(findprocess_result.error());
   }
 
-  // Number of clock ticks per second, used for cpu accounting.
-  long tmpTicks = 0;
-  QueryPerformanceFrequency((LARGE_INTEGER*)&tmpTicks);
-  static const long ticks = tmpTicks;
-  if (ticks <= 0) {
-  return Error("Failed to get QueryPerformanceFrequency");
+  // If process does not exist simply return
+  // none. No need to return error here.
+  // See linux.hpp implementation logic.
+  if (!process_exists) {
+    return None();
   }
-  */
 
-  //
-  // TODO: What we need to do here is:
-  // - Check if process still exists based on pid
-  // - Get windows process stats and fill up process struct properly
-  return Process(pid,
-    0,
-    0,
-    0,
-    0,
-    Option<Duration>::none(),
-    Option<Duration>::none(),
-    "",
-    false);
+  // Process exists. Open process and get stats.
+  // Get process id and parent process id and filename.
+  process_id = process_entry.th32ProcessID;
+  parent_process_id = process_entry.th32ParentProcessID;
+  executable_filename = process_entry.szExeFile;
+
+  HANDLE process_handle = OpenProcess(
+    THREAD_ALL_ACCESS,
+    false,
+    process_id);
+  if (process_handle == INVALID_HANDLE_VALUE ||
+    process_handle == NULL) {
+    return WindowsError("os::process(): Failed to call OpenProcess",
+      GetLastError());
+  }
+
+  std::shared_ptr<void> safe_process_handle(process_handle, ::CloseHandle);
+
+  // Get Windows Working set size (Resident set size in linux).
+  PROCESS_MEMORY_COUNTERS proc_mem_counters;
+  bool result = GetProcessMemoryInfo(
+    safe_process_handle.get(),
+    &proc_mem_counters,
+    sizeof(proc_mem_counters));
+  if (!result) {
+    return WindowsError("os::process(): Failed to call GetProcessMemoryInfo",
+      GetLastError());
+  }
+
+  wss = proc_mem_counters.WorkingSetSize;
+
+  // Get session Id.
+  result = ProcessIdToSessionId(process_id, &session_id);
+  if (!result) {
+    return WindowsError("os::process(): Failed to call ProcessIdToSessionId",
+      GetLastError());
+  }
+
+  // Get Process CPU time.
+  FILETIME create_filetime, exit_filetime, kernel_filetime, user_filetime;
+  result = GetProcessTimes(
+    safe_process_handle.get(),
+    &create_filetime,
+    &exit_filetime,
+    &kernel_filetime,
+    &user_filetime);
+  if (!result) {
+    return WindowsError("os::process(): Failed to call GetProcessTimes",
+      GetLastError());
+  }
+
+  LARGE_INTEGER lKernelTime, lUserTime; // in 100 nanoseconds.
+  lKernelTime.HighPart = kernel_filetime.dwHighDateTime;
+  lKernelTime.LowPart = kernel_filetime.dwLowDateTime;
+  lUserTime.HighPart = user_filetime.dwHighDateTime;
+  lUserTime.LowPart = user_filetime.dwLowDateTime;
+
+  system_time = lKernelTime.QuadPart / 10000000;
+  user_time = lUserTime.QuadPart / 10000000;
+
+  Try<Duration> utime = Duration::create(user_time);
+  Try<Duration> stime = Duration::create(system_time);
+
+  return Process(
+    process_id,        // process id.
+    parent_process_id, // parent process id.
+    0,                 // group id.
+    session_id,        // session id.
+    Bytes(wss),        // wss.
+    utime.isSome() ? utime.get() : Option<Duration>::none(),
+    stime.isSome() ? stime.get() : Option<Duration>::none(),
+    executable_filename,
+    false);            // is not zombie process.
 }
+
 } // namespace os {
 
 

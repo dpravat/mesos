@@ -301,9 +301,13 @@ const mode_t S_ISVTX = 0x02000000;        // No-op.
 // Flags not supported by Windows
 const mode_t O_SYNC     = 0x00000000;     // No-op.
 const mode_t O_NONBLOCK = 0x00000000;     // No-op.
-const mode_t SIGCONT    = 0x00000000;     // No-op
-const mode_t SIGSTOP    = 0x00000000;     // No-op
-const mode_t SIGKILL    = 0x00000000;     // No-op
+
+// Linux signal flags not used in Windows but will
+// define them per Linux sys/signal.h to branch
+// properly for Windows processes' stop, resume and kill.
+const mode_t SIGCONT = 0x00000009;     // Signal Cont - Dec 19.
+const mode_t SIGSTOP = 0x00000011;     // Signal Stop - Dec 17.
+const mode_t SIGKILL = 0x00000013;     // Signal Kill - Dec 9.
 
 inline auto strerror_r(int errnum, char* buffer, size_t length) ->
 decltype(strerror_s(buffer, length, errnum))
