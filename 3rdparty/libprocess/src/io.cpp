@@ -75,7 +75,12 @@ void read(
     }
 
     if (length < 0) {
+#ifndef __WINDOWS__
       if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+#else
+      if (WSAGetLastError() == WSAEALREADY
+          || WSAGetLastError() == WSAEWOULDBLOCK) {
+#endif
         // Restart the read operation.
         Future<short> future =
           io::poll(fd, process::io::READ).onAny(
@@ -128,7 +133,12 @@ void write(
     ssize_t length = os::write(fd, data, size);
 
     if (length < 0) {
+#ifndef __WINDOWS__
       if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+#else
+      if (WSAGetLastError() == WSAEALREADY
+          || WSAGetLastError() == WSAEWOULDBLOCK) {
+#endif
         // Restart the write operation.
         Future<short> future =
           io::poll(fd, process::io::WRITE).onAny(

@@ -121,7 +121,11 @@ Future<Nothing> PollSocketImpl::connect(const Address& address)
 {
   Try<int> connect = network::connect(get(), address);
   if (connect.isError()) {
+#ifdef __WINDOWS__
+    if(WSAGetLastError() == WSAEINPROGRESS) {
+#else
     if (errno == EINPROGRESS) {
+#endif
       return io::poll(get(), io::WRITE)
         .then(lambda::bind(&internal::connect, socket()));
     }
@@ -148,10 +152,14 @@ Future<size_t> socket_send_data(int s, const char* data, size_t size)
   while (true) {
     ssize_t length = send(s, data, size, MSG_NOSIGNAL);
 
+#ifndef __WINDOWS__
     if (length < 0 && (errno == EINTR)) {
       // Interrupted, try again now.
       continue;
     } else if (length < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+#else
+    if (length < 0 && (WSAGetLastError() == WSAEINPROGRESS)) {
+#endif // __WINDOWS__
       // Might block, try again later.
       return io::poll(s, io::WRITE)
         .then(lambda::bind(&internal::socket_send_data, s, data, size));
