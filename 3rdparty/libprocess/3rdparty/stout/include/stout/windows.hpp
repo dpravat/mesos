@@ -386,8 +386,9 @@ decltype(_mktemp_s(path, strlen(path) + 1))
   }
 
   // NOTE: We open the file with read / write access for the given user, an
-  // attempt to match POSIX's specification of `mkstemp`.
-  return _open(path, S_IRUSR | S_IWUSR);
+  // attempt to match POSIX's specification of `mkstemp`. We use _S_IREAD and
+  // _S_IWRITE here instead of the POSIX equivalents.
+  return _open(path, _O_CREAT, _S_IREAD | _S_IWRITE);
 }
 
 
