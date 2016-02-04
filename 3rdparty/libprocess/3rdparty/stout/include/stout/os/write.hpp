@@ -21,4 +21,4 @@
 #include <stout/os/posix/write.hpp>
 #endif // __WINDOWS__
 
-#endif // __STOUT_OS_READ_HPP__
+#endif // __STOUT_OS_WRITE_HPP__

@@ -32,7 +32,7 @@ inline ssize_t write(int fd, const void* data, size_t size)
   // either `send` or `_write` into POSIX semantics (i.e., what the
   // callee will be checking for).
   if (net::isSocket(fd)) {
-    return ::send(fd, data, size, 0);
+    return ::send(fd, (const char*)data, size, 0);
   }
 
   return ::_write(fd, data, size);
@@ -88,4 +88,4 @@ inline Try<Nothing> write(const std::string& path, const std::string& message)
 } // namespace os {
 
 
-#endif // __STOUT_OS_WINDOWS_READ_HPP__
+#endif // __STOUT_OS_WINDOWS_WRITE_HPP__
