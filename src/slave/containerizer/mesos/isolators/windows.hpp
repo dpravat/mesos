@@ -14,8 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __POSIX_ISOLATOR_HPP__
-#define __POSIX_ISOLATOR_HPP__
+#ifndef __WINDOWS_ISOLATOR_HPP__
+#define __WINDOWS_ISOLATOR_HPP__
 
 #include <process/future.hpp>
 
@@ -37,7 +37,7 @@ namespace slave {
 // A basic MesosIsolatorProcess that keeps track of the pid but
 // doesn't do any resource isolation. Subclasses must implement
 // usage() for their appropriate resource(s).
-class PosixIsolatorProcess : public MesosIsolatorProcess
+class WindowsIsolatorProcess : public MesosIsolatorProcess
 {
 public:
   virtual process::Future<Nothing> recover(
@@ -134,47 +134,34 @@ protected:
     promises;
 };
 
-
-class PosixCpuIsolatorProcess : public PosixIsolatorProcess
+class WindowsCpuIsolatorProcess : public WindowsIsolatorProcess
 {
 public:
   static Try<mesos::slave::Isolator*> create(const Flags& flags)
   {
     process::Owned<MesosIsolatorProcess> process(
-        new PosixCpuIsolatorProcess());
+      new WindowsCpuIsolatorProcess());
 
     return new MesosIsolator(process);
   }
 
   virtual process::Future<ResourceStatistics> usage(
-      const ContainerID& containerId)
+    const ContainerID& containerId)
   {
-    if (!pids.contains(containerId)) {
-      LOG(WARNING) << "No resource usage for unknown container '"
-                   << containerId << "'";
-      return ResourceStatistics();
-    }
-
-    // Use 'mesos-usage' but only request 'cpus_' values.
-    Try<ResourceStatistics> usage =
-      mesos::internal::usage(pids.get(containerId).get(), false, true);
-    if (usage.isError()) {
-      return process::Failure(usage.error());
-    }
-    return usage.get();
+    return ResourceStatistics();
   }
 
-private:
-  PosixCpuIsolatorProcess() {}
+protected:
+  WindowsCpuIsolatorProcess() {}
 };
 
-class PosixMemIsolatorProcess : public PosixIsolatorProcess
+class WindowsMemIsolatorProcess : public WindowsIsolatorProcess
 {
 public:
   static Try<mesos::slave::Isolator*> create(const Flags& flags)
   {
     process::Owned<MesosIsolatorProcess> process(
-        new PosixMemIsolatorProcess());
+        new WindowsMemIsolatorProcess());
 
     return new MesosIsolator(process);
   }
@@ -188,6 +175,7 @@ public:
       return ResourceStatistics();
     }
 
+/*
     // Use 'mesos-usage' but only request 'mem_' values.
     Try<ResourceStatistics> usage =
       mesos::internal::usage(pids.get(containerId).get(), true, false);
@@ -195,10 +183,12 @@ public:
       return process::Failure(usage.error());
     }
     return usage.get();
+*/
+    return ResourceStatistics();
   }
 
 private:
-  PosixMemIsolatorProcess() {}
+  WindowsMemIsolatorProcess() {}
 };
 
 } // namespace slave {
