@@ -134,6 +134,11 @@ set(LINUX_SRC
   slave/containerizer/mesos/provisioner/backends/bind.cpp
   )
 
+set(WIN32_SRC
+  ${WIN32_SRC}
+  slave/containerizer/mesos/isolators/filesystem/windows.cpp
+  )
+
 set(DOCKER_SRC
   docker/docker.hpp
   docker/docker.cpp
@@ -231,6 +236,7 @@ set(AGENT_SRC
   slave/containerizer/mesos/containerizer.cpp
   slave/container_logger.cpp
   slave/container_loggers/sandbox.cpp
+  slave/containerizer/mesos/isolator.cpp
   slave/containerizer/mesos/launcher.cpp
   slave/containerizer/mesos/provisioner/provisioner.cpp
   slave/containerizer/mesos/provisioner/backend.cpp
@@ -240,6 +246,7 @@ set(AGENT_SRC
   slave/containerizer/mesos/provisioner/appc/store.cpp
   slave/containerizer/mesos/provisioner/appc/paths.cpp
   slave/containerizer/mesos/provisioner/appc/spec.cpp
+  slave/containerizer/mesos/isolator.cpp
   )
 
 if (NOT WIN32)
@@ -247,7 +254,6 @@ if (NOT WIN32)
     ${AGENT_SRC}
     slave/slave.cpp
     slave/containerizer/docker.cpp
-    slave/containerizer/mesos/isolator.cpp
     slave/containerizer/mesos/mount.cpp
     slave/containerizer/mesos/isolators/posix/disk.cpp
     slave/containerizer/mesos/provisioner/docker/message.proto
@@ -340,6 +346,11 @@ endif (NOT WIN32)
 if (LINUX)
   set(MESOS_SRC ${MESOS_SRC} ${LINUX_SRC})
 endif (LINUX)
+
+# Include source for Windows build.
+if (WIN32)
+  set(MESOS_SRC ${MESOS_SRC} ${WIN32_SRC})
+endif (WIN32)
 
 # INCLUDE DIRECTIVES FOR MESOS LIBRARY (generates, e.g., -I/path/to/thing
 # on Linux).
