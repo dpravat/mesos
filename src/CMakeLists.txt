@@ -145,6 +145,11 @@ set(LINUX_SRC
   slave/containerizer/mesos/provisioner/backends/overlay.cpp
   )
 
+set(WIN32_SRC
+  ${WIN32_SRC}
+  slave/containerizer/mesos/isolators/filesystem/windows.cpp
+  )
+
 set(DOCKER_SRC
   docker/docker.hpp
   docker/docker.cpp
@@ -267,6 +272,7 @@ set(AGENT_SRC
   slave/containerizer/mesos/containerizer.cpp
   slave/container_logger.cpp
   slave/container_loggers/sandbox.cpp
+  slave/containerizer/mesos/isolator.cpp
   slave/containerizer/mesos/launcher.cpp
   slave/containerizer/mesos/provisioner/paths.cpp
   slave/containerizer/mesos/provisioner/provisioner.cpp
@@ -287,7 +293,6 @@ if (NOT WIN32)
     slave/resource_estimator.cpp
     slave/slave.cpp
     slave/containerizer/docker.cpp
-    slave/containerizer/mesos/isolator.cpp
     slave/containerizer/mesos/mount.cpp
     slave/containerizer/mesos/isolators/filesystem/posix.cpp
     slave/containerizer/mesos/isolators/posix/disk.cpp
@@ -345,6 +350,7 @@ set(MESSAGES_SRC
 set(MESOS_SRC
   ${MESOS_SRC}
   ${AGENT_SRC}
+  ${APPC_SRC}
   ${MESOS_PROTOBUF_SRC}
   ${MODULE_SRC}
   ${COMMON_SRC}
@@ -362,7 +368,6 @@ set(MESOS_SRC
 if (NOT WIN32)
   set(MESOS_SRC
     ${MESOS_SRC}
-    ${APPC_SRC}
     ${AUTHENTICATION_SRC}
     ${AUTHORIZER_SRC}
     ${DOCKER_SRC}
@@ -385,6 +390,11 @@ if (LINUX)
 endif (LINUX)
 
 add_definitions(-DUSE_STATIC_LIB -DBUILD_DATE=0 -DBUILD_TIME=0 -DBUILD_USER="frank" -DBUILD_FLAGS="" -DBUILD_JAVA_JVM_LIBRARY="")
+
+# Include source for Windows build.
+if (WIN32)
+  set(MESOS_SRC ${MESOS_SRC} ${WIN32_SRC})
+endif (WIN32)
 
 # INCLUDE DIRECTIVES FOR MESOS LIBRARY (generates, e.g., -I/path/to/thing
 # on Linux).
