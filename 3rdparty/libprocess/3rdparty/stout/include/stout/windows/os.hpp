@@ -228,18 +228,20 @@ UNIMPLEMENTED;
 // Suspends execution for the given duration.
 inline Try<Nothing> sleep(const Duration& duration)
 {
+  DWORD milliseconds = static_cast<DWORD>(duration.ms());
+  ::Sleep(milliseconds);
+
   return Nothing();
 }
-
-
 
 
 // Returns the total number of cpus (cores).
 inline Try<long> cpus()
 {
-  return 4;
+  SYSTEM_INFO sysInfo;
+  ::GetSystemInfo(&sysInfo);
+  return static_cast<long>(sysInfo.dwNumberOfProcessors);
 }
-
 
 // Returns load struct with average system loads for the last
 // 1, 5 and 15 minutes respectively.
@@ -254,14 +256,90 @@ inline Try<Load> loadavg()
 // Returns the total size of main and free memory.
 inline Try<Memory> memory()
 {
-  return Memory();
+  Memory memory;
+
+  MEMORYSTATUSEX memory_status;
+  memory_status.dwLength = sizeof(MEMORYSTATUSEX);
+  if (!::GlobalMemoryStatusEx(&memory_status)) {
+    return WindowsError("memory(): Could not call GlobalMemoryStatusEx");
+  }
+
+  memory.total = Bytes(memory_status.ullTotalPhys);
+  memory.free = Bytes(memory_status.ullAvailPhys);
+  memory.totalSwap = Bytes(memory_status.ullTotalPageFile);
+  memory.freeSwap = Bytes(memory_status.ullAvailPageFile);
+
+  return memory;
 }
 
 
 // Return the system information.
 inline Try<UTSInfo> uname()
 {
-  return UTSInfo();
+  UTSInfo info;
+
+  OSVERSIONINFOEX os_version;
+  os_version.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+  if (!::GetVersionEx((LPOSVERSIONINFO)&os_version)) {
+    return WindowsError("os::uname(): Failed to call GetVersionEx");
+  }
+
+  switch (os_version.wProductType) {
+  case VER_NT_DOMAIN_CONTROLLER:
+  case VER_NT_SERVER:
+    info.sysname = "Windows Server";
+    break;
+  default:
+    info.sysname = "Windows";
+  }
+
+  info.release = std::to_string(os_version.dwMajorVersion) + "." +
+    std::to_string(os_version.dwMinorVersion);
+  info.version = std::to_string(os_version.dwBuildNumber);
+  if (os_version.szCSDVersion[0] != '\0') {
+    info.version.append(" ");
+    info.version.append(os_version.szCSDVersion);
+  }
+
+  // Get DNS name of the local computer. First, find the size of the output
+  // buffer.
+  DWORD size = 0;
+  if (!::GetComputerNameEx(ComputerNameDnsHostname, NULL, &size) &&
+    ::GetLastError() != ERROR_MORE_DATA) {
+    return WindowsError("os::uname(): Failed to call GetComputerNameEx");
+  }
+
+  std::shared_ptr<char> computer_name(
+    (char *)malloc((size + 1) * sizeof(char)));
+
+  if (!::GetComputerNameEx(ComputerNameDnsHostname, computer_name.get(),
+    &size)) {
+    return WindowsError("os::uname(): Failed to call GetComputerNameEx");
+  }
+
+  info.nodename = computer_name.get();
+
+  // Get OS architecture
+  SYSTEM_INFO system_info;
+  ::GetNativeSystemInfo(&system_info);
+  switch (system_info.wProcessorArchitecture) {
+  case PROCESSOR_ARCHITECTURE_AMD64:
+    info.machine = "AMD64";
+    break;
+  case PROCESSOR_ARCHITECTURE_ARM:
+    info.machine = "ARM";
+    break;
+  case PROCESSOR_ARCHITECTURE_IA64:
+    info.machine = "IA64";
+    break;
+  case PROCESSOR_ARCHITECTURE_INTEL:
+    info.machine = "x86";
+    break;
+  default:
+    info.machine = "Unknown";
+  }
+
+  return info;
 }
 
 
