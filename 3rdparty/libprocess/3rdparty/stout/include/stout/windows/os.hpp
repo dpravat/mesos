@@ -378,7 +378,8 @@ inline Option<std::string> getenv(const std::string& key)
 
 inline struct tm* gmtime_r(const time_t *timep, struct tm *result)
 {
-  if (gmtime_s(result, timep))
+  // gmtime_s returns 0 if successful.
+  if (gmtime_s(result, timep) == 0)
   {
     return result;
   }
