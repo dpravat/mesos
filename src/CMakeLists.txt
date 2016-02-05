@@ -202,7 +202,8 @@ set(LOGGING_SRC
 set(MASTER_SRC
   master/validation.cpp
   master/detector.cpp
-   )
+  master/constants.cpp
+  )
 
 if (NOT WIN32)
 set(MASTER_SRC
@@ -247,6 +248,7 @@ set(STATE_SRC
 
 set(AGENT_SRC
   ${AGENT_SRC}
+  slave/slave.cpp
   slave/constants.cpp
   slave/flags.cpp
   slave/gc.cpp
@@ -271,6 +273,7 @@ set(AGENT_SRC
   slave/container_loggers/sandbox.cpp
   slave/containerizer/mesos/isolator.cpp
   slave/containerizer/mesos/launcher.cpp
+  slave/containerizer/mesos/mount.cpp
   slave/containerizer/mesos/provisioner/paths.cpp
   slave/containerizer/mesos/provisioner/provisioner.cpp
   slave/containerizer/mesos/provisioner/store.cpp
@@ -290,7 +293,6 @@ if (NOT WIN32)
     slave/resource_estimator.cpp
     slave/slave.cpp
     slave/containerizer/docker.cpp
-    slave/containerizer/mesos/mount.cpp
     slave/containerizer/mesos/isolators/filesystem/posix.cpp
     slave/containerizer/mesos/isolators/posix/disk.cpp
     slave/containerizer/mesos/provisioner/docker/local_puller.cpp
@@ -359,6 +361,7 @@ set(MESOS_SRC
   ${VERSION_SRC}
   ${ZOOKEEPER_SRC}
   ${MASTER_SRC}
+  ${EXEC_SRC}
   )
 
 if (NOT WIN32)
@@ -367,7 +370,6 @@ if (NOT WIN32)
     ${AUTHENTICATION_SRC}
     ${AUTHORIZER_SRC}
     ${DOCKER_SRC}
-    ${EXEC_SRC}
     ${HDFS_SRC}
     ${LOCAL_SRC}
     ${LOG_SRC}
@@ -417,3 +419,4 @@ add_dependencies(${MESOS_TARGET} ${AGENT_DEPENDENCIES})
 target_link_libraries(${MESOS_TARGET} ${AGENT_LIBS})
 
 add_subdirectory(slave)
+add_subdirectory(launcher)
