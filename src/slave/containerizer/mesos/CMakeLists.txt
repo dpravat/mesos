@@ -14,55 +14,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(BUILD_DATE "")
-set(BUILD_TIME "")
-set(BUILD_FLAGS "")
-set(BUILD_JAVA_JVM_LIBRARY "")
-
-# PROCESS TESTS.
-################
-set(PROCESS_AGENT_SRC
-  ${PROCESS_AGENT_SRC}
+# MESOS CONTAINERIZER SOURCE.
+#############################
+set(MESOS_CONTAINERIZER_SRC
   main.cpp
   )
-
-add_definitions(-DUSE_STATIC_LIB)
 
 # INCLUDE DIRECTIVES FOR PROCESS TEST BINARY (generates, e.g., -I/path/to/thing
 # on Linux).
 ###############################################################################
-include_directories(${PROCESS_AGENT_INCLUDE_DIRS})
+include_directories(${AGENT_INCLUDE_DIRS})
 
 # LINKING LIBRARIES BY DIRECTORY (might generate, e.g., -L/path/to/thing on
 # Linux).
 ###########################################################################
-link_directories(${PROCESS_AGENT_LIB_DIRS})
-
+link_directories(${AGENT_LIB_DIRS})
 
 # THE PROCESS AGENT EXECUTABLE .
 ###############################################################################
-add_executable(${AGENT_TARGET} ${PROCESS_AGENT_SRC})
-
-if (WIN32)
-  set(PROCESS_AGENT_LIBS
-    ${PROCESS_AGENT_LIBS}
-    ${AGENT_LIBS}
-    ${MESOS_TARGET}
-    ${PROCESS_TARGET}
-    ${HTTP_PARSER_LFLAG}
-    ${ZOOKEEPER_LFLAG}
-      ws2_32
-  )
-endif (WIN32)
+add_executable(${MESOS_CONTAINERIZER} ${MESOS_CONTAINERIZER_SRC})
 
 # ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
 ######################################################
-target_link_libraries(${AGENT_TARGET} ${PROCESS_AGENT_LIBS})
-
-
+target_link_libraries(${MESOS_CONTAINERIZER} ${MESOS_TARGET})
 
 # ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
 ####################################################################
-add_dependencies(${AGENT_TARGET} ${MESOS_TARGET})
-
-add_subdirectory(containerizer)
+add_dependencies(${MESOS_CONTAINERIZER} ${MESOS_TARGET})

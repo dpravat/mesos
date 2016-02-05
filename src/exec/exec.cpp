@@ -67,7 +67,7 @@ using std::string;
 
 using process::Latch;
 using process::wait; // Necessary on some OS's to disambiguate.
-
+using mesos::Executor; // Necessary to disambiguate.
 
 namespace mesos {
 namespace internal {
@@ -99,8 +99,9 @@ protected:
 
     // TODO(vinod): Invoke killtree without killing ourselves.
     // Kill the process group (including ourself).
+#ifdef TODO
     killpg(0, SIGKILL);
-
+#endif
     // The signal might not get delivered immediately, so sleep for a
     // few seconds. Worst case scenario, exit abnormally.
     os::sleep(Seconds(5));
@@ -586,7 +587,7 @@ private:
 // Implementation of C++ API.
 
 
-MesosExecutorDriver::MesosExecutorDriver(Executor* _executor)
+MesosExecutorDriver::MesosExecutorDriver(mesos::Executor* _executor)
   : executor(_executor),
     process(NULL),
     status(DRIVER_NOT_STARTED)

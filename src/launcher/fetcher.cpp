@@ -101,6 +101,7 @@ static Try<string> downloadWithHadoopClient(
     const string& sourceUri,
     const string& destinationPath)
 {
+#ifndef __WINDOWS__
   Try<Owned<HDFS>> hdfs = HDFS::create();
   if (hdfs.isError()) {
     return Error("Failed to create HDFS client: " + hdfs.error());
@@ -116,7 +117,7 @@ static Try<string> downloadWithHadoopClient(
     return Error("HDFS copyToLocal failed: " +
                  (result.isFailed() ? result.failure() : "discarded"));
   }
-
+#endif
   return destinationPath;
 }
 
@@ -229,16 +230,17 @@ static Try<string> download(
 // so that someone can do: os::chmod(path, EXECUTABLE_CHMOD_FLAGS).
 static Try<string> chmodExecutable(const string& filePath)
 {
+#ifndef __WINDOWS__
   Try<Nothing> chmod = os::chmod(
       filePath, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
   if (chmod.isError()) {
     return Error("Failed to chmod executable '" +
                  filePath + "': " + chmod.error());
   }
+#endif
 
   return filePath;
 }
-
 
 // Returns the resulting file or in case of extraction the destination
 // directory (for logging).
@@ -493,7 +495,7 @@ int main(int argc, char* argv[])
                 << "' to '" << fetched.get() << "'";
     }
   }
-
+#ifndef __WINDOWS__
   // Recursively chown the sandbox directory if a user is provided.
   if (fetcherInfo.get().has_user()) {
     Try<Nothing> chowned = os::chown(
@@ -504,6 +506,6 @@ int main(int argc, char* argv[])
         << "Failed to chown " << sandboxDirectory << ": " << chowned.error();
     }
   }
-
+#endif // __WINDOWS__
   return 0;
 }
