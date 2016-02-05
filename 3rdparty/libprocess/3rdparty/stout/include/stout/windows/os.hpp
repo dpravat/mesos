@@ -459,10 +459,13 @@ namespace libraries {
 
 } // namespace libraries {
 
-inline auto access(const std::string& fileName, int accessMode) ->
-decltype(_access(fileName.c_str(), accessMode))
+inline Try<bool> access(const std::string& fileName, int how)
 {
-  return _access(fileName.c_str(), accessMode);
+  if (::_access(fileName.c_str(), how) != 0) {
+    return ErrnoError("access: Could not access path '" + fileName + "'");
+  }
+
+  return true;
 }
 
 inline Result<bool> FindProcess(
