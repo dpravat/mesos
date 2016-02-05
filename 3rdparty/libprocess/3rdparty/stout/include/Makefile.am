@@ -111,6 +111,7 @@ nobase_include_HEADERS =			\
   stout/os/posix/kill.hpp			\
   stout/os/posix/mkdtemp.hpp			\
   stout/os/posix/rename.hpp			\
+  stout/os/posix/rm.hpp				\
   stout/os/posix/rmdir.hpp			\
   stout/os/posix/sendfile.hpp			\
   stout/os/posix/shell.hpp			\
@@ -129,6 +130,7 @@ nobase_include_HEADERS =			\
   stout/os/windows/kill.hpp			\
   stout/os/windows/mkdtemp.hpp			\
   stout/os/windows/rename.hpp			\
+  stout/os/windows/rm.hpp			\
   stout/os/windows/rmdir.hpp			\
   stout/os/windows/sendfile.hpp			\
   stout/os/windows/shell.hpp			\
