@@ -106,6 +106,7 @@ Try<Nothing> write(
 template <typename T>
 Try<Nothing> write(const std::string& path, const T& t)
 {
+  _set_fmode(_O_BINARY);
   Try<int> fd = os::open(
       path,
       O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
@@ -293,6 +294,10 @@ Result<T> read(int fd, bool ignorePartial = false, bool undoFailed = false)
 template <typename T>
 Result<T> read(const std::string& path)
 {
+  // HACK
+  _set_fmode(_O_BINARY);
+  //
+
   Try<int> fd = os::open(
       path,
       O_RDONLY | O_CLOEXEC,
