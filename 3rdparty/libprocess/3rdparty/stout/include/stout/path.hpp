@@ -17,6 +17,14 @@
 #include <utility>
 #include <vector>
 
+#ifdef __WINDOWS__
+#define PATH_SEPARATOR_CHAR '\\'
+#define PATH_SEPARATOR_STRING "\\"
+#else
+#define PATH_SEPARATOR_CHAR '/'
+#define PATH_SEPARATOR_STRING "/"
+#endif // __WINDOWS__
+
 #include <stout/strings.hpp>
 
 namespace path {
@@ -24,8 +32,9 @@ namespace path {
 // Base case.
 inline std::string join(const std::string& path1, const std::string& path2)
 {
-  return strings::remove(path1, "/", strings::SUFFIX) + "/" +
-         strings::remove(path2, "/", strings::PREFIX);
+  return strings::remove(path1, PATH_SEPARATOR_STRING, strings::SUFFIX) +
+      PATH_SEPARATOR_STRING +
+      strings::remove(path2, PATH_SEPARATOR_STRING, strings::PREFIX);
 }
 
 
@@ -55,7 +64,7 @@ inline std::string join(const std::vector<std::string>& paths)
 
 inline bool absolute(const std::string& path)
 {
-  if (path.empty() || path[0] != '/') {
+  if (path.empty() || path[0] != PATH_SEPARATOR_CHAR) {
     return false;
   }
 
@@ -66,8 +75,11 @@ inline bool absolute(const std::string& path)
 
 
 /**
- * Represents a POSIX file systems path and offers common path
+ * Represents a POSIX or Windows file system path and offers common path
  * manipulations.
+ * When reading the comments below, keep in mind that '/' refers to the path
+ * separator character, so read it as "'/' or '\', depending on platform". For
+ * obvious reasons, this was not spelled out every time.
  */
 class Path
 {
@@ -110,18 +122,18 @@ public:
     size_t end = value.size() - 1;
 
     // Remove trailing slashes.
-    if (value[end] == '/') {
-      end = value.find_last_not_of('/', end);
+    if (value[end] == PATH_SEPARATOR_CHAR) {
+      end = value.find_last_not_of(PATH_SEPARATOR_CHAR, end);
 
       // Paths containing only slashes result into "/".
       if (end == std::string::npos) {
-        return std::string("/");
+        return std::string(PATH_SEPARATOR_STRING);
       }
     }
 
     // 'start' should point towards the character after the last slash
     // that is non trailing.
-    size_t start = value.find_last_of('/', end);
+    size_t start = value.find_last_of(PATH_SEPARATOR_CHAR, end);
 
     if (start == std::string::npos) {
       start = 0;
@@ -132,6 +144,11 @@ public:
     return value.substr(start, end + 1 - start);
   }
 
+  // TODO(anaparu) Make sure this works on Windows for very short path names,
+  // such as "C:\Temp". There is a distinction between "C:" and "C:\", the
+  // former means "current directory of the C drive", while the latter means
+  // "The root of the C drive". Also make sure that UNC paths are handled.
+  // Will probably need to use the Windows path functions for that.
   /**
    * Extracts the component up to, but not including, the final '/'.
    * Trailing '/' characters are not counted as part of the pathname.
@@ -164,12 +181,12 @@ public:
     size_t end = value.size() - 1;
 
     // Remove trailing slashes.
-    if (value[end] == '/') {
-      end = value.find_last_not_of('/', end);
+    if (value[end] == PATH_SEPARATOR_CHAR) {
+      end = value.find_last_not_of(PATH_SEPARATOR_CHAR, end);
     }
 
     // Remove anything trailing the last slash.
-    end = value.find_last_of('/', end);
+    end = value.find_last_of(PATH_SEPARATOR_CHAR, end);
 
     // Paths containing no slashes result in ".".
     if (end == std::string::npos) {
@@ -178,16 +195,16 @@ public:
 
     // Paths containing only slashes result in "/".
     if (end == 0) {
-      return std::string("/");
+      return std::string(PATH_SEPARATOR_STRING);
     }
 
     // 'end' should point towards the last non slash character
     // preceding the last slash.
-    end = value.find_last_not_of('/', end);
+    end = value.find_last_not_of(PATH_SEPARATOR_CHAR, end);
 
     // Paths containing no non slash characters result in "/".
     if (end == std::string::npos) {
-      return std::string("/");
+      return std::string(PATH_SEPARATOR_STRING);
     }
 
     return value.substr(0, end + 1);
