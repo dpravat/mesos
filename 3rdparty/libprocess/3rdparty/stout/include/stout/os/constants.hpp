@@ -17,7 +17,11 @@
 
 namespace os {
 
+#ifndef __WINDOWS__
 const std::string DIRECTORY_SEPARATOR = "/";
+#else
+const std::string DIRECTORY_SEPARATOR = "\\";
+#endif // !__WINDOWS__
 
 } // namespace os {
 
