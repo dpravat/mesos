@@ -74,8 +74,8 @@ if (WIN32)
 
 
   set(CMAKE_FIND_LIBRARY_SUFFIXES ".dll")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
 
 elseif (COMPILER_SUPPORTS_CXX11)
   # Finally, on non-Windows platforms, we must check that the current compiler
