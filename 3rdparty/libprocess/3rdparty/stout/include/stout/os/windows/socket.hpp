@@ -16,7 +16,7 @@
 #include <stout/nothing.hpp>
 #include <stout/try.hpp>
 
-#include <stout/os/socket.hpp>
+#include <winsock.h>
 
 namespace net {
 
@@ -36,12 +36,8 @@ inline Try<int> socket(int family, int type, int protocol)
   return s;
 }
 
-inline bool isSocket(int fd)
+inline bool isSocket(SOCKET fd)
 {
-
-  // We use an 'int' but expect a SOCKET if this is Windows.
-  static_assert(sizeof(SOCKET) == sizeof(int), "Can not use int for SOCKET");
-
   int value = 0;
   int length = sizeof(int);
 
