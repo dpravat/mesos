@@ -337,12 +337,6 @@ decltype(_open(path, flags))
 }
 */
 
-inline auto close(int fd) ->
-decltype(_close(fd))
-{
-  return _close(fd);
-}
-
 
 inline auto chdir(const char* path) ->
 decltype(_chdir(path))
