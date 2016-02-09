@@ -26,7 +26,7 @@ inline Try<Nothing> close(int fd)
     SOCKET s = fd;
     ::closesocket(s);
   } else {
-    ::close(fd);
+    ::_close(fd);
   }
 
   return Nothing();
