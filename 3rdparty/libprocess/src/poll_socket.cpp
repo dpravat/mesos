@@ -119,18 +119,19 @@ Future<Nothing> connect(const Socket& socket)
 
 Future<Nothing> PollSocketImpl::connect(const Address& address)
 {
-  Try<int> connect = network::connect(get(), address);
-  if (connect.isError()) {
+  int connect = network::connect(get(), address);
+
+  if(connect<0) {
 #ifdef __WINDOWS__
-    if(WSAGetLastError() == WSAEINPROGRESS) {
+    if((connect < 0) && (WSAGetLastError() == WSAEWOULDBLOCK)) {
 #else
-    if (errno == EINPROGRESS) {
+    if ((connect<0) && (errno == EINPROGRESS)) {
 #endif
       return io::poll(get(), io::WRITE)
         .then(lambda::bind(&internal::connect, socket()));
     }
 
-    return Failure(connect.error());
+    return Failure(ErrnoError("Failed to connect to " + stringify(address)));
   }
 
   return Nothing();
