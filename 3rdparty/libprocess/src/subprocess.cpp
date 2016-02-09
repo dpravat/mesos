@@ -37,10 +37,6 @@ using std::string;
 using std::vector;
 
 namespace process {
-
-using InputFileDescriptors = Subprocess::IO::InputFileDescriptors;
-using OutputFileDescriptors = Subprocess::IO::OutputFileDescriptors;
-
 namespace internal {
 
 static void cleanup(
