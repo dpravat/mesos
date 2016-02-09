@@ -134,3 +134,21 @@ include(ProcessConfigure)
 set(
   AGENT_TARGET mesos-slave
   CACHE STRING "Target we use to refer to slave executable")
+
+# Define target for Containerizer.
+##########################
+set(
+  MESOS_CONTAINERIZER mesos-containerizer
+  CACHE STRING "Target for containerizer")
+
+# Define target for Executor.
+##########################
+set(
+  MESOS_EXECUTOR mesos-executor
+  CACHE STRING "Target for executor")
+
+# Define target for Fetcher.
+##########################
+set(
+  MESOS_FETCHER mesos-fetcher
+  CACHE STRING "Target for fetcher")
