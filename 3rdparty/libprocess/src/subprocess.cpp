@@ -38,10 +38,6 @@ using std::vector;
 
 namespace process {
 
-using InputFileDescriptors = Subprocess::IO::InputFileDescriptors;
-using OutputFileDescriptors = Subprocess::IO::OutputFileDescriptors;
-
-
 Subprocess::Hook::Hook(
     const lambda::function<Try<Nothing>(pid_t)>& _parent_callback)
   : parent_callback(_parent_callback) {}
