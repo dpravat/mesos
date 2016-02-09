@@ -128,18 +128,18 @@ int cleanup()
     const int result = ::WSACleanup();
     if (result != 0) {
       const int error = ::WSAGetLastError();
-      if (error != WSANOTINITIALISED) {
-        cerr << "WinSock was not initialized" << endl;
+      // Make it idempotent.
+      if (error == WSANOTINITIALISED) {
         return EXIT_SUCCESS;
       }
-
-      cerr << "Could not cleanup WinSock, error code : " << error << endl;
 
       // Wait for any blocking calls to complete and retry after 1 second.
       if (error == WSAEINPROGRESS) {
         cerr << "Waiting for outstanding WinSock calls to complete." << endl;
         ::Sleep(1000);
         retriesLeft--;
+      } else {
+        cerr << "Could not cleanup WinSock, error code : " << error << endl;
       }
     }
   }
