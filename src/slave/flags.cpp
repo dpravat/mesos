@@ -27,9 +27,30 @@
 
 #include "slave/constants.hpp"
 
-using std::string;
+namespace mesos {
+namespace internal {
+namespace slave {
 
-mesos::internal::slave::Flags::Flags()
+std::string getMesosTempPath() {
+#ifdef __WINDOWS__
+  // Get temp folder for current user.
+  char tempFolder[MAX_PATH + 1];
+  if (::GetTempPath(MAX_PATH + 1, tempFolder) == 0) {
+    // Failed, try current folder.
+    if (::GetCurrentDirectory(MAX_PATH + 1, tempFolder) == 0) {
+      // Failed, use relative path.
+      return ".";
+    }
+  }
+  return std::string(tempFolder);
+#else
+  return "/tmp/mesos";
+#endif // !__WINDOWS__
+}
+
+} // namespace slave {
+} // namespace internal {
+} // namespace mesos {
 
 void mesos::internal::slave::Flags::initialize()
 {
@@ -129,7 +150,7 @@ void mesos::internal::slave::Flags::initialize()
   add(&Flags::appc_store_dir,
       "appc_store_dir",
       "Directory the appc provisioner will store images in.\n",
-      "/tmp/mesos/store/appc");
+      path::join(mesos::internal::slave::getMesosTempPath(), "store", "appc"));
 
   add(&Flags::docker_registry,
       "docker_registry",
@@ -175,11 +196,12 @@ void mesos::internal::slave::Flags::initialize()
       "fetcher_cache_dir",
       "Parent directory for fetcher cache directories\n"
       "(one subdirectory per agent).",
-      "/tmp/mesos/fetch");
+      path::join(mesos::internal::slave::getMesosTempPath(), "fetch"));
 
   add(&Flags::work_dir,
       "work_dir",
-      "Directory path to place framework work directories\n", "/tmp/mesos");
+      "Directory path to place framework work directories\n",
+      mesos::internal::slave::getMesosTempPath());
 
   add(&Flags::launcher_dir, // TODO(benh): This needs a better name.
       "launcher_dir",
