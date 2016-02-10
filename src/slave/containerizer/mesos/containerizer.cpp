@@ -128,7 +128,11 @@ using state::FrameworkState;
 using state::ExecutorState;
 using state::RunState;
 
+#ifndef __WINDOWS__
 const char MESOS_CONTAINERIZER[] = "mesos-containerizer";
+#else
+const char MESOS_CONTAINERIZER[] = "mesos-containerizer.exe";
+#endif // __WINDOWS__
 
 Try<MesosContainerizer*> MesosContainerizer::create(
     const Flags& flags,
