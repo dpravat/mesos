@@ -417,6 +417,10 @@ decltype(_access(fileName, accessMode))
   #define WIFEXITED(x) ((x) != -1)
 #endif // WIFWXITED
 
+#ifndef WIFSIGNALED
+  #define WIFSIGNALED(x) ((x) != -1)
+#endif // WIFSIGNALED
+
 #ifndef WEXITSTATUS
   #define WEXITSTATUS(x) (x)
 #endif // WEXITSTATUS

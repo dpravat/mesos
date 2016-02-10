@@ -21,7 +21,9 @@
 #include <mach/mach.h>
 #endif // __MACH__
 
+#ifndef __WINDOWS__
 #include <sys/time.h>
+#endif
 
 #include "duration.hpp"
 
@@ -72,7 +74,11 @@ private:
     ts.tv_sec = mts.tv_sec;
     ts.tv_nsec = mts.tv_nsec;
 #else
+#ifndef TODO
+    ts = { 0 };
+#else
     clock_gettime(CLOCK_REALTIME, &ts);
+#endif
 #endif // __MACH__
     return ts;
   }
