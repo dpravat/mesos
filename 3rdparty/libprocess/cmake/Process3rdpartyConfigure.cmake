@@ -146,3 +146,9 @@ set(
 set(
   MESOS_EXECUTOR mesos-executor
   CACHE STRING "Target for executor")
+
+# Define target for Fetcher.
+##########################
+set(
+  MESOS_FETCHER mesos-fetcher
+  CACHE STRING "Target for fetcher")
