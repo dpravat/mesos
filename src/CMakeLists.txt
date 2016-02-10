@@ -418,9 +418,6 @@ add_dependencies(${MESOS_TARGET} ${AGENT_DEPENDENCIES})
 ######################################################
 target_link_libraries(${MESOS_TARGET} ${AGENT_LIBS})
 
-add_subdirectory(slave)
-add_subdirectory(launcher)
-add_subdirectory(health-check)
 
 # MESOS CONTAINERIZER TESTING INFRASTRUCTURE for Windows.
 #########################################################
@@ -432,3 +429,91 @@ if (WIN32)
   include(ContainerizerTestsConfigure)
   add_subdirectory(tests/containerizer)
 endif (WIN32)
+
+set(BUILD_DATE "")
+set(BUILD_TIME "")
+set(BUILD_FLAGS "")
+set(BUILD_JAVA_JVM_LIBRARY "")
+
+add_definitions(-DUSE_STATIC_LIB)
+
+# INCLUDE DIRECTIVES FOR PROCESS TEST BINARY (generates, e.g., -I/path/to/thing
+# on Linux).
+###############################################################################
+include_directories(${PROCESS_AGENT_INCLUDE_DIRS})
+
+
+# LINKING LIBRARIES BY DIRECTORY (might generate, e.g., -L/path/to/thing on
+# Linux).
+###########################################################################
+link_directories(${PROCESS_AGENT_LIB_DIRS})
+
+
+# THE PROCESS AGENT EXECUTABLE .
+###############################################################################
+add_executable(${AGENT_TARGET} slave/main.cpp )
+
+if (WIN32)
+  set(PROCESS_AGENT_LIBS
+    ${PROCESS_AGENT_LIBS}
+    ${AGENT_LIBS}
+    ${MESOS_TARGET}
+    ${PROCESS_TARGET}
+    ${HTTP_PARSER_LFLAG}
+    ${ZOOKEEPER_LFLAG}
+      ws2_32
+  )
+endif (WIN32)
+
+# ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
+######################################################
+target_link_libraries(${AGENT_TARGET} ${PROCESS_AGENT_LIBS})
+
+# ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
+####################################################################
+add_dependencies(${AGENT_TARGET} ${MESOS_TARGET})
+
+# THE PROCESS AGENT EXECUTABLE .
+###############################################################################
+add_executable(${MESOS_CONTAINERIZER} slave/containerizer/mesos/main.cpp)
+
+# ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
+######################################################
+target_link_libraries(${MESOS_CONTAINERIZER} ${MESOS_TARGET})
+
+# ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
+####################################################################
+add_dependencies(${MESOS_CONTAINERIZER} ${MESOS_TARGET})
+
+###############################################################################
+add_executable(${MESOS_EXECUTOR} launcher/executor.cpp)
+add_executable(${MESOS_FETCHER} launcher/fetcher.cpp)
+
+
+# ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
+######################################################
+target_link_libraries(${MESOS_EXECUTOR} ${PROCESS_AGENT_LIBS})
+target_link_libraries(${MESOS_FETCHER} ${PROCESS_AGENT_LIBS})
+
+# ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
+####################################################################
+add_dependencies(${MESOS_EXECUTOR} ${AGENT_DEPENDENCIES})
+add_dependencies(${MESOS_FETCHER} ${AGENT_DEPENDENCIES})
+
+# mesos-health-check
+###############################################################################
+add_executable(${MESOS_HEALTH_CHECK} health-check/main.cpp)
+target_link_libraries(${MESOS_HEALTH_CHECK} ${PROCESS_AGENT_LIBS})
+add_dependencies(${MESOS_HEALTH_CHECK} ${MESOS_FETCHER})
+
+# mesos-log
+###############################################################################
+#add_executable(${MESOS_LOG} log/main.cpp)
+#target_link_libraries(${MESOS_LOG} ${PROCESS_AGENT_LIBS})
+#add_dependencies(${MESOS_LOG} ${MESOS_FETCHER})
+
+# mesos-master
+###############################################################################
+#add_executable(${MESOS_MASTER} master/main.cpp)
+#target_link_libraries(${MESOS_MASTER} ${PROCESS_AGENT_LIBS})
+#add_dependencies(${MESOS_MASTER} ${MESOS_FETCHER})

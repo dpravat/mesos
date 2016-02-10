@@ -53,8 +53,8 @@ add_executable(${MESOS_FETCHER} ${MESOS_FETCHER_SRC})
 
 # ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
 ######################################################
-target_link_libraries(${MESOS_EXECUTOR} ${MESOS_TARGET} ${MESOS_EXECUTOR_LIBS})
-target_link_libraries(${MESOS_FETCHER} ${MESOS_TARGET} ${MESOS_EXECUTOR_LIBS})
+target_link_libraries(${MESOS_EXECUTOR} ${MESOS_EXECUTOR_LIBS})
+target_link_libraries(${MESOS_FETCHER} ${MESOS_EXECUTOR_LIBS})
 
 # ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
 ####################################################################
