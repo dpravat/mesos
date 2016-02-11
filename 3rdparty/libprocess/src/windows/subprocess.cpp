@@ -186,6 +186,7 @@ Try<pid_t> CreateChildProcess(
 
   // Build child process arguments (as a NULL-terminated string).
   char* arguments = NULL;
+  char* argumentsEscaped = NULL;
   if (!argv.empty()) {
     // Start the `arguments` string with a space, since `CreateProcess` will
     // just append it to the `lpCommandLine` argument.
@@ -205,6 +206,13 @@ Try<pid_t> CreateChildProcess(
 
     // NULL-terminate the arguments string.
     arguments[index - 1] = '\0';
+    // Aditional size
+    int count = std::count(arguments, arguments + argLength, '\"');
+    argumentsEscaped = new char[argLength + count];
+    char* buffer = argumentsEscaped;
+    std::for_each(arguments, arguments + argLength, [&buffer](char c)
+        { if (c == '\"') *buffer++ = '\\'; *buffer++ = c; }
+      );
   }
 
   // See the `CreateProcess` MSDN page[1] for details on how `path` and
@@ -213,7 +221,7 @@ Try<pid_t> CreateChildProcess(
   // [1] https://msdn.microsoft.com/en-us/library/windows/desktop/ms682425(v=vs.85).aspx
   BOOL createProcessResult = CreateProcess(
       (LPSTR)path.c_str(),  // Path of module to load[1].
-      (LPSTR)arguments,     // Command line arguments[1].
+      (LPSTR)argumentsEscaped,     // Command line arguments[1].
       NULL,                 // Default security attributes.
       NULL,                 // Default primary thread security attributes.
       TRUE,                 // Inherited parent process handles.
