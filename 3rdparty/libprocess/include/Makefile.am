@@ -45,11 +45,13 @@ nobase_include_HEADERS =		\
   process/metrics/metric.hpp		\
   process/metrics/metrics.hpp		\
   process/metrics/timer.hpp		\
+  process/posix/pipe.hpp		\
   process/posix/subprocess.hpp		\
   process/network.hpp			\
   process/once.hpp			\
   process/owned.hpp			\
   process/pid.hpp			\
+  process/pipe.hpp			\
   process/process.hpp			\
   process/profiler.hpp			\
   process/protobuf.hpp			\
@@ -69,5 +71,6 @@ nobase_include_HEADERS =		\
   process/timeout.hpp			\
   process/timer.hpp			\
   process/timeseries.hpp		\
+  process/windows/pipe.hpp		\
   process/windows/subprocess.hpp	\
   process/windows/winsock.hpp
