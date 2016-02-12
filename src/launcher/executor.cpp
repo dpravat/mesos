@@ -90,6 +90,7 @@ namespace internal {
 
 using namespace process;
 
+
 class CommandExecutorProcess : public ProtobufProcess<CommandExecutorProcess>
 {
 public:
@@ -869,11 +870,76 @@ public:
   Option<string> task_command;
 };
 
+// Returns `EXIT_SUCCESS` (0) on success, `EXIT_FAILURE` otherwise and logs the
+// reason for failure.
+int initialize()
+{
+  // Initialize WinSock (request version 2.2).
+  WORD requestedVersion = MAKEWORD(2, 2);
+  WSADATA data;
+
+  const int result = ::WSAStartup(requestedVersion, &data);
+  if (result != 0) {
+    const int error = ::WSAGetLastError();
+    cerr << "Could not initialize WinSock, error code : " << error << endl;
+    return EXIT_FAILURE;
+  }
+
+  // Check that the WinSock version we got back is 2.2 or higher.
+  // The high-order byte specifies the minor version number.
+  if (LOBYTE(data.wVersion) < 2 ||
+    (LOBYTE(data.wVersion) == 2 && HIBYTE(data.wVersion) != 2)) {
+    cerr << "Incorrect WinSock version found : " << LOBYTE(data.wVersion)
+      << "." << HIBYTE(data.wVersion) << endl;
+
+    // WinSock was initialized, we just didn't like the version, so we need to
+    // clean up.
+    if (::WSACleanup() != 0) {
+      const int error = ::WSAGetLastError();
+      cerr << "Could not cleanup WinSock, error code : " << error << endl;
+    }
+
+    return EXIT_FAILURE;
+  }
+
+  return EXIT_SUCCESS;
+}
+
+int cleanup()
+{
+  // Cleanup WinSock. Wait for any outstanding socket operations to complete
+  // before exiting. Retry for a maximum of 10 times at 1 second intervals.
+  int retriesLeft = 10;
+
+  while (retriesLeft > 0) {
+    const int result = ::WSACleanup();
+    if (result != 0) {
+      const int error = ::WSAGetLastError();
+      // Make it idempotent.
+      if (error == WSANOTINITIALISED) {
+        return EXIT_SUCCESS;
+      }
+
+      // Wait for any blocking calls to complete and retry after 1 second.
+      if (error == WSAEINPROGRESS) {
+        cerr << "Waiting for outstanding WinSock calls to complete." << endl;
+        ::Sleep(1000);
+        retriesLeft--;
+      }
+      else {
+        cerr << "Could not cleanup WinSock, error code : " << error << endl;
+      }
+    }
+  }
+
+  return EXIT_SUCCESS;
+}
 
 int main(int argc, char** argv)
 {
   Flags flags;
 
+  initialize();
   // Load flags from command line.
   Try<Nothing> load = flags.load(None(), &argc, &argv);
 
