@@ -17,18 +17,25 @@
 #include <stout/none.hpp>
 #include <stout/subcommand.hpp>
 
+#ifdef __WINDOWS__
+#include <process/windows/winsock.hpp>
+#endif // __WINDOWS__
+
 #include "slave/containerizer/mesos/launch.hpp"
 #include "slave/containerizer/mesos/mount.hpp"
 
 using namespace mesos::internal::slave;
 
-
 int main(int argc, char** argv)
 {
-  return Subcommand::dispatch(
-      None(),
-      argc,
-      argv,
-      new MesosContainerizerLaunch(),
-      new MesosContainerizerMount());
+#ifdef __WINDOWS__
+  process::Winsock winsock;
+#endif
+
+return Subcommand::dispatch(
+    None(),
+    argc,
+    argv,
+    new MesosContainerizerLaunch(),
+    new MesosContainerizerMount());
 }
