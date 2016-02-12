@@ -17,6 +17,10 @@
 #include <stout/none.hpp>
 #include <stout/subcommand.hpp>
 
+#ifdef __WINDOWS__
+#include <process/windows/winsock.hpp>
+#endif // __WINDOWS__
+
 #include "slave/containerizer/mesos/launch.hpp"
 #include "slave/containerizer/mesos/mount.hpp"
 
@@ -29,6 +33,11 @@ using namespace mesos::internal::slave;
 
 int main(int argc, char** argv)
 {
+#ifdef __WINDOWS__
+  // Initialize the Windows socket stack.
+  process::Winsock winsock;
+#endif
+
 #ifdef __linux__
   return Subcommand::dispatch(
       None(),
