@@ -23,6 +23,7 @@
 #include <process/defer.hpp>
 #include <process/io.hpp>
 #include <process/owned.hpp>
+#include <process/pipe.hpp>
 #include <process/reap.hpp>
 #include <process/subprocess.hpp>
 
@@ -1052,11 +1053,12 @@ Future<bool> MesosContainerizerProcess::__launch(
         [=](const ContainerLogger::SubprocessInfo& subprocessInfo)
           -> Future<bool> {
     // Use a pipe to block the child until it's been isolated.
-    int pipes[2];
+    process::Pipe pipe;
+    Try<Nothing> createPipe = pipe.Create();
 
-    // We assume this should not fail under reasonable conditions so we
-    // use CHECK.
-    // CHECK(pipe(pipes) == 0);
+    if (createPipe.isError()) {
+      return Failure("Failed to create IPC pipe: " + createPipe.error());
+    }
 
     // Prepare the flags to pass to the launch process.
     MesosContainerizerLaunch::Flags launchFlags;
@@ -1097,8 +1099,11 @@ Future<bool> MesosContainerizerProcess::__launch(
     launchFlags.rootfs = rootfs;
     launchFlags.user = user;
 #endif // __WINDOWS__
-    launchFlags.pipe_read = pipes[0];
-    launchFlags.pipe_write = pipes[1];
+    // POSIX-compliant file descriptors might only be valid in the context of
+    // the current process, so pass the platform-dependent pipe handles to the
+    // child process.
+    launchFlags.pipe_read = pipe.nativeRead();
+    launchFlags.pipe_write = pipe.nativeWrite();
     launchFlags.commands = commands;
 
     // Fork the child using launcher.
@@ -1156,15 +1161,15 @@ Future<bool> MesosContainerizerProcess::__launch(
 
     return isolate(containerId, pid)
       .then(defer(self(),
-                  &Self::fetch,
-                  containerId,
-                  executorInfo.command(),
-                  directory,
-                  user,
-                  slaveId))
-      .then(defer(self(), &Self::exec, containerId, pipes[1]))
-      .onAny(lambda::bind(&os::close, pipes[0]))
-      .onAny(lambda::bind(&os::close, pipes[1]));
+        &Self::fetch,
+        containerId,
+        executorInfo.command(),
+        directory,
+        user,
+        slaveId))
+      .then(defer(self(), &Self::exec, containerId, pipe.write))
+      .onAny(lambda::bind(&os::close, pipe.read))
+      .onAny(lambda::bind(&os::close, pipe.write));
   }));
 }
 

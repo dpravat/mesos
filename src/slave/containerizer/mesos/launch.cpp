@@ -19,6 +19,8 @@
 
 #include <iostream>
 
+#include <process/pipe.hpp>
+
 #include <stout/foreach.hpp>
 #include <stout/os.hpp>
 #include <stout/protobuf.hpp>
@@ -133,7 +135,15 @@ int MesosContainerizerLaunch::execute()
     }
   }
 
-  Try<Nothing> close = os::close(flags.pipe_write.get());
+  process::Pipe pipe (flags.pipe_read.get(), flags.pipe_write.get());
+
+  // Pipe file descriptors should be valid.
+  if (pipe.read < 0 || pipe.write < 0) {
+    cerr << "Failed to open pipe." << endl;
+    return 1;
+  }
+
+  Try<Nothing> close = os::close(pipe.write);
   if (close.isError()) {
     cerr << "Failed to close pipe[1]: " << close.error() << endl;
     return 1;
@@ -143,7 +153,7 @@ int MesosContainerizerLaunch::execute()
   char dummy;
   ssize_t length;
   while ((length = ::read(
-              flags.pipe_read.get(),
+              pipe.read,
               &dummy,
               sizeof(dummy))) == -1 &&
           errno == EINTR);
@@ -155,7 +165,7 @@ int MesosContainerizerLaunch::execute()
      return 1;
   }
 
-  close = os::close(flags.pipe_read.get());
+  close = os::close(pipe.read);
   if (close.isError()) {
     cerr << "Failed to close pipe[0]: " << close.error() << endl;
     return 1;
