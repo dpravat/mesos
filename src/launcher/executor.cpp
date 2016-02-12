@@ -33,6 +33,7 @@
 #include <process/delay.hpp>
 #include <process/future.hpp>
 #include <process/io.hpp>
+#include <process/pipe.hpp>
 #include <process/process.hpp>
 #include <process/protobuf.hpp>
 #include <process/subprocess.hpp>
@@ -205,21 +206,22 @@ public:
     // Use pipes to determine which child has successfully changed
     // session. This is needed as the setsid call can fail from other
     // processes having the same group id.
-    int pipes[2];
-#ifdef TOTO
-    if (pipe(pipes) < 0) {
-      perror("Failed to create a pipe");
+    process::Pipe pipe;
+    Try<Nothing> createPipe = pipe.Create();
+
+    if (createPipe.isError()) {
+      perror("Failed to create IPC pipe");
       abort();
     }
-#endif
+
     // Set the FD_CLOEXEC flags on these pipes.
-    Try<Nothing> cloexec = os::cloexec(pipes[0]);
+    Try<Nothing> cloexec = os::cloexec(pipe.read);
     if (cloexec.isError()) {
       cerr << "Failed to cloexec(pipe[0]): " << cloexec.error() << endl;
       abort();
     }
 
-    cloexec = os::cloexec(pipes[1]);
+    cloexec = os::cloexec(pipe.write);
     if (cloexec.isError()) {
       cerr << "Failed to cloexec(pipe[1]): " << cloexec.error() << endl;
       abort();
@@ -333,7 +335,7 @@ public:
     if (pid == 0) {
       // In child process, we make cleanup easier by putting process
       // into it's own session.
-      os::close(pipes[0]);
+      os::close(pipe.read);
 
       // NOTE: We setsid() in a loop because setsid() might fail if another
       // process has the same process group id as the calling process.
@@ -355,12 +357,12 @@ public:
         }
       }
 
-      if (write(pipes[1], &pid, sizeof(pid)) != sizeof(pid)) {
+      if (write(pipe.write, &pid, sizeof(pid)) != sizeof(pid)) {
         perror("Failed to write PID on pipe");
         abort();
       }
 
-      os::close(pipes[1]);
+      os::close(pipe.write);
 
       if (rootfs.isSome()) {
 #ifdef __linux__
@@ -439,16 +441,16 @@ public:
     delete[] argv;
 
     // In parent process.
-    os::close(pipes[1]);
+    os::close(pipe.write);
 
     // Get the child's pid via the pipe.
-    if (read(pipes[0], &pid, sizeof(pid)) == -1) {
+    if (read(pipe.read, &pid, sizeof(pid)) == -1) {
       cerr << "Failed to get child PID from pipe, read: "
            << os::strerror(errno) << endl;
       abort();
     }
 
-    os::close(pipes[0]);
+    os::close(pipe.read);
 
     cout << "Forked command at " << pid << endl;
 
