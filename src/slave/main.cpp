@@ -31,6 +31,10 @@
 
 #include <process/owned.hpp>
 
+#ifdef __WINDOWS__
+#include <process/windows/winsock.hpp>
+#endif // __WINDOWS__
+
 #include <stout/check.hpp>
 #include <stout/flags.hpp>
 #include <stout/hashset.hpp>
@@ -97,6 +101,11 @@ void version()
 
 int main(int argc, char** argv)
 {
+#ifdef __WINDOWS__
+  // Initialize the Windows socket stack.
+  process::Winsock winsock;
+#endif
+
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   slave::Flags flags;
