@@ -52,6 +52,12 @@ inline int system(const std::string& command)
       _P_WAIT, Shell::name, Shell::arg0, Shell::arg1, command.c_str());
 }
 
+
+inline int execlp(const char* file, const char* arg, ...)
+{
+  exit(::_spawnlp(_P_WAIT, file, arg));
+}
+
 } // namespace os {
 
 #endif // __STOUT_OS_WINDOWS_SHELL_HPP__
