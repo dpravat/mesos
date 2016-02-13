@@ -316,7 +316,9 @@ public:
         commandString += string(argv[i]) + " ";
       }
     } else if (command.shell()) {
-      commandString = "sh -c '" + command.value() + "'";
+      commandString = string(os::Shell::arg0) + " " +
+                      string(os::Shell::arg1) + " '" +
+                      command.value() + "'";
     } else {
       commandString =
         "[" + command.value() + ", " +
@@ -446,10 +448,10 @@ public:
   ::ZeroMemory(&startupInfo, sizeof(STARTUPINFO));
 
   startupInfo.cb = sizeof(STARTUPINFO);
-
+  string cmd = os::getenv("WINDIR").get()+"\\system32\\cmd.exe";
   BOOL createProcessResult = ::CreateProcess(
-    (LPSTR)command.value().c_str(),  // Path of module to load[1].
-    (LPSTR)argv,     // Command line arguments[1].
+    NULL,
+    (LPSTR)command.value().c_str(), // Command line arguments[1].
     NULL,                 // Default security attributes.
     NULL,                 // Default primary thread security attributes.
     TRUE,                 // Inherited parent process handles.
@@ -912,6 +914,9 @@ int main(int argc, char** argv)
       flags.task_command);
 
   mesos::MesosExecutorDriver driver(&executor);
+  int ret =
+      (driver.run() == mesos::DRIVER_STOPPED ? EXIT_SUCCESS : EXIT_FAILURE);
 
-  return driver.run() == mesos::DRIVER_STOPPED ? EXIT_SUCCESS : EXIT_FAILURE;
+  //  cleanup(); TODO: Need to shutdown LIBEVENT
+  return ret;
 }
