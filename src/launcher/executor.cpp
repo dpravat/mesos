@@ -323,7 +323,8 @@ public:
         strings::join(", ", command.arguments()) + "]";
     }
 
-#ifdef TODO
+// HACK
+#ifndef __WINDOWS__
     if ((pid = fork()) == -1) {
       cerr << "Failed to fork to run " << commandString << ": "
            << os::strerror(errno) << endl;
@@ -331,6 +332,7 @@ public:
     }
 #endif
 
+#ifndef __WINDOWS__
     // TODO(jieyu): Make the child process async signal safe.
     if (pid == 0) {
       // In child process, we make cleanup easier by putting process
@@ -339,7 +341,6 @@ public:
 
       // NOTE: We setsid() in a loop because setsid() might fail if another
       // process has the same process group id as the calling process.
-#ifndef __WINDOWS__
       while ((pid = setsid()) == -1) {
         perror("Could not put command in its own session, setsid");
 
@@ -413,7 +414,7 @@ public:
         abort();
 #endif // __linux__
       }
-#endif
+
 
       cout << commandString << endl;
 
@@ -437,19 +438,49 @@ public:
       perror("Failed to exec");
       abort();
     }
+#else
+  PROCESS_INFORMATION processInfo;
+  STARTUPINFO startupInfo;
+
+  ::ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
+  ::ZeroMemory(&startupInfo, sizeof(STARTUPINFO));
+
+  startupInfo.cb = sizeof(STARTUPINFO);
+
+  BOOL createProcessResult = ::CreateProcess(
+    (LPSTR)command.value().c_str(),  // Path of module to load[1].
+    (LPSTR)argv,     // Command line arguments[1].
+    NULL,                 // Default security attributes.
+    NULL,                 // Default primary thread security attributes.
+    TRUE,                 // Inherited parent process handles.
+    0,                    // Default creation flags.
+    NULL,  // Array of environment variables[1].
+    NULL,                 // Use parent's current directory.
+    &startupInfo,         // STARTUPINFO pointer.
+    &processInfo);        // PROCESS_INFORMATION pointer.
+
+  if (!createProcessResult)
+  {
+    abort();
+  }
+
+  pid = processInfo.dwProcessId;
+#endif
 
     delete[] argv;
 
     // In parent process.
     os::close(pipe.write);
 
+    // HACK
+#ifndef __WINDOWS__
     // Get the child's pid via the pipe.
     if (read(pipe.read, &pid, sizeof(pid)) == -1) {
       cerr << "Failed to get child PID from pipe, read: "
            << os::strerror(errno) << endl;
       abort();
     }
-
+#endif
     os::close(pipe.read);
 
     cout << "Forked command at " << pid << endl;
