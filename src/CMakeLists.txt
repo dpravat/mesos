@@ -420,3 +420,4 @@ target_link_libraries(${MESOS_TARGET} ${AGENT_LIBS})
 
 add_subdirectory(slave)
 add_subdirectory(launcher)
+add_subdirectory(health-check)
