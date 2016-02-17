@@ -21,6 +21,8 @@
 
 #include <stout/try.hpp>
 
+using std::string;
+
 namespace os {
 
 namespace Shell {
@@ -56,6 +58,95 @@ template<typename... T>
 inline int execlp(const char* file, T... t)
 {
   exit(::_spawnlp(_P_WAIT, file, t...));
+}
+
+// Base case. Concatenates two command-line arguments without escaping the
+// values.
+inline std::string args(const std::string& arg1, const std::string& arg2)
+{
+  return arg1 + " " + arg2;
+}
+
+// Concatenates multiple command-line arguments without escaping the values.
+template <typename... Arguments>
+inline std::string args(
+  const std::string& arg1, const std::string& arg2, Arguments&&... _args)
+{
+  return args(arg1, args(arg2, std::forward<Arguments>(_args)...));
+}
+
+// Adds double quotes around arguments that contain special characters (like
+// spaces and tabls). Also escapes any existing double quotes and backslashes.
+inline std::string escape_arg(const std::string& arg)
+{
+  // A good explanation of how this function works, as well as the original
+  // version of this code can be found here[1].
+  //
+  // [1] http://blogs.msdn.com/b/twistylittlepassagesallalike/archive/2011/04/23/everyone-quotes-arguments-the-wrong-way.aspx
+  std::string escaped = "";
+
+  // Only use quotes if needed.
+  if (!arg.empty() && arg.find_first_of(" \t\n\v\"") == arg.npos)
+  {
+    escaped.append(arg);
+  } else {
+    escaped.push_back('"');
+    for (auto iterator = arg.begin(); ; ++iterator) {
+      unsigned backslashes = 0;
+
+      while (iterator != arg.end() && *iterator == '\\') {
+        ++iterator;
+        ++backslashes;
+      }
+
+      if (iterator == arg.end()) {
+        // Escape all backslashes, but let the terminating
+        // double quotation mark we add below be interpreted
+        // as a metacharacter.
+        escaped.append(backslashes * 2, '\\');
+        break;
+      }
+      else if (*iterator == '"') {
+        // Escape all backslashes and the following
+        // double quotation mark.
+        escaped.append(backslashes * 2 + 1, '\\');
+        escaped.push_back(*iterator);
+      } else {
+        // Backslashes aren't special here.
+        escaped.append(backslashes, '\\');
+        escaped.push_back(*iterator);
+      }
+    }
+
+    escaped.push_back(L'"');
+  }
+
+  return escaped;
+}
+
+// Concatenates multiple command-line arguments and escaps the values. If `arg`
+// is not specified (or takes the value `0`), the function will scan `argv`
+// until a `NULL` is encountered.
+inline std::string stringify_args(const char** argv, unsigned long argc = 0)
+{
+  std::string arg_line = "";
+  unsigned long index = 0;
+  while ((argc < 0 || index < argc) && argv[index] != NULL) {
+    arg_line = args(arg_line, escape_arg(argv[index]));
+  }
+
+  return arg_line;
+}
+
+// Concatenates multiple command-line arguments and escaps the values.
+inline std::string stringify_args(const std::vector<string>& arguments)
+{
+  std::string arg_line = "";
+  foreach(string arg, arguments) {
+    arg_line = args(arg_line, escape_arg(arg));
+  }
+
+  return arg_line;
 }
 
 } // namespace os {
