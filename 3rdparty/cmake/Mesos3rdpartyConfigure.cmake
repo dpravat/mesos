@@ -50,6 +50,11 @@ else (NOT WIN32)
   set(ZOOKEEPER_LFLAG zookeeper)
 endif (NOT WIN32)
 
+set(LEVELDB_TARGET      "leveldb")
+set(LEVELDB_CMAKE_ROOT  ${MESOS_3RDPARTY_BIN}/${LEVELDB_TARGET})
+set(LEVELDB_ROOT        ${LEVELDB_CMAKE_ROOT}/src/${LEVELDB_TARGET})
+set(LEVELDB_INCLUDE_DIR ${LEVELDB_ROOT}/include)
+
 # Configure Windows use of the GNU patch utility;
 # we attempt to find it in its default location,
 # but this path may be customized.
