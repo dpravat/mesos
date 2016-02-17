@@ -40,6 +40,10 @@
 #include <process/reap.hpp>
 #include <process/timer.hpp>
 
+#ifdef __WINDOWS__
+#include <process/windows/winsock.hpp>    // WSAStartup code.
+#endif // __WINDOWS__
+
 #include <stout/duration.hpp>
 #include <stout/flags.hpp>
 #include <stout/json.hpp>
@@ -149,6 +153,303 @@ public:
 
   void disconnected(ExecutorDriver* driver) {}
 
+#ifndef __WINDOWS__
+
+  void launchTaskPosix(const string& command, const char** argv)
+  {
+    // TODO(benh): Clean this up with the new 'Fork' abstraction.
+    // Use pipes to determine which child has successfully changed
+    // session. This is needed as the setsid call can fail from other
+    // processes having the same group id.
+    process::Pipe pipe;
+    Try<Nothing> createPipe = pipe.Create();
+
+    if (createPipe.isError()) {
+      perror("Failed to create IPC pipe");
+      abort();
+    }
+
+    // Set the FD_CLOEXEC flags on these pipes.
+    Try<Nothing> cloexec = os::cloexec(pipe.read);
+    if (cloexec.isError()) {
+      cerr << "Failed to cloexec(pipe[0]): " << cloexec.error() << endl;
+      abort();
+    }
+
+    cloexec = os::cloexec(pipe.write);
+    if (cloexec.isError()) {
+      cerr << "Failed to cloexec(pipe[1]): " << cloexec.error() << endl;
+      abort();
+    }
+
+    Option<string> rootfs;
+    if (sandboxDirectory.isSome()) {
+      // If 'sandbox_diretory' is specified, that means the user
+      // task specifies a root filesystem, and that root filesystem has
+      // already been prepared at COMMAND_EXECUTOR_ROOTFS_CONTAINER_PATH.
+      // The command executor is responsible for mounting the sandbox
+      // into the root filesystem, chrooting into it and changing the
+      // user before exec-ing the user process.
+      //
+      // TODO(gilbert): Consider a better way to detect if a root
+      // filesystem is specified for the command task.
+#ifdef __linux__
+      Result<string> user = os::user();
+      if (user.isError()) {
+        cerr << "Failed to get current user: " << user.error() << endl;
+        abort();
+      }
+      else if (user.isNone()) {
+        cerr << "Current username is not found" << endl;
+        abort();
+      }
+      else if (user.get() != "root") {
+        cerr << "The command executor requires root with rootfs" << endl;
+        abort();
+      }
+
+      rootfs = path::join(
+        os::getcwd(), COMMAND_EXECUTOR_ROOTFS_CONTAINER_PATH);
+
+      string sandbox = path::join(rootfs.get(), sandboxDirectory.get());
+      if (!os::exists(sandbox)) {
+        Try<Nothing> mkdir = os::mkdir(sandbox);
+        if (mkdir.isError()) {
+          cerr << "Failed to create sandbox mount point  at '"
+            << sandbox << "': " << mkdir.error() << endl;
+          abort();
+        }
+      }
+
+      // Mount the sandbox into the container rootfs.
+      // We need to perform a recursive mount because we want all the
+      // volume mounts in the sandbox to be also mounted in the container
+      // root filesystem. However, since the container root filesystem
+      // is also mounted in the sandbox, after the recursive mount we
+      // also need to unmount the root filesystem in the mounted sandbox.
+      Try<Nothing> mount = fs::mount(
+        os::getcwd(),
+        sandbox,
+        None(),
+        MS_BIND | MS_REC,
+        NULL);
+
+      if (mount.isError()) {
+        cerr << "Unable to mount the work directory into container "
+          << "rootfs: " << mount.error() << endl;;
+        abort();
+      }
+
+      // Umount the root filesystem path in the mounted sandbox after
+      // the recursive mount.
+      Try<Nothing> unmountAll = fs::unmountAll(path::join(
+        sandbox,
+        COMMAND_EXECUTOR_ROOTFS_CONTAINER_PATH));
+      if (unmountAll.isError()) {
+        cerr << "Unable to unmount rootfs under mounted sandbox: "
+          << unmountAll.error() << endl;
+        abort();
+      }
+#else
+      cerr << "Not expecting root volume with non-linux platform." << endl;
+      abort();
+#endif // __linux__
+    }
+
+    if ((pid = fork()) == -1) {
+      cerr << "Failed to fork to run " << commandString << ": "
+        << os::strerror(errno) << endl;
+      abort();
+    }
+
+    // TODO(jieyu): Make the child process async signal safe.
+    if (pid == 0) {
+      // In child process, we make cleanup easier by putting process
+      // into it's own session.
+      os::close(pipe.read);
+
+      // NOTE: We setsid() in a loop because setsid() might fail if another
+      // process has the same process group id as the calling process.
+      while ((pid = setsid()) == -1) {
+        perror("Could not put command in its own session, setsid");
+
+        cout << "Forking another process and retrying" << endl;
+
+        if ((pid = fork()) == -1) {
+          perror("Failed to fork to launch command");
+          abort();
+        }
+
+        if (pid > 0) {
+          // In parent process. It is ok to suicide here, because
+          // we're not watching this process.
+          exit(0);
+        }
+      }
+
+      if (write(pipe.write, &pid, sizeof(pid)) != sizeof(pid)) {
+        perror("Failed to write PID on pipe");
+        abort();
+      }
+
+      os::close(pipe.write);
+
+      if (rootfs.isSome()) {
+#ifdef __linux__
+        if (user.isSome()) {
+          // This is a work around to fix the problem that after we chroot
+          // os::su call afterwards failed because the linker may not be
+          // able to find the necessary library in the rootfs.
+          // We call os::su before chroot here to force the linker to load
+          // into memory.
+          // We also assume it's safe to su to "root" user since
+          // filesystem/linux.cpp checks for root already.
+          os::su("root");
+        }
+
+        Try<Nothing> chroot = fs::chroot::enter(rootfs.get());
+        if (chroot.isError()) {
+          cerr << "Failed to enter chroot '" << rootfs.get()
+            << "': " << chroot.error() << endl;;
+          abort();
+        }
+
+        // Determine the current working directory for the executor.
+        string cwd;
+        if (workingDirectory.isSome()) {
+          cwd = workingDirectory.get();
+        }
+        else {
+          CHECK_SOME(sandboxDirectory);
+          cwd = sandboxDirectory.get();
+        }
+
+        Try<Nothing> chdir = os::chdir(cwd);
+        if (chdir.isError()) {
+          cerr << "Failed to chdir into current working directory '"
+            << cwd << "': " << chdir.error() << endl;
+          abort();
+        }
+
+        if (user.isSome()) {
+          Try<Nothing> su = os::su(user.get());
+          if (su.isError()) {
+            cerr << "Failed to change user to '" << user.get() << "': "
+              << su.error() << endl;
+            abort();
+          }
+        }
+#else
+        cerr << "Rootfs is only supported on Linux" << endl;
+        abort();
+#endif // __linux__
+      }
+
+      // The child has successfully setsid, now run the command.
+      if (override.isNone()) {
+        if (command.shell()) {
+          execlp(
+            os::Shell::name,
+            os::Shell::arg0,
+            os::Shell::arg1,
+            task.command().value().c_str(),
+            (char*)NULL);
+        }
+        else {
+          execvp(command.value().c_str(), argv);
+        }
+      }
+      else {
+        char** argv = override.get();
+        execvp(argv[0], argv);
+      }
+
+      perror("Failed to exec");
+      abort();
+    }
+
+    // In parent process.
+    os::close(pipe.write);
+
+    // Get the child's pid via the pipe.
+    if (read(pipe.read, &pid, sizeof(pid)) == -1) {
+      cerr << "Failed to get child PID from pipe, read: "
+        << os::strerror(errno) << endl;
+      abort();
+    }
+
+    os::close(pipe.read);
+  }
+#endif // !__WINDOWS__
+
+pid_t launchTaskWindows(
+  const TaskInfo& task,
+  const CommandInfo& command,
+  const char** argv)
+{
+  PROCESS_INFORMATION processInfo;
+  ::ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
+
+  STARTUPINFO startupInfo;
+  ::ZeroMemory(&startupInfo, sizeof(STARTUPINFO));
+  startupInfo.cb = sizeof(STARTUPINFO);
+
+  string executable;
+  string commandLine = task.command().value();
+
+  if (override.isNone()) {
+    if (command.shell()) {
+      // Use Windows shell (`cmd.exe`). Look for it in the system folder.
+      char systemDir[MAX_PATH];
+      if (!::GetSystemDirectory(systemDir, MAX_PATH)) {
+        // No way to recover from this, safe to exit the process.
+        abort();
+      }
+
+      executable = path::join(systemDir, os::Shell::name);
+
+      // `cmd.exe` needs to be used in conjunction with the `/c` parameter.
+      // For compliance with C-style applications, `cmd.exe` should be passed
+      // as `argv[0]`.
+      // TODO(alexnaparu): Quotes are probably needed after `/c`.
+      commandLine = os::args(
+          os::Shell::arg0, os::Shell::arg1, commandLine);
+    }
+    else {
+      // Not a shell command, execute as-is.
+      executable = command.value();
+      commandLine = os::stringify_args(argv);
+    }
+  }
+  else {
+    // Convert all arguments to a single space-separated string.
+    commandLine = os::stringify_args((const char**)override.get());
+  }
+
+  // There are many wrappers on `CreateProcess` that are more user-friendly,
+  // but they don't return the PID of the child process.
+  BOOL createProcessResult = ::CreateProcess(
+      executable.empty() ? NULL : executable.c_str(), // Module to load.
+      (LPSTR)commandLine.c_str(),                     // Command line.
+      NULL,                 // Default security attributes.
+      NULL,                 // Default primary thread security attributes.
+      TRUE,                 // Inherited parent process handles.
+      0,                    // Default creation flags.
+      NULL,                 // Use parent's environment.
+      NULL,                 // Use parent's current directory.
+      &startupInfo,         // STARTUPINFO pointer.
+      &processInfo);        // PROCESS_INFORMATION pointer.
+
+  if (!createProcessResult) {
+    cout << "launchTaskWindows: CreateProcess failed with error code" <<
+        GetLastError() << endl;
+
+    abort();
+  }
+
+  return processInfo.dwProcessId;
+}
+
   void launchTask(ExecutorDriver* driver, const TaskInfo& task)
   {
     CHECK_EQ(REGISTERED, state);
@@ -212,107 +513,10 @@ public:
 
     cout << "Starting task " << task.task_id() << endl;
 
-    // TODO(benh): Clean this up with the new 'Fork' abstraction.
-    // Use pipes to determine which child has successfully changed
-    // session. This is needed as the setsid call can fail from other
-    // processes having the same group id.
-    process::Pipe pipe;
-    Try<Nothing> createPipe = pipe.Create();
-
-    if (createPipe.isError()) {
-      perror("Failed to create IPC pipe");
-      abort();
-    }
-
-    // Set the FD_CLOEXEC flags on these pipes.
-    Try<Nothing> cloexec = os::cloexec(pipe.read);
-    if (cloexec.isError()) {
-      cerr << "Failed to cloexec(pipe[0]): " << cloexec.error() << endl;
-      abort();
-    }
-
-    cloexec = os::cloexec(pipe.write);
-    if (cloexec.isError()) {
-      cerr << "Failed to cloexec(pipe[1]): " << cloexec.error() << endl;
-      abort();
-    }
-
-    Option<string> rootfs;
-    if (sandboxDirectory.isSome()) {
-      // If 'sandbox_diretory' is specified, that means the user
-      // task specifies a root filesystem, and that root filesystem has
-      // already been prepared at COMMAND_EXECUTOR_ROOTFS_CONTAINER_PATH.
-      // The command executor is responsible for mounting the sandbox
-      // into the root filesystem, chrooting into it and changing the
-      // user before exec-ing the user process.
-      //
-      // TODO(gilbert): Consider a better way to detect if a root
-      // filesystem is specified for the command task.
-#ifdef __linux__
-      Result<string> user = os::user();
-      if (user.isError()) {
-        cerr << "Failed to get current user: " << user.error() << endl;
-        abort();
-      } else if (user.isNone()) {
-        cerr << "Current username is not found" << endl;
-        abort();
-      } else if (user.get() != "root") {
-        cerr << "The command executor requires root with rootfs" << endl;
-        abort();
-      }
-
-      rootfs = path::join(
-          os::getcwd(), COMMAND_EXECUTOR_ROOTFS_CONTAINER_PATH);
-
-      string sandbox = path::join(rootfs.get(), sandboxDirectory.get());
-      if (!os::exists(sandbox)) {
-        Try<Nothing> mkdir = os::mkdir(sandbox);
-        if (mkdir.isError()) {
-          cerr << "Failed to create sandbox mount point  at '"
-               << sandbox << "': " << mkdir.error() << endl;
-          abort();
-        }
-      }
-
-      // Mount the sandbox into the container rootfs.
-      // We need to perform a recursive mount because we want all the
-      // volume mounts in the sandbox to be also mounted in the container
-      // root filesystem. However, since the container root filesystem
-      // is also mounted in the sandbox, after the recursive mount we
-      // also need to unmount the root filesystem in the mounted sandbox.
-      Try<Nothing> mount = fs::mount(
-          os::getcwd(),
-          sandbox,
-          None(),
-          MS_BIND | MS_REC,
-          NULL);
-
-      if (mount.isError()) {
-        cerr << "Unable to mount the work directory into container "
-             << "rootfs: " << mount.error() << endl;;
-        abort();
-      }
-
-      // Umount the root filesystem path in the mounted sandbox after
-      // the recursive mount.
-      Try<Nothing> unmountAll = fs::unmountAll(path::join(
-          sandbox,
-          COMMAND_EXECUTOR_ROOTFS_CONTAINER_PATH));
-      if (unmountAll.isError()) {
-        cerr << "Unable to unmount rootfs under mounted sandbox: "
-             << unmountAll.error() << endl;
-        abort();
-      }
-#else
-      cerr << "Not expecting root volume with non-linux platform." << endl;
-      abort();
-#endif // __linux__
-    }
-
     // Prepare the argv before fork as it's not async signal safe.
     char **argv = new char*[command.arguments().size() + 1];
     for (int i = 0; i < command.arguments().size(); i++) {
-      argv[i] = (char*) command.arguments(i).c_str();
+      argv[i] = (char*)command.arguments(i).c_str();
     }
     argv[command.arguments().size()] = NULL;
 
@@ -325,175 +529,27 @@ public:
       for (int i = 0; argv[i] != NULL; i++) {
         commandString += string(argv[i]) + " ";
       }
-    } else if (command.shell()) {
+    }
+    else if (command.shell()) {
       commandString = string(os::Shell::arg0) + " " +
-                      string(os::Shell::arg1) + " '" +
-                      command.value() + "'";
-    } else {
+        string(os::Shell::arg1) + " '" +
+        command.value() + "'";
+    }
+    else {
       commandString =
         "[" + command.value() + ", " +
         strings::join(", ", command.arguments()) + "]";
     }
 
-// HACK
-#ifndef __WINDOWS__
-    if ((pid = fork()) == -1) {
-      cerr << "Failed to fork to run " << commandString << ": "
-           << os::strerror(errno) << endl;
-      abort();
-    }
-#endif
+    cout << commandString << endl;
 
 #ifndef __WINDOWS__
-    // TODO(jieyu): Make the child process async signal safe.
-    if (pid == 0) {
-      // In child process, we make cleanup easier by putting process
-      // into it's own session.
-      os::close(pipe.read);
-
-      // NOTE: We setsid() in a loop because setsid() might fail if another
-      // process has the same process group id as the calling process.
-      while ((pid = setsid()) == -1) {
-        perror("Could not put command in its own session, setsid");
-
-        cout << "Forking another process and retrying" << endl;
-
-        if ((pid = fork()) == -1) {
-          perror("Failed to fork to launch command");
-          abort();
-        }
-
-        if (pid > 0) {
-          // In parent process. It is ok to suicide here, because
-          // we're not watching this process.
-          exit(0);
-        }
-      }
-
-      if (write(pipe.write, &pid, sizeof(pid)) != sizeof(pid)) {
-        perror("Failed to write PID on pipe");
-        abort();
-      }
-
-      os::close(pipe.write);
-
-      if (rootfs.isSome()) {
-#ifdef __linux__
-        if (user.isSome()) {
-          // This is a work around to fix the problem that after we chroot
-          // os::su call afterwards failed because the linker may not be
-          // able to find the necessary library in the rootfs.
-          // We call os::su before chroot here to force the linker to load
-          // into memory.
-          // We also assume it's safe to su to "root" user since
-          // filesystem/linux.cpp checks for root already.
-          os::su("root");
-        }
-
-        Try<Nothing> chroot = fs::chroot::enter(rootfs.get());
-        if (chroot.isError()) {
-          cerr << "Failed to enter chroot '" << rootfs.get()
-               << "': " << chroot.error() << endl;;
-          abort();
-        }
-
-        // Determine the current working directory for the executor.
-        string cwd;
-        if (workingDirectory.isSome()) {
-          cwd = workingDirectory.get();
-        } else {
-          CHECK_SOME(sandboxDirectory);
-          cwd = sandboxDirectory.get();
-        }
-
-        Try<Nothing> chdir = os::chdir(cwd);
-        if (chdir.isError()) {
-          cerr << "Failed to chdir into current working directory '"
-               << cwd << "': " << chdir.error() << endl;
-          abort();
-        }
-
-        if (user.isSome()) {
-          Try<Nothing> su = os::su(user.get());
-          if (su.isError()) {
-            cerr << "Failed to change user to '" << user.get() << "': "
-                 << su.error() << endl;
-            abort();
-          }
-        }
+    pid = launchTaskPosix(command, argv);
 #else
-        cerr << "Rootfs is only supported on Linux" << endl;
-        abort();
-#endif // __linux__
-      }
-
-
-      cout << commandString << endl;
-
-      // The child has successfully setsid, now run the command.
-      if (override.isNone()) {
-        if (command.shell()) {
-          execlp(
-                 os::Shell::name,
-                 os::Shell::arg0,
-                 os::Shell::arg1,
-                 task.command().value().c_str(),
-                 (char*) NULL);
-        } else {
-          execvp(command.value().c_str(), argv);
-        }
-      } else {
-        char** argv = override.get();
-        execvp(argv[0], argv);
-      }
-
-      perror("Failed to exec");
-      abort();
-    }
-#else
-  PROCESS_INFORMATION processInfo;
-  STARTUPINFO startupInfo;
-
-  ::ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
-  ::ZeroMemory(&startupInfo, sizeof(STARTUPINFO));
-
-  startupInfo.cb = sizeof(STARTUPINFO);
-  string cmd = os::getenv("WINDIR").get()+"\\system32\\cmd.exe";
-  BOOL createProcessResult = ::CreateProcess(
-    NULL,
-    (LPSTR)command.value().c_str(), // Command line arguments[1].
-    NULL,                 // Default security attributes.
-    NULL,                 // Default primary thread security attributes.
-    TRUE,                 // Inherited parent process handles.
-    0,                    // Default creation flags.
-    NULL,  // Array of environment variables[1].
-    NULL,                 // Use parent's current directory.
-    &startupInfo,         // STARTUPINFO pointer.
-    &processInfo);        // PROCESS_INFORMATION pointer.
-
-  if (!createProcessResult)
-  {
-    abort();
-  }
-
-  pid = processInfo.dwProcessId;
+    pid = launchTaskWindows(task, command, (const char**)argv);
 #endif
 
     delete[] argv;
-
-    // In parent process.
-    os::close(pipe.write);
-
-    // HACK
-#ifndef __WINDOWS__
-    // Get the child's pid via the pipe.
-    if (read(pipe.read, &pid, sizeof(pid)) == -1) {
-      cerr << "Failed to get child PID from pipe, read: "
-           << os::strerror(errno) << endl;
-      abort();
-    }
-#endif
-    os::close(pipe.read);
 
     cout << "Forked command at " << pid << endl;
 
@@ -904,86 +960,15 @@ public:
   Option<string> task_command;
 };
 
-// Returns `EXIT_SUCCESS` (0) on success, `EXIT_FAILURE` otherwise and logs the
-// reason for failure.
-int initialize()
-{
-#ifdef __WINDOWS__
-  // Initialize WinSock (request version 2.2).
-  WORD requestedVersion = MAKEWORD(2, 2);
-  WSADATA data;
-
-  const int result = ::WSAStartup(requestedVersion, &data);
-  if (result != 0) {
-    const int error = ::WSAGetLastError();
-    cerr << "Could not initialize WinSock, error code : " << error << endl;
-    return EXIT_FAILURE;
-  }
-
-  // Check that the WinSock version we got back is 2.2 or higher.
-  // The high-order byte specifies the minor version number.
-  if (LOBYTE(data.wVersion) < 2 ||
-    (LOBYTE(data.wVersion) == 2 && HIBYTE(data.wVersion) != 2)) {
-    cerr << "Incorrect WinSock version found : " << LOBYTE(data.wVersion)
-      << "." << HIBYTE(data.wVersion) << endl;
-
-    // WinSock was initialized, we just didn't like the version, so we need to
-    // clean up.
-    if (::WSACleanup() != 0) {
-      const int error = ::WSAGetLastError();
-      cerr << "Could not cleanup WinSock, error code : " << error << endl;
-    }
-
-    return EXIT_FAILURE;
-  }
-
-  return EXIT_SUCCESS;
-#else
-  // TODO: Fill this in!
-  return 0;
-#endif // __WINDOWS__
-}
-
-int cleanup()
-{
-#ifdef __WINDOWS__
-  // Cleanup WinSock. Wait for any outstanding socket operations to complete
-  // before exiting. Retry for a maximum of 10 times at 1 second intervals.
-  int retriesLeft = 10;
-
-  while (retriesLeft > 0) {
-    const int result = ::WSACleanup();
-    if (result != 0) {
-      const int error = ::WSAGetLastError();
-      // Make it idempotent.
-      if (error == WSANOTINITIALISED) {
-        return EXIT_SUCCESS;
-      }
-
-      // Wait for any blocking calls to complete and retry after 1 second.
-      if (error == WSAEINPROGRESS) {
-        cerr << "Waiting for outstanding WinSock calls to complete." << endl;
-        ::Sleep(1000);
-        retriesLeft--;
-      }
-      else {
-        cerr << "Could not cleanup WinSock, error code : " << error << endl;
-      }
-    }
-  }
-
-  return EXIT_SUCCESS;
-#else
-  // TODO: Fill this in!
-  return 0;
-#endif // __WINDOWS__
-}
 
 int main(int argc, char** argv)
 {
   Flags flags;
 
-  initialize();
+#ifdef __WINDOWS__
+  process::Winsock winsock;
+#endif
+
   // Load flags from command line.
   Try<Nothing> load = flags.load(None(), &argc, &argv);
 
@@ -1024,9 +1009,8 @@ int main(int argc, char** argv)
       flags.task_command);
 
   mesos::MesosExecutorDriver driver(&executor);
-  int ret =
+  int result =
       (driver.run() == mesos::DRIVER_STOPPED ? EXIT_SUCCESS : EXIT_FAILURE);
 
-  //  cleanup(); TODO: Need to shutdown LIBEVENT
-  return ret;
+  return result;
 }
