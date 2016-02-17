@@ -72,19 +72,27 @@ static Try<bool> extract(
   } else if (strings::endsWith(sourcePath, ".gz")) {
     string pathWithoutExtension = sourcePath.substr(0, sourcePath.length() - 3);
     string filename = Path(pathWithoutExtension).basename();
+#ifndef __WINDOWS__
     command = "gzip -dc > '" + destinationDirectory + "/" + filename + "' <";
+#else
+    command = "gzip -dc > \"" + destinationDirectory + "\\" + filename + "\" <";
+#endif // __WINDOWS__
   } else if (strings::endsWith(sourcePath, ".zip")) {
     command = "unzip -d '" + destinationDirectory + "'";
   } else {
     return false;
   }
 
+#ifndef __WINDOWS__
   command += " '" + sourcePath + "'";
+#else
+  command += " \"" + sourcePath + "\"";
+#endif // __WINDOWS__
 
   LOG(INFO) << "Extracting with command: " << command;
 
   int status = os::system(command);
-  if (status != 0) {
+  if (status == -1) {
     return Error("Failed to extract: command " + command +
                  " exited with status: " + stringify(status));
   }
@@ -158,19 +166,38 @@ static Try<string> downloadWithNet(
   return destinationPath;
 }
 
+// Replace all occurances of from with to in str.
+void replaceAll(std::string& str, const std::string& from, const std::string& to) {
+    if (from.empty()) {
+        return;
+    }
+
+    size_t start_pos = 0;
+    while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
+        str.replace(start_pos, from.length(), to);
+        start_pos += to.length(); // handles to contains from case
+    }
+}
 
 static Try<string> copyFile(
     const string& sourcePath,
     const string& destinationPath)
 {
+#ifndef __WINDOWS__
   const string command = "cp '" + sourcePath + "' '" + destinationPath + "'";
+#else
+  string newSourcePath = sourcePath;
+  replaceAll(newSourcePath, "/", "\\");
+
+  const string command = "cp \"" + newSourcePath + "\" \"" + destinationPath + "\"";
+#endif // __WINDOWS__
 
   LOG(INFO) << "Copying resource with command:" << command;
 
   int status = os::system(command);
-  if (status != 0) {
-    return Error("Failed to copy with command '" + command +
-                 "', exit status: " + stringify(status));
+  if (status == -1) {
+      return Error("Failed to copy with command '" + command +
+          "', exit status: " + stringify(status));
   }
 
   return destinationPath;
