@@ -29,6 +29,7 @@ set(AGENT_DEPENDENCIES
   ${PROCESS_DEPENDENCIES}
   ${PROCESS_TARGET}
   ${ZOOKEEPER_TARGET}
+  ${LEVELDB_TARGET}
   make_bin_include_dir
   make_bin_src_dir
   )
@@ -48,6 +49,7 @@ set(AGENT_INCLUDE_DIRS
   ${PROCESS_INCLUDE_DIRS}
   ${ZOOKEEPER_INCLUDE_DIR}
   ${ZOOKEEPER_INCLUDE_GENDIR}
+  ${LEVELDB_INCLUDE_DIR}
   )
 
 # Define third-party lib install directories. Used to tell the compiler
@@ -74,6 +76,7 @@ if (NOT WIN32)
   set(AGENT_LIBS
     ${AGENT_LIBS}
     ${SASL_LFLAG}
+    ${LEVELDB_ROOT}/libleveldb.a
     )
 endif (NOT WIN32)
 
