@@ -21,6 +21,8 @@
 #include <stout/nothing.hpp>
 #include <stout/try.hpp>
 
+#include <stout/os/exists.hpp>
+
 
 namespace os {
 
@@ -35,6 +37,11 @@ inline Try<Nothing> rmdir(const std::string& directory, bool recursive = true)
       return ErrnoError();
     }
   } else {
+    if (!os::exists(directory)) {
+      errno = ENOENT;
+      return ErrnoError();
+    }
+
     char* paths[] = {const_cast<char*>(directory.c_str()), NULL};
 
     FTS* tree = fts_open(paths, FTS_NOCHDIR, NULL);
