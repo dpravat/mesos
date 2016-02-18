@@ -35,6 +35,7 @@
 
 #include <stout/os/os.hpp>
 #include <stout/os/read.hpp>
+#include <stout/os/rename.hpp>
 
 #include <stout/os/os.hpp>
 #include <stout/os/raw/environment.hpp>
@@ -89,7 +90,7 @@ for (DWORD i = 0; i < bytes / sizeof(DWORD); i++) {
 
 free(pids);
 return result;
- }
+}
 
 inline Option<Process> process(
     pid_t pid,
