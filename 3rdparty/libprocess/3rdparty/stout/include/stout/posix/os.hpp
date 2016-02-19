@@ -542,6 +542,11 @@ inline int getsockopt(int socket, int level, int option_name,
   return ::getsockopt(socket, level, option_name, option_value, option_len);
 }
 
+inline struct tm* gmtime_r(const time_t* timep, struct tm* result)
+{
+  return ::gmtime_r(timep, result);
+}
+
 } // namespace os {
 
 #endif // __STOUT_POSIX_OS_HPP__
