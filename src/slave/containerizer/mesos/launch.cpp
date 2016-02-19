@@ -16,12 +16,13 @@
 
 #include <errno.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <iostream>
 
 #include <stout/foreach.hpp>
+
 #include <stout/os.hpp>
+
 #include <stout/protobuf.hpp>
 #include <stout/unreachable.hpp>
 
@@ -87,7 +88,6 @@ MesosContainerizerLaunch::Flags::Flags()
       "The additional preparation commands to execute before\n"
       "executing the command.");
 }
-
 
 int MesosContainerizerLaunch::execute()
 {
@@ -287,9 +287,10 @@ int MesosContainerizerLaunch::execute()
 
   if (command.get().shell()) {
     // Execute the command using shell.
-    execlp("sh", "sh", "-c", command.get().value().c_str(), (char*) NULL);
+    os::execlp(os::Shell::name, os::Shell::arg0,
+               os::Shell::arg1, command.get().value().c_str(), (char*) NULL);
   } else {
-    // Use os::execvpe to launch the command.
+    // Use execvp to launch the command.
     char** argv = new char*[command.get().arguments().size() + 1];
     for (int i = 0; i < command.get().arguments().size(); i++) {
       argv[i] = strdup(command.get().arguments(i).c_str());
