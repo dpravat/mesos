@@ -526,6 +526,11 @@ inline void appendPaths(const std::string& newPaths)
 
 /* /TODO */
 
+inline struct tm* gmtime_r(const time_t* timep, struct tm* result)
+{
+  return ::gmtime_r(timep, result);
+}
+
 } // namespace os {
 
 #endif // __STOUT_POSIX_OS_HPP__

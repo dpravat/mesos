@@ -173,6 +173,18 @@ inline Try<std::set<pid_t>> pids(Option<pid_t> group, Option<pid_t> session)
   UNIMPLEMENTED;
 }
 */
+
+inline struct tm* gmtime_r(const time_t* timep, struct tm* result)
+{
+  // gmtime_s returns 0 if successful.
+  if (gmtime_s(result, timep) == 0)
+  {
+    return result;
+  }
+
+  return NULL;
+}
+
 } // namespace os {
 
 #endif // __STOUT_WINDOWS_OS_HPP__
