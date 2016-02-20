@@ -143,6 +143,12 @@ inline int system(const std::string& command)
   }
 }
 
+
+inline int execlp(const char* file, const char* arg, ...)
+{
+  return ::execlp(file, arg);
+}
+
 } // namespace os {
 
 #endif // __STOUT_OS_POSIX_SHELL_HPP__
