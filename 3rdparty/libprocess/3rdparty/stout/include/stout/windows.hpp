@@ -168,6 +168,13 @@ typedef SSIZE_T ssize_t;
 // have to change any socket code.
 constexpr int SHUT_RD = SD_RECEIVE;
 
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif // MSG_NOSIGNAL
+#ifndef SOL_TCP
+#define SOL_TCP SOL_SOCKET
+#endif // SOL_TCP
+
 // The following functions are usually macros on POSIX; we provide them here as
 // functions to avoid having global macros lying around. Note that these
 // operate on the `_stat` struct (a Windows version of the standard POSIX
