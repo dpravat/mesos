@@ -53,4 +53,14 @@
 #endif
 #endif /* __FreeBSD__ */
 
+#ifdef __WINDOWS__
+typedef int socklen_t
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+#ifndef SOL_TCP
+#define SOL_TCP SOL_SOCKET
+#endif
+#endif /* __WINDOWS__ */
+
 #endif // __CONFIG_HPP__
