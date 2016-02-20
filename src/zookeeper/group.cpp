@@ -653,7 +653,7 @@ Result<bool> GroupProcess::doCancel(const Group::Membership& membership)
 {
   CHECK_EQ(state, READY);
 
-  string path = path::join(znode, zkBasename(membership));
+  string path = path::join(znode, zkBasename(membership), POSIX_SEPARATOR_CHAR);
 
   LOG(INFO) << "Trying to remove '" << path << "' in ZooKeeper";
 
@@ -693,7 +693,7 @@ Result<Option<string>> GroupProcess::doData(
 {
   CHECK_EQ(state, READY);
 
-  string path = path::join(znode, zkBasename(membership));
+  string path = path::join(znode, zkBasename(membership), POSIX_SEPARATOR_CHAR);
 
   LOG(INFO) << "Trying to get '" << path << "' in ZooKeeper";
 
