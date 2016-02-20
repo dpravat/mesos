@@ -25,16 +25,21 @@
 #define PATH_SEPARATOR_STRING "/"
 #endif // __WINDOWS__
 
+#define WINDOWS_SEPARATOR_CHAR '\\'
+#define POSIX_SEPARATOR_CHAR '/'
+
 #include <stout/strings.hpp>
 
 namespace path {
 
 // Base case.
-inline std::string join(const std::string& path1, const std::string& path2)
+inline std::string join(const std::string& path1, const std::string& path2,
+        char char_separator = PATH_SEPARATOR_CHAR )
 {
-  return strings::remove(path1, PATH_SEPARATOR_STRING, strings::SUFFIX) +
-      PATH_SEPARATOR_STRING +
-      strings::remove(path2, PATH_SEPARATOR_STRING, strings::PREFIX);
+  std::string string_separator = std::string(1, char_separator);
+  return strings::remove(path1, string_separator, strings::SUFFIX) +
+      string_separator +
+      strings::remove(path2, string_separator, strings::PREFIX);
 }
 
 
