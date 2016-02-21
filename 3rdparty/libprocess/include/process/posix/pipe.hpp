@@ -29,9 +29,12 @@ public:
   }
 
   inline Try<Nothing> Create() {
-    if (::pipe(&read, &write) == -1) {
+    int pipefd[2];
+    if (::pipe(pipefd) == -1) {
       return ErrnoError("Pipe::Create: could not create pipe.");
     }
+    read = pipefd[0];
+    write = pipefd[1];
     return Nothing();
   }
 
@@ -45,7 +48,7 @@ public:
 
   int read;
   int write;
-}
+};
 
 } // namespace process {
 
