@@ -509,26 +509,21 @@ inline Try<bool> access(const std::string& fileName, int how)
 
 inline Result<bool> FindProcess(
   pid_t pid,
-  bool& exists,
   PPROCESSENTRY32 process_entry_ptr)
 {
-  // Initialize output paramter 'exists'.
-  exists = false;
-
   if (NULL == process_entry_ptr) {
-    return WindowsError(
-        "os::FindProcess(): 'process_entry_pointer' input parameter cannot be "
-        "null");
+    return WindowsError("os::FindProcess(): \
+      'process_entry_pointer' input parameter \
+      cannot be null");
   }
 
   // Get a snapshot of the proceses in the system.
-  HANDLE snapshot_handle = CreateToolhelp32Snapshot(
+  HANDLE snapshot_handle = ::CreateToolhelp32Snapshot(
     TH32CS_SNAPPROCESS,
     pid);
-  if (snapshot_handle == INVALID_HANDLE_VALUE ||
-    snapshot_handle == NULL) {
-    return WindowsError(
-        "os::FindProcess(): Failed to call CreateToolhelp32Snapshot");
+  if (snapshot_handle == INVALID_HANDLE_VALUE) {
+    return WindowsError("os::FindProcess(): \
+      Failed to call CreateToolhelp32Snapshot");
   }
 
   std::shared_ptr<void> safe_snapshot_handle
@@ -541,54 +536,51 @@ inline Result<bool> FindProcess(
 
   // Point to the first process and start loop to
   // find process.
-  DWORD last_error = ERROR_SUCCESS;
-  bool bcontinue = Process32First(
+  bool bcontinue = ::Process32First(
     safe_snapshot_handle.get(),
     process_entry_ptr);
   if (!bcontinue) {
     // No processes returned. Most likely an error but
     // will handle all paths.
-    last_error = GetLastError();
-    if (last_error != ERROR_NO_MORE_FILES &&
-      last_error != ERROR_SUCCESS) {
-      return WindowsError("os::FindProcess(): Failed to call Process32Next");
+    if (::GetLastError() != ERROR_NO_MORE_FILES) {
+      return WindowsError("os::FindProcess(): \
+        Failed to call Process32Next");
     }
 
-    return true;
+    // Process was not found.
+    return false;
   }
 
   while (bcontinue) {
     if (process_entry_ptr->th32ProcessID == pid) {
-      exists = true;
+      // Process found. Exit loop.
       break;
     }
 
-    bcontinue = Process32Next(safe_snapshot_handle.get(), process_entry_ptr);
+    bcontinue = ::Process32Next(safe_snapshot_handle.get(), process_entry_ptr);
     if (!bcontinue) {
-      last_error = GetLastError();
-      if (last_error != ERROR_NO_MORE_FILES &&
-        last_error != ERROR_SUCCESS) {
-        return WindowsError("os::FindProcess(): Failed to call Process32Next");
+      if (::GetLastError() != ERROR_NO_MORE_FILES) {
+        return WindowsError("os::FindProcess(): \
+          Failed to call Process32Next");
       }
     }
   }
 
+  // Process found.
   return true;
 }
 
 inline Result<bool> FindProcess(
-  pid_t pid,
-  bool& exists)
+  pid_t pid)
 {
   PROCESSENTRY32 process_entry;
-  return FindProcess(pid, exists, &process_entry);
+  return FindProcess(pid, &process_entry);
 }
 
 inline Result<Process> process(pid_t pid)
 {
   pid_t process_id = 0;
   pid_t parent_process_id = 0;
-  pid_t session_id = 0;
   std::string executable_filename = "";
   size_t wss = 0;
   double user_time = 0;
@@ -596,10 +588,8 @@ inline Result<Process> process(pid_t pid)
 
   // Find process with pid.
   PROCESSENTRY32 process_entry;
-  bool process_exists = false;
-  Result<bool> findprocess_result = FindProcess(
+  Result<bool> findprocess_result = os::FindProcess(
     pid,
-    process_exists,
     &process_entry);
 
   if (findprocess_result.isError()) {
@@ -609,7 +599,7 @@ inline Result<Process> process(pid_t pid)
   // If process does not exist simply return
   // none. No need to return error here.
   // See linux.hpp implementation logic.
-  if (!process_exists) {
+  if (!findprocess_result.get()) {
     return None();
   }
 
@@ -619,12 +609,11 @@ inline Result<Process> process(pid_t pid)
   parent_process_id = process_entry.th32ParentProcessID;
   executable_filename = process_entry.szExeFile;
 
-  HANDLE process_handle = OpenProcess(
+  HANDLE process_handle = ::OpenProcess(
     THREAD_ALL_ACCESS,
     false,
     process_id);
-  if (process_handle == INVALID_HANDLE_VALUE ||
-    process_handle == NULL) {
+  if (process_handle == NULL) {
     return WindowsError("os::process(): Failed to call OpenProcess");
   }
 
@@ -632,7 +621,7 @@ inline Result<Process> process(pid_t pid)
 
   // Get Windows Working set size (Resident set size in linux).
   PROCESS_MEMORY_COUNTERS proc_mem_counters;
-  bool result = GetProcessMemoryInfo(
+  bool result = ::GetProcessMemoryInfo(
     safe_process_handle.get(),
     &proc_mem_counters,
     sizeof(proc_mem_counters));
@@ -642,15 +631,9 @@ inline Result<Process> process(pid_t pid)
 
   wss = proc_mem_counters.WorkingSetSize;
 
-  // Get session Id.
-  result = ProcessIdToSessionId(process_id, &session_id);
-  if (!result) {
-    return WindowsError("os::process(): Failed to call ProcessIdToSessionId");
-  }
-
   // Get Process CPU time.
   FILETIME create_filetime, exit_filetime, kernel_filetime, user_filetime;
-  result = GetProcessTimes(
+  result = ::GetProcessTimes(
     safe_process_handle.get(),
     &create_filetime,
     &exit_filetime,
@@ -676,14 +659,13 @@ inline Result<Process> process(pid_t pid)
     process_id,        // process id.
     parent_process_id, // parent process id.
     0,                 // group id.
-    session_id,        // session id.
+    0,                 // session id.
     Bytes(wss),        // wss.
-    utime.isSome() ? utime.get() : Option<Duration>::none(),
-    stime.isSome() ? stime.get() : Option<Duration>::none(),
+    utime.get(),       // user time.
+    stime.get(),       // system time.
     executable_filename,
     false);            // is not zombie process.
 }
-
 
 } // namespace os {
 
