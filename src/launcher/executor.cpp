@@ -908,6 +908,7 @@ public:
 // reason for failure.
 int initialize()
 {
+#ifdef __WINDOWS__
   // Initialize WinSock (request version 2.2).
   WORD requestedVersion = MAKEWORD(2, 2);
   WSADATA data;
@@ -937,10 +938,15 @@ int initialize()
   }
 
   return EXIT_SUCCESS;
+#else
+  // TODO: Fill this in!
+  return 0;
+#endif // __WINDOWS__
 }
 
 int cleanup()
 {
+#ifdef __WINDOWS__
   // Cleanup WinSock. Wait for any outstanding socket operations to complete
   // before exiting. Retry for a maximum of 10 times at 1 second intervals.
   int retriesLeft = 10;
@@ -967,6 +973,10 @@ int cleanup()
   }
 
   return EXIT_SUCCESS;
+#else
+  // TODO: Fill this in!
+  return 0;
+#endif // __WINDOWS__
 }
 
 int main(int argc, char** argv)
