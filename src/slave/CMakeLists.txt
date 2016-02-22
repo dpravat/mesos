@@ -57,7 +57,7 @@ endif (WIN32)
 
 # ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
 ######################################################
-target_link_libraries(${AGENT_TARGET} ${PROCESS_AGENT_LIBS})
+target_link_libraries(${AGENT_TARGET} ${MESOS_TARGET} ${PROCESS_AGENT_LIBS})
 
 
 
