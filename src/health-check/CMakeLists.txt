@@ -47,7 +47,7 @@ add_executable(${MESOS_HEALTH_CHECK} ${MESOS_HEALTH_SRC})
 
 # ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
 ######################################################
-target_link_libraries(${MESOS_HEALTH_CHECK} ${MESOS_HEALTH_LIBS})
+target_link_libraries(${MESOS_HEALTH_CHECK} ${MESOS_TARGET} ${MESOS_HEALTH_LIBS})
 
 # ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
 ####################################################################
