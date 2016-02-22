@@ -38,14 +38,13 @@ namespace os {
       return KILL_FAIL;
     }
 
-    bool exists = false;
-    Result<bool> findprocess_result = os::FindProcess(pid, exists);
+    Result<bool> findprocess_result = os::FindProcess(pid);
     if (findprocess_result.isError()) {
       LOG(FATAL) << findprocess_result.error();
       return KILL_FAIL;
     }
 
-    if (!exists) {
+    if (!findprocess_result.get()) {
       LOG(ERROR)
         << "os::SuspendResumeProcess cannot find process "
         << "with pid: '" << pid << "'";
@@ -151,14 +150,13 @@ namespace os {
 
   inline int KillProcess(pid_t pid)
   {
-    bool exists = false;
-    Result<bool> findprocess_result = os::FindProcess(pid, exists);
+    Result<bool> findprocess_result = os::FindProcess(pid);
     if (findprocess_result.isError()) {
       LOG(FATAL) << findprocess_result.error();
       return KILL_FAIL;
     }
 
-    if (!exists) {
+    if (!findprocess_result.get()) {
       LOG(ERROR)
         << "os::KillProcess cannot find process "
         << "with pid: '" << pid << "'";
