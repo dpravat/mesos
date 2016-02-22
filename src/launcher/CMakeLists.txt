@@ -14,11 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# MESOS HEALTH SOURCE.
+# MESOS CONTAINERIZER SOURCE.
 #############################
-set(MESOS_HEALTH_SRC
-  main.cpp
+set(MESOS_EXECUTOR_SRC
+  executor.cpp
+  )
+
+# MESOS CONTAINERIZER SOURCE.
+#############################
+set(MESOS_FETCHER_SRC
+  fetcher.cpp
   )
 
 # INCLUDE DIRECTIVES FOR PROCESS TEST BINARY (generates, e.g., -I/path/to/thing
@@ -32,7 +37,7 @@ include_directories(${AGENT_INCLUDE_DIRS})
 link_directories(${AGENT_LIB_DIRS})
 
 if (WIN32)
-  set(MESOS_HEALTH_LIBS
+  set(MESOS_EXECUTOR_LIBS
     ${AGENT_LIBS}
     ${MESOS_TARGET}
     ${PROCESS_TARGET}
@@ -42,13 +47,16 @@ endif (WIN32)
 
 
 ###############################################################################
-add_executable(${MESOS_HEALTH_CHECK} ${MESOS_HEALTH_SRC})
+add_executable(${MESOS_EXECUTOR} ${MESOS_EXECUTOR_SRC})
+add_executable(${MESOS_FETCHER} ${MESOS_FETCHER_SRC})
 
 
 # ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
 ######################################################
-target_link_libraries(${MESOS_HEALTH_CHECK} ${MESOS_TARGET} ${MESOS_HEALTH_LIBS})
+target_link_libraries(${MESOS_EXECUTOR} ${MESOS_TARGET} ${MESOS_EXECUTOR_LIBS})
+target_link_libraries(${MESOS_FETCHER} ${MESOS_TARGET} ${MESOS_EXECUTOR_LIBS})
 
 # ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
 ####################################################################
-add_dependencies(${MESOS_HEALTH_CHECK} ${AGENT_DEPENDENCIES})
+add_dependencies(${MESOS_EXECUTOR} ${AGENT_DEPENDENCIES})
+add_dependencies(${MESOS_FETCHER} ${AGENT_DEPENDENCIES})
