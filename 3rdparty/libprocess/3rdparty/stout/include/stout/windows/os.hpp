@@ -532,6 +532,7 @@ inline Try<bool> access(const std::string& fileName, int how)
   return true;
 }
 
+
 inline Result<PROCESSENTRY32> process_entry(pid_t pid)
 {
   // Get a snapshot of the processes in the system.
@@ -665,7 +666,6 @@ inline Result<Process> process(pid_t pid)
       entry.get().szExeFile,                   // Executable filename.
       false);                                  // Is not zombie process.
 }
-
 
 } // namespace os {
 
