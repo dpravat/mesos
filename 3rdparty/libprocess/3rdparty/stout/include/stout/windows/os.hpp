@@ -98,6 +98,7 @@ inline int system(const std::string& command)
 {
   UNIMPLEMENTED;
 }
+*/
 
 
 // This function is a portable version of execvpe ('p' means searching
@@ -107,36 +108,23 @@ inline int system(const std::string& command)
 // NOTE: This function is not thread safe. It is supposed to be used
 // only after fork (when there is only one thread). This function is
 // async signal safe.
-inline int execvpe(const char* file, char** argv, char** envp)
-{
-  UNIMPLEMENTED;
-}
+inline int execvpe(const char* file, char** argv, char** envp) = delete;
 
 
 inline Try<Nothing> chown(
     uid_t uid,
     gid_t gid,
     const std::string& path,
-    bool recursive)
-{
-  UNIMPLEMENTED;
-}
+    bool recursive) = delete;
 
 
-inline Try<Nothing> chmod(const std::string& path, int mode)
-{
-  UNIMPLEMENTED;
-}
+inline Try<Nothing> chmod(const std::string& path, int mode) = delete;
 
 
 inline Try<Nothing> mknod(
     const std::string& path,
     mode_t mode,
-    dev_t dev)
-{
-  UNIMPLEMENTED;
-}
-*/
+    dev_t dev) = delete;
 
 
 // Suspends execution for the given duration.
