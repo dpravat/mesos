@@ -46,23 +46,17 @@ inline int pagesize()
   return si.dwPageSize;
 };
 
-/*
+
 // Sets the value associated with the specified key in the set of
 // environment variables.
 inline void setenv(const std::string& key,
                    const std::string& value,
-                   bool overwrite = true)
-{
-  UNIMPLEMENTED;
-}
+                   bool overwrite = true) = delete;
 
 
 // Unsets the value associated with the specified key in the set of
 // environment variables.
-inline void unsetenv(const std::string& key)
-{
-  UNIMPLEMENTED;
-}
+inline void unsetenv(const std::string& key) = delete;
 
 
 // Executes a command by calling "/bin/sh -c <command>", and returns
@@ -70,10 +64,7 @@ inline void unsetenv(const std::string& key)
 // return -1 on error (e.g., fork/exec/waitpid failed). This function
 // is async signal safe. We return int instead of returning a Try
 // because Try involves 'new', which is not async signal safe.
-inline int system(const std::string& command)
-{
-  UNIMPLEMENTED;
-}
+inline int system(const std::string& command) = delete;
 
 
 // This function is a portable version of execvpe ('p' means searching
@@ -83,108 +74,77 @@ inline int system(const std::string& command)
 // NOTE: This function is not thread safe. It is supposed to be used
 // only after fork (when there is only one thread). This function is
 // async signal safe.
-inline int execvpe(const char* file, char** argv, char** envp)
-{
-  UNIMPLEMENTED;
-}
+inline int execvpe(const char* file, char** argv, char** envp) = delete;
 
 
 inline Try<Nothing> chown(
     uid_t uid,
     gid_t gid,
     const std::string& path,
-    bool recursive)
-{
-  UNIMPLEMENTED;
-}
+    bool recursive) = delete;
 
 
-inline Try<Nothing> chmod(const std::string& path, int mode)
-{
-  UNIMPLEMENTED;
-}
+inline Try<Nothing> chmod(const std::string& path, int mode) = delete;
 
 
 inline Try<Nothing> mknod(
     const std::string& path,
     mode_t mode,
-    dev_t dev)
-{
-  UNIMPLEMENTED;
-}
+    dev_t dev) = delete;
 
 
 // Suspends execution for the given duration.
-inline Try<Nothing> sleep(const Duration& duration)
-{
-  UNIMPLEMENTED;
-}
+inline Try<Nothing> sleep(const Duration& duration) = delete;
 
 
 // Returns the list of files that match the given (shell) pattern.
-inline Try<std::list<std::string>> glob(const std::string& pattern)
-{
-  UNIMPLEMENTED;
-}
+inline Try<std::list<std::string>> glob(const std::string& pattern) = delete;
 
 
 // Returns the total number of cpus (cores).
-inline Try<long> cpus()
-{
-  UNIMPLEMENTED;
-}
+inline Try<long> cpus() = delete;
 
 
 // Returns load struct with average system loads for the last
 // 1, 5 and 15 minutes respectively.
 // Load values should be interpreted as usual average loads from
 // uptime(1).
-inline Try<Load> loadavg()
-{
-  UNIMPLEMENTED;
-}
+inline Try<Load> loadavg() = delete;
 
 
 // Returns the total size of main and free memory.
-inline Try<Memory> memory()
-{
-  UNIMPLEMENTED;
-}
+inline Try<Memory> memory() = delete;
 
 
 // Return the system information.
-inline Try<UTSInfo> uname()
-{
-  UNIMPLEMENTED;
-}
+inline Try<UTSInfo> uname() = delete;
 
 
-inline Try<std::list<Process>> processes()
-{
-  UNIMPLEMENTED;
-}
+inline Try<std::list<Process>> processes() = delete;
 
 
 // Overload of os::pids for filtering by groups and sessions.
 // A group / session id of 0 will fitler on the group / session ID
 // of the calling process.
-inline Try<std::set<pid_t>> pids(Option<pid_t> group, Option<pid_t> session)
-{
-  UNIMPLEMENTED;
-}
-*/
+inline Try<std::set<pid_t>> pids(
+    Option<pid_t> group,
+    Option<pid_t> session) = delete;
+
+
 inline size_t recv(int sockfd, void *buf, size_t len, int flags) {
   return ::recv(sockfd, (char*)buf, len, flags);
 }
 
 inline int setsockopt(int socket, int level, int option_name,
        const void *option_value, socklen_t option_len) {
-  return ::setsockopt(socket, level, option_name, (const char*)option_value, option_len);
+  return ::setsockopt(socket, level, option_name, (const char*)option_value,
+                      option_len);
 }
 
 inline int getsockopt(int socket, int level, int option_name,
   void* option_value, socklen_t* option_len) {
-  return ::getsockopt(socket, level, option_name, (char*)option_value, option_len);
+  return ::getsockopt(socket, level, option_name, (char*)option_value,
+                      option_len);
 }
 
 inline struct tm* gmtime_r(const time_t* timep, struct tm* result)
