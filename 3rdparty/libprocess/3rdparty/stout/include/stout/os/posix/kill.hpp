@@ -20,7 +20,7 @@ namespace os {
 
 inline int kill(pid_t pid, int sig)
 {
-  return kill(pid, SIGCONT);
+  return ::kill(pid, sig);
 }
 
 } // namespace os {
