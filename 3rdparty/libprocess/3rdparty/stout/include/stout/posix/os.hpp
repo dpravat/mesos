@@ -323,8 +323,6 @@ inline Try<std::set<pid_t>> pids(Option<pid_t> group, Option<pid_t> session)
 }
 
 
-/* TODO: MOVE BACK TO stout/os.hpp*/
-
 // Looks in the environment variables for the specified key and
 // returns a string representation of its value. If no environment
 // variable matching key is found, None() is returned.
@@ -463,6 +461,11 @@ inline Try<std::set<pid_t> > children(pid_t pid, bool recursive = true)
 }
 
 /* /TODO */
+
+inline const char *hstrerror(int err)
+{
+    return ::hstrerror(err);
+}
 
 } // namespace os {
 
