@@ -193,7 +193,73 @@ inline Try<std::set<pid_t>> pids(
 
 
 // Return the system information.
-inline Try<UTSInfo> uname() = delete;
+inline Try<UTSInfo> uname()
+{
+  UTSInfo info;
+
+  OSVERSIONINFOEX os_version;
+  os_version.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+  if (!::GetVersionEx((LPOSVERSIONINFO)&os_version)) {
+    return WindowsError("os::uname(): Failed to call GetVersionEx");
+  }
+
+  switch (os_version.wProductType) {
+  case VER_NT_DOMAIN_CONTROLLER:
+  case VER_NT_SERVER:
+    info.sysname = "Windows Server";
+    break;
+  default:
+    info.sysname = "Windows";
+  }
+
+  info.release = std::to_string(os_version.dwMajorVersion) + "." +
+    std::to_string(os_version.dwMinorVersion);
+  info.version = std::to_string(os_version.dwBuildNumber);
+  if (os_version.szCSDVersion[0] != '\0') {
+    info.version.append(" ");
+    info.version.append(os_version.szCSDVersion);
+  }
+
+  // Get DNS name of the local computer. First, find the size of the output
+  // buffer.
+  DWORD size = 0;
+  if (!::GetComputerNameEx(ComputerNameDnsHostname, NULL, &size) &&
+    ::GetLastError() != ERROR_MORE_DATA) {
+    return WindowsError("os::uname(): Failed to call GetComputerNameEx");
+  }
+
+  std::shared_ptr<char> computer_name(
+    (char *)malloc((size + 1) * sizeof(char)));
+
+  if (!::GetComputerNameEx(ComputerNameDnsHostname, computer_name.get(),
+    &size)) {
+    return WindowsError("os::uname(): Failed to call GetComputerNameEx");
+  }
+
+  info.nodename = computer_name.get();
+
+  // Get OS architecture
+  SYSTEM_INFO system_info;
+  ::GetNativeSystemInfo(&system_info);
+  switch (system_info.wProcessorArchitecture) {
+  case PROCESSOR_ARCHITECTURE_AMD64:
+    info.machine = "AMD64";
+    break;
+  case PROCESSOR_ARCHITECTURE_ARM:
+    info.machine = "ARM";
+    break;
+  case PROCESSOR_ARCHITECTURE_IA64:
+    info.machine = "IA64";
+    break;
+  case PROCESSOR_ARCHITECTURE_INTEL:
+    info.machine = "x86";
+    break;
+  default:
+    info.machine = "Unknown";
+  }
+
+  return info;
+}
 
 
 // Looks in the environment variables for the specified key and
