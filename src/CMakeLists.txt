@@ -421,3 +421,14 @@ target_link_libraries(${MESOS_TARGET} ${AGENT_LIBS})
 add_subdirectory(slave)
 add_subdirectory(launcher)
 add_subdirectory(health-check)
+
+# MESOS CONTAINERIZER TESTING INFRASTRUCTURE for Windows.
+#########################################################
+if (WIN32)
+  list(
+    APPEND CMAKE_MODULE_PATH
+    ${CMAKE_SOURCE_DIR}/src/tests/cmake
+    )
+  include(ContainerizerTestsConfigure)
+  add_subdirectory(tests/containerizer)
+endif (WIN32)
