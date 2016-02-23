@@ -109,7 +109,6 @@ nobase_include_HEADERS =			\
   stout/os/posix/fork.hpp			\
   stout/os/posix/ftruncate.hpp			\
   stout/os/posix/kill.hpp			\
-  stout/os/posix/killtree.hpp			\
   stout/os/posix/mkdtemp.hpp			\
   stout/os/posix/rename.hpp			\
   stout/os/posix/rmdir.hpp			\
@@ -128,7 +127,6 @@ nobase_include_HEADERS =			\
   stout/os/windows/fork.hpp			\
   stout/os/windows/ftruncate.hpp		\
   stout/os/windows/kill.hpp			\
-  stout/os/windows/killtree.hpp		\
   stout/os/windows/mkdtemp.hpp			\
   stout/os/windows/rename.hpp			\
   stout/os/windows/rmdir.hpp			\
