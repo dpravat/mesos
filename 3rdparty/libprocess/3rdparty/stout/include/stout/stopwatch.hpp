@@ -73,6 +73,8 @@ private:
     mach_port_deallocate(mach_task_self(), cclock);
     ts.tv_sec = mts.tv_sec;
     ts.tv_nsec = mts.tv_nsec;
+#elif defined(__WINDOWS__)
+    ts = { 0 };
 #else
     clock_gettime(CLOCK_REALTIME, &ts);
 #endif // __MACH__
