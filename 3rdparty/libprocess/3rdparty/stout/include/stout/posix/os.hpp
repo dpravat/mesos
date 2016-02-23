@@ -86,6 +86,12 @@
 
 namespace os {
 
+inline long cpu()
+{
+  return sysconf(_SC_NPROCESSORS_ONLN);
+};
+
+
 // Forward declarations.
 inline Try<Nothing> utime(const std::string&);
 
