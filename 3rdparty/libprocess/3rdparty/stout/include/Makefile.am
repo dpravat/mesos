@@ -69,6 +69,7 @@ nobase_include_HEADERS =			\
   stout/os/find.hpp				\
   stout/os/fork.hpp				\
   stout/os/freebsd.hpp				\
+  stout/os/fsync.hpp    \
   stout/os/ftruncate.hpp			\
   stout/os/getcwd.hpp				\
   stout/os/killtree.hpp				\
@@ -108,6 +109,7 @@ nobase_include_HEADERS =			\
   stout/os/posix/exists.hpp			\
   stout/os/posix/fcntl.hpp			\
   stout/os/posix/fork.hpp			\
+  stout/os/posix/fsync.hpp    \
   stout/os/posix/ftruncate.hpp			\
   stout/os/posix/killtree.hpp			\
   stout/os/posix/mkdtemp.hpp			\
@@ -131,6 +133,7 @@ nobase_include_HEADERS =			\
   stout/os/windows/exists.hpp			\
   stout/os/windows/fcntl.hpp			\
   stout/os/windows/fork.hpp			\
+  stout/os/windows/fsync.hpp    \
   stout/os/windows/ftruncate.hpp		\
   stout/os/windows/killtree.hpp			\
   stout/os/windows/mkdtemp.hpp			\
