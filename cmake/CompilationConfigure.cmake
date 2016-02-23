@@ -112,6 +112,9 @@ else (NOT WIN32)
   set(LIBEXEC_INSTALL_DIR     "WARNINGDONOTUSEME")
   set(PKG_LIBEXEC_INSTALL_DIR "WARNINGDONOTUSEME")
   set(LIB_INSTALL_DIR         "WARNINGDONOTUSEME")
+  set(TEST_LIB_EXEC_DIR       "WARNINGDONOTUSEME")
+  set(PKG_MODULE_DIR          "WARNINGDONOTUSEME")
+  set(S_BIN_DIR               "WARNINGDONOTUSEME")
 endif (NOT WIN32)
 
 # Add preprocessor definitions required to build third-party libraries.
