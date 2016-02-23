@@ -87,6 +87,11 @@
 
 namespace os {
 
+inline pid_t waitpid(pid_t pid, int* status, int options)
+{
+  return ::waitpid(pid, status, options);
+}
+
 // Forward declarations.
 inline Try<Nothing> utime(const std::string&);
 
