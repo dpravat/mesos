@@ -17,11 +17,21 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
+#ifndef __WINDOWS__
+#include <unistd.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <stdio.h>
+#endif // __WINDOWS__
+
+#ifdef __WINDOWS__
+#include <stout/windows.hpp>
+#include <stout/os/getcwd.hpp>
+#include <stout/os/mktemp.hpp>
+#include <stout/os/realpath.hpp>
+#endif
 
 #include <string>
 #include <vector>
@@ -34,6 +44,8 @@
 #include <stout/stringify.hpp>
 #include <stout/strings.hpp>
 #include <stout/try.hpp>
+#include <stout/os/kill.hpp>
+#include <stout/os/fsync.hpp>
 
 #include "tests/flags.hpp"
 #include "tests/utils.hpp"
@@ -74,7 +86,7 @@ const char INCREASE_PAGE_CACHE[] = "INCREASE_PAGE_CACHE";
 // optimizing that allocation away by locking the allocated pages.
 static Try<void*> allocateRSS(const Bytes& size)
 {
-#ifndef __APPLE__
+#if !(defined(__APPLE__) || defined(__WINDOWS__))
   // Make sure that all pages that are going to be mapped into the
   // address space of this process become unevictable. This is needed
   // for testing cgroups OOM killer.
@@ -84,7 +96,12 @@ static Try<void*> allocateRSS(const Bytes& size)
 #endif
 
   void* rss = NULL;
+#ifndef __WINDOWS__
   if (posix_memalign(&rss, getpagesize(), size.bytes()) != 0) {
+#else
+  rss = _aligned_malloc((size_t)getpagesize(), (size_t)size.bytes());
+  if (rss == NULL) {
+#endif
     return ErrnoError("Failed to increase RSS memory, posix_memalign");
   }
 
@@ -165,7 +182,7 @@ static Try<Nothing> increasePageCache(const vector<string>& tokens)
     }
 
     // Use fsync to make sure data is written to disk.
-    if (fsync(fd.get()) == -1) {
+    if (os::fsync(fd.get()) == -1) {
       // Save the error message because os::close below might
       // overwrite the errno.
       const string message = os::strerror(errno);
@@ -229,8 +246,8 @@ void MemoryTestHelper::cleanup()
     // We just want to make sure the subprocess is terminated in case
     // it's stuck, but we don't care about its status. Any error
     // should have been logged in the subprocess directly.
-    ::kill(s.get().pid(), SIGKILL);
-    ::waitpid(s.get().pid(), NULL, 0);
+    os::kill(s.get().pid(), SIGKILL);
+    os::waitpid(s.get().pid(), NULL, 0);
     s = None();
   }
 }
