@@ -471,6 +471,11 @@ inline struct tm* gmtime_r(const time_t* timep, struct tm* result)
   return ::gmtime_r(timep, result);
 }
 
+inline const char *hstrerror(int err)
+{
+    return ::hstrerror(err);
+}
+
 } // namespace os {
 
 #endif // __STOUT_POSIX_OS_HPP__

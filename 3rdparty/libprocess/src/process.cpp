@@ -922,7 +922,7 @@ void initialize(const Option<string>& delegate)
 
     if (gethostname(hostname, sizeof(hostname)) < 0) {
       LOG(FATAL) << "Failed to initialize, gethostname: "
-                 << hstrerror(h_errno);
+                 << os::hstrerror(h_errno);
     }
 
     // Lookup IP address of local hostname.

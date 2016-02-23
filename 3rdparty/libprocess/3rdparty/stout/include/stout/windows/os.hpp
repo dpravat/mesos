@@ -46,25 +46,61 @@ inline int pagesize()
   return si.dwPageSize;
 };
 
-
 // Sets the value associated with the specified key in the set of
 // environment variables.
 inline void setenv(const std::string& key,
                    const std::string& value,
-                   bool overwrite = true) = delete;
+                   bool overwrite = true)
+{
+  // Do not set the variable if already set and `overwrite` was not specified.
+  if (!overwrite) {
+    const DWORD bytes = ::GetEnvironmentVariable(key.c_str(), NULL, 0);
+    const DWORD result = ::GetLastError();
+
+    // Per MSDN[1], `GetEnvironmentVariable` returns 0 on error and sets the
+    // error code to `ERROR_ENVVAR_NOT_FOUND` if the variable was not found.
+    //
+    // [1] https://msdn.microsoft.com/en-us/library/windows/desktop/ms683188(v=vs.85).aspx
+    if (bytes != 0 || result != ERROR_ENVVAR_NOT_FOUND) {
+      return;
+    }
+  }
+
+  // `SetEnvironmentVariable` returns an error code, but we can't act on it.
+  ::SetEnvironmentVariable(key.c_str(), value.c_str());
+}
 
 
 // Unsets the value associated with the specified key in the set of
 // environment variables.
-inline void unsetenv(const std::string& key) = delete;
+inline void unsetenv(const std::string& key)
+{
+  ::SetEnvironmentVariable(key.c_str(), NULL);
+}
 
 
-// Executes a command by calling "/bin/sh -c <command>", and returns
-// after the command has been completed. Returns 0 if succeeds, and
-// return -1 on error (e.g., fork/exec/waitpid failed). This function
-// is async signal safe. We return int instead of returning a Try
-// because Try involves 'new', which is not async signal safe.
-inline int system(const std::string& command) = delete;
+  // This function is used to map the error code from gethostname() to a
+  // message string. The specific error code is retrieved by calling
+  //  WSAGetLastError(). FormatMessage() is used to obtain the message string.
+  //
+  // In this Windows version, argument err is not used; it's here for
+  // compatibility.
+
+inline const char *hstrerror(int err)
+{
+  static char buffer[256];
+
+  ::FormatMessage(
+    FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+    NULL,
+    WSAGetLastError(),
+    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+    buffer,
+    sizeof(buffer) / sizeof(char),
+    NULL);
+
+  return buffer;
+}
 
 
 // This function is a portable version of execvpe ('p' means searching
@@ -94,33 +130,58 @@ inline Try<Nothing> mknod(
 
 
 // Suspends execution for the given duration.
-inline Try<Nothing> sleep(const Duration& duration) = delete;
+inline Try<Nothing> sleep(const Duration& duration)
+{
+  DWORD milliseconds = static_cast<DWORD>(duration.ms());
+  ::Sleep(milliseconds);
+
+  return Nothing();
+}
 
 
 // Returns the list of files that match the given (shell) pattern.
+// NOTE: Deleted on Windows, as a POSIX-API-compliant `glob` is much more
+// trouble than its worth, considering our relatively simple usage.
 inline Try<std::list<std::string>> glob(const std::string& pattern) = delete;
 
 
 // Returns the total number of cpus (cores).
-inline Try<long> cpus() = delete;
-
+inline Try<long> cpus()
+{
+  SYSTEM_INFO sysInfo;
+  ::GetSystemInfo(&sysInfo);
+  return static_cast<long>(sysInfo.dwNumberOfProcessors);
+}
 
 // Returns load struct with average system loads for the last
 // 1, 5 and 15 minutes respectively.
 // Load values should be interpreted as usual average loads from
 // uptime(1).
-inline Try<Load> loadavg() = delete;
+inline Try<Load> loadavg()
+{
+  // no Windows equivalent, return an error until there is a need
+  return ErrnoError("Failed to determine system load averages");
+}
 
 
 // Returns the total size of main and free memory.
-inline Try<Memory> memory() = delete;
+inline Try<Memory> memory()
+{
+  Memory memory;
 
+  MEMORYSTATUSEX memory_status;
+  memory_status.dwLength = sizeof(MEMORYSTATUSEX);
+  if (!::GlobalMemoryStatusEx(&memory_status)) {
+    return WindowsError("memory(): Could not call GlobalMemoryStatusEx");
+  }
 
-// Return the system information.
-inline Try<UTSInfo> uname() = delete;
+  memory.total = Bytes(memory_status.ullTotalPhys);
+  memory.free = Bytes(memory_status.ullAvailPhys);
+  memory.totalSwap = Bytes(memory_status.ullTotalPageFile);
+  memory.freeSwap = Bytes(memory_status.ullAvailPageFile);
 
-
-inline Try<std::list<Process>> processes() = delete;
+  return memory;
+}
 
 
 // Overload of os::pids for filtering by groups and sessions.
@@ -129,6 +190,25 @@ inline Try<std::list<Process>> processes() = delete;
 inline Try<std::set<pid_t>> pids(
     Option<pid_t> group,
     Option<pid_t> session) = delete;
+
+
+// Return the system information.
+inline Try<UTSInfo> uname() = delete;
+
+
+// Looks in the environment variables for the specified key and
+// returns a string representation of its value. If no environment
+// variable matching key is found, None() is returned.
+inline Option<std::string> getenv(const std::string& key)
+{
+  char* value = ::getenv(key.c_str());
+
+  if (value == NULL) {
+    return None();
+  }
+
+  return std::string(value);
+}
 
 
 inline struct tm* gmtime_r(const time_t* timep, struct tm* result)
@@ -140,6 +220,16 @@ inline struct tm* gmtime_r(const time_t* timep, struct tm* result)
   }
 
   return NULL;
+}
+
+
+inline Try<bool> access(const std::string& fileName, int how)
+{
+  if (::_access(fileName.c_str(), how) != 0) {
+    return ErrnoError("access: Could not access path '" + fileName + "'");
+  }
+
+  return true;
 }
 
 } // namespace os {
