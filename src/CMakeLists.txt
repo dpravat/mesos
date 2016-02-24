@@ -453,16 +453,20 @@ link_directories(${PROCESS_AGENT_LIB_DIRS})
 ###############################################################################
 add_executable(${AGENT_TARGET} slave/main.cpp )
 
+set(PROCESS_AGENT_LIBS
+  ${PROCESS_AGENT_LIBS}
+  ${AGENT_LIBS}
+  ${MESOS_TARGET}
+  ${PROCESS_TARGET}
+  ${HTTP_PARSER_LFLAG}
+  ${ZOOKEEPER_LFLAG}
+  )
+
 if (WIN32)
   set(PROCESS_AGENT_LIBS
     ${PROCESS_AGENT_LIBS}
-    ${AGENT_LIBS}
-    ${MESOS_TARGET}
-    ${PROCESS_TARGET}
-    ${HTTP_PARSER_LFLAG}
-    ${ZOOKEEPER_LFLAG}
-      ws2_32
-  )
+    ws2_32
+    )
 endif (WIN32)
 
 # ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
