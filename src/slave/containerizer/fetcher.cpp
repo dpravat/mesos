@@ -26,6 +26,8 @@
 #include <stout/path.hpp>
 
 #include <stout/os/read.hpp>
+#include <stout/os/find.hpp>
+#include <stout/os/killtree.hpp>
 
 #include "hdfs/hdfs.hpp"
 
@@ -295,6 +297,7 @@ static Try<Bytes> fetchSize(
     return size.get();
   }
 
+#ifndef __WINDOWS__
   Try<Owned<HDFS>> hdfs = HDFS::create();
   if (hdfs.isError()) {
     return Error("Failed to create HDFS client: " + hdfs.error());
@@ -309,6 +312,8 @@ static Try<Bytes> fetchSize(
   }
 
   return size.get();
+#endif // __WINDOWS__
+  return 0;
 }
 
 
@@ -344,6 +349,8 @@ Future<Nothing> FetcherProcess::fetch(
     cacheDirectory = path::join(cacheDirectory, commandUser.get());
   }
 
+// os::chown() is not available on Windows
+#ifndef __WINDOWS__
   if (commandUser.isSome()) {
     // First assure that we are working for a valid user.
     // TODO(bernd-mesos): This should be asynchronous.
@@ -354,6 +361,7 @@ Future<Nothing> FetcherProcess::fetch(
                      " with error: " + chown.error());
     }
   }
+#endif // __WINDOWS__
 
   // For each URI we determine if we should use the cache and if so we
   // try and either get the cache entry or create a cache entry. If
@@ -722,9 +730,9 @@ Future<Nothing> FetcherProcess::run(
     return Failure("Failed to create 'stdout' file: " + out.error());
   }
 
-  string stderr = path::join(info.sandbox_directory(), "stderr");
+  string stder = path::join(info.sandbox_directory(), "stderr");
   Try<int> err = os::open(
-      stderr,
+      stder,
       O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK | O_CLOEXEC,
       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -733,6 +741,8 @@ Future<Nothing> FetcherProcess::run(
     return Failure("Failed to create 'stderr' file: " + err.error());
   }
 
+// os::chown() is not available on Windows
+#ifndef __WINDOWS__
   if (user.isSome()) {
     // This is a recursive chown that both checks if we have a valid user
     // and also chowns the files we just opened.
@@ -746,6 +756,7 @@ Future<Nothing> FetcherProcess::run(
                      "' with error: " + chown.error());
     }
   }
+#endif // __WINDOWS__
 
   string fetcherPath = path::join(flags.launcher_dir, "mesos-fetcher");
   Result<string> realpath = os::realpath(fetcherPath);
@@ -820,7 +831,7 @@ Future<Nothing> FetcherProcess::run(
     .onFailed(defer(self(), [=](const string&) {
       // To aid debugging what went wrong when attempting to fetch, grab the
       // fetcher's local log output from the sandbox and log it here.
-      Try<string> text = os::read(stderr);
+      Try<string> text = os::read(stder);
       if (text.isSome()) {
         LOG(WARNING) << "Begin fetcher log (stderr in sandbox) for container "
                      << containerId << " from running command: " << command
