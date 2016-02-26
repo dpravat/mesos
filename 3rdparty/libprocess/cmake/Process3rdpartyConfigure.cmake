@@ -16,8 +16,8 @@
 
 # DEFINE DIRECTORY STRUCTURE FOR THIRD-PARTY LIBS.
 ##################################################
-set(PROCESS_3RD_SRC ${CMAKE_SOURCE_DIR}/3rdparty/libprocess/3rdparty)
-set(PROCESS_3RD_BIN ${CMAKE_BINARY_DIR}/3rdparty/libprocess/3rdparty)
+set(PROCESS_3RD_SRC ${CMAKE_SOURCE_DIR}/3rdparty)
+set(PROCESS_3RD_BIN ${CMAKE_BINARY_DIR}/3rdparty)
 
 set(STOUT ${PROCESS_3RD_SRC}/stout)
 
@@ -48,7 +48,7 @@ set(LIBEV_LIB_ROOT    ${LIBEV_ROOT}-lib/lib)
 set(LIBEVENT_LIB_ROOT ${LIBEVENT_ROOT}-lib/lib)
 
 # Convenience variables for include directories of third-party dependencies.
-set(PROCESS_INCLUDE_DIR     ${PROCESS_3RD_SRC}/../include)
+set(PROCESS_INCLUDE_DIR     ${PROCESS_3RD_SRC}/libprocess/include)
 set(STOUT_INCLUDE_DIR       ${STOUT}/include)
 
 set(BOOST_INCLUDE_DIR       ${BOOST_ROOT})

@@ -13,11 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-include(ProcessTestsConfigure)
-
-# BUILD THIRD-PARTY DEPENDENCIES FIRST.
-#######################################
-add_subdirectory(3rdparty)
 
 # BUILD THE PROCESS LIBRARY.
 ############################
