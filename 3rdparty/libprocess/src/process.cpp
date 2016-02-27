@@ -2195,7 +2195,7 @@ long ProcessManager::init_threads()
   // Allocating a static number of threads can cause starvation if
   // there are more waiting Processes than the number of worker
   // threads.
-  long cpus = std::max(8L, sysconf(_SC_NPROCESSORS_ONLN));
+  long cpus = std::max(8L, os::cpus().get());
   threads.reserve(cpus+1);
 
   // Create processing threads.
