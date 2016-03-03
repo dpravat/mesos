@@ -397,7 +397,13 @@ if (LINUX)
   set(MESOS_SRC ${MESOS_SRC} ${LINUX_SRC})
 endif (LINUX)
 
-add_definitions(-DUSE_STATIC_LIB -DBUILD_DATE=0 -DBUILD_TIME=0 -DBUILD_USER="frank" -DBUILD_FLAGS="" -DBUILD_JAVA_JVM_LIBRARY="")
+set(BUILD_DATE "\"2016-3-3 10:20\"")
+set(BUILD_TIME "\"1111100\"")
+set(BUILD_USER "\"frank\"")
+set(BUILD_FLAGS "\"\"")
+set(BUILD_JAVA_JVM_LIBRARY "")
+
+add_definitions(-DUSE_STATIC_LIB -DBUILD_DATE=${BUILD_DATE} -DBUILD_TIME=${BUILD_TIME} -DBUILD_USER=${BUILD_USER} -DBUILD_FLAGS=${BUILD_FLAGS} -DBUILD_JAVA_JVM_LIBRARY="")
 
 # INCLUDE DIRECTIVES FOR MESOS LIBRARY (generates, e.g., -I/path/to/thing
 # on Linux).
@@ -435,10 +441,6 @@ if (WIN32)
   add_subdirectory(tests/containerizer)
 endif (WIN32)
 
-set(BUILD_DATE "")
-set(BUILD_TIME "")
-set(BUILD_FLAGS "")
-set(BUILD_JAVA_JVM_LIBRARY "")
 
 add_definitions(-DUSE_STATIC_LIB)
 
