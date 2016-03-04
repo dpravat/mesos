@@ -506,7 +506,7 @@ inline Result<bool> FindProcess(
 
   // Point to the first process and start loop to
   // find process.
-  bool bcontinue = ::Process32First(
+  bool bcontinue = !!::Process32First(
     safe_snapshot_handle.get(),
     process_entry_ptr);
   if (!bcontinue) {
@@ -527,7 +527,7 @@ inline Result<bool> FindProcess(
       break;
     }
 
-    bcontinue = ::Process32Next(safe_snapshot_handle.get(), process_entry_ptr);
+    bcontinue = !!::Process32Next(safe_snapshot_handle.get(), process_entry_ptr);
     if (!bcontinue) {
       if (::GetLastError() != ERROR_NO_MORE_FILES) {
         return WindowsError("os::FindProcess(): \
@@ -591,7 +591,7 @@ inline Result<Process> process(pid_t pid)
 
   // Get Windows Working set size (Resident set size in linux).
   PROCESS_MEMORY_COUNTERS proc_mem_counters;
-  bool result = ::GetProcessMemoryInfo(
+  bool result = !!::GetProcessMemoryInfo(
     safe_process_handle.get(),
     &proc_mem_counters,
     sizeof(proc_mem_counters));
@@ -603,7 +603,7 @@ inline Result<Process> process(pid_t pid)
 
   // Get Process CPU time.
   FILETIME create_filetime, exit_filetime, kernel_filetime, user_filetime;
-  result = ::GetProcessTimes(
+  result = !!::GetProcessTimes(
     safe_process_handle.get(),
     &create_filetime,
     &exit_filetime,
