@@ -372,6 +372,8 @@ set(MESOS_SRC
   ${ZOOKEEPER_SRC}
   ${MASTER_SRC}
   ${EXEC_SRC}
+  ${DOCKER_SRC}
+  ${USAGE_SRC}
   )
 
 if (NOT WIN32)
@@ -380,7 +382,6 @@ if (NOT WIN32)
     ${APPC_SRC}
     ${AUTHENTICATION_SRC}
     ${AUTHORIZER_SRC}
-    ${DOCKER_SRC}
     ${HDFS_SRC}
     ${LOCAL_SRC}
     ${LOG_SRC}
@@ -388,7 +389,6 @@ if (NOT WIN32)
     ${SCHEDULER_SRC}
     ${STATE_SRC}
     ${URI_SRC}
-    ${USAGE_SRC}
     ${WATCHER_SRC}
     )
 endif (NOT WIN32)
@@ -518,6 +518,18 @@ add_executable(${MESOS_HEALTH_CHECK} health-check/main.cpp)
 target_link_libraries(${MESOS_HEALTH_CHECK} ${PROCESS_AGENT_LIBS})
 add_dependencies(${MESOS_HEALTH_CHECK} ${MESOS_FETCHER})
 
+# mesos-docker-executor
+###############################################################################
+add_executable(${MESOS_DOCKER_EXECUTOR} docker/executor.cpp)
+target_link_libraries(${MESOS_DOCKER_EXECUTOR} ${PROCESS_AGENT_LIBS})
+add_dependencies(${MESOS_DOCKER_EXECUTOR} ${MESOS_HEALTH_CHECK})
+
+# mesos-usage
+###############################################################################
+add_executable(${MESOS_USAGE} usage/main.cpp)
+target_link_libraries(${MESOS_USAGE} ${PROCESS_AGENT_LIBS})
+add_dependencies(${MESOS_USAGE} ${MESOS_DOCKER_EXECUTOR})
+
 # mesos-log
 ###############################################################################
 #add_executable(${MESOS_LOG} log/main.cpp)
@@ -529,3 +541,4 @@ add_dependencies(${MESOS_HEALTH_CHECK} ${MESOS_FETCHER})
 #add_executable(${MESOS_MASTER} master/main.cpp)
 #target_link_libraries(${MESOS_MASTER} ${PROCESS_AGENT_LIBS})
 #add_dependencies(${MESOS_MASTER} ${MESOS_FETCHER})
+
