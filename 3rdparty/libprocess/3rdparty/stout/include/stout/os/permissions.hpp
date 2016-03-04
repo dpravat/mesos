@@ -22,21 +22,21 @@ struct Permissions
 {
   explicit Permissions(mode_t mode)
   {
-    owner.r = mode & S_IRUSR;
-    owner.w = mode & S_IWUSR;
-    owner.x = mode & S_IXUSR;
-    owner.rwx = mode & S_IRWXU;
-    group.r = mode & S_IRGRP;
-    group.w = mode & S_IWGRP;
-    group.x = mode & S_IXGRP;
-    group.rwx = mode & S_IRWXG;
-    others.r = mode & S_IROTH;
-    others.w = mode & S_IWOTH;
-    others.x = mode & S_IXOTH;
-    others.rwx = mode & S_IRWXO;
-    setuid = mode & S_ISUID;
-    setgid = mode & S_ISGID;
-    sticky = mode & S_ISVTX;
+    owner.r = !!(mode & S_IRUSR);
+    owner.w = !!(mode & S_IWUSR);
+    owner.x = !!(mode & S_IXUSR);
+    owner.rwx = !!(mode & S_IRWXU);
+    group.r = !!(mode & S_IRGRP);
+    group.w = !!(mode & S_IWGRP);
+    group.x = !!(mode & S_IXGRP);
+    group.rwx = !!(mode & S_IRWXG);
+    others.r = !!(mode & S_IROTH);
+    others.w = !!(mode & S_IWOTH);
+    others.x = !!(mode & S_IXOTH);
+    others.rwx = !!(mode & S_IRWXO);
+    setuid = !!(mode & S_ISUID);
+    setgid = !!(mode & S_ISGID);
+    sticky = !!(mode & S_ISVTX);
   }
 
   struct
