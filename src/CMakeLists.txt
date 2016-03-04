@@ -286,6 +286,14 @@ set(AGENT_SRC
   slave/containerizer/mesos/provisioner/appc/store.cpp
   slave/containerizer/mesos/provisioner/backend.cpp
   slave/containerizer/mesos/provisioner/backends/copy.cpp
+  slave/containerizer/mesos/provisioner/docker/local_puller.cpp
+  slave/containerizer/mesos/provisioner/docker/message.proto
+  slave/containerizer/mesos/provisioner/docker/metadata_manager.cpp
+  slave/containerizer/mesos/provisioner/docker/paths.cpp
+  slave/containerizer/mesos/provisioner/docker/puller.cpp
+  slave/containerizer/mesos/provisioner/docker/registry_puller.cpp
+  slave/containerizer/mesos/provisioner/docker/store.cpp
+  slave/containerizer/docker.cpp
   )
 
 if (NOT WIN32)
@@ -298,13 +306,6 @@ if (NOT WIN32)
     slave/containerizer/docker.cpp
     slave/containerizer/mesos/isolators/filesystem/posix.cpp
     slave/containerizer/mesos/isolators/posix/disk.cpp
-    slave/containerizer/mesos/provisioner/docker/local_puller.cpp
-    slave/containerizer/mesos/provisioner/docker/message.proto
-    slave/containerizer/mesos/provisioner/docker/metadata_manager.cpp
-    slave/containerizer/mesos/provisioner/docker/paths.cpp
-    slave/containerizer/mesos/provisioner/docker/puller.cpp
-    slave/containerizer/mesos/provisioner/docker/registry_puller.cpp
-    slave/containerizer/mesos/provisioner/docker/store.cpp
     )
 endif (NOT WIN32)
 
