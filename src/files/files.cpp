@@ -555,7 +555,8 @@ Result<string> FilesProcess::resolve(const string& path)
   // longest possible prefix match and if found append any suffix to
   // the attached path (provided the path is to a directory).
   vector<string> tokens = strings::split(
-      strings::remove(path, "/", strings::SUFFIX), "/");
+      strings::remove(path, PATH_SEPARATOR_STRING, strings::SUFFIX),
+      PATH_SEPARATOR_STRING);
 
   string suffix;
   while (!tokens.empty()) {
@@ -577,7 +578,7 @@ Result<string> FilesProcess::resolve(const string& path)
     // 'Not Found'.
     string path = paths[prefix];
     if (os::stat::isdir(path)) {
-      path = path::join(path, suffix);
+      path = path::join(path, suffix, PATH_SEPARATOR_CHAR);
 
       // Canonicalize the absolute path.
       Result<string> realpath = os::realpath(path);
