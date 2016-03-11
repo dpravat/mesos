@@ -13,67 +13,27 @@
 #ifndef __STOUT_OS_POSIX_WRITE_HPP__
 #define __STOUT_OS_POSIX_WRITE_HPP__
 
-
-#include <stout/error.hpp>
-#include <stout/nothing.hpp>
-#include <stout/try.hpp>
-
-#include <stout/os/close.hpp>
-#include <stout/os/open.hpp>
+#include <errno.h>
+#include <unistd.h>
 
 
 namespace os {
+namespace internal {
 
+inline bool write_interrupted()
+{
+  return errno == EINTR;
+}
+
+} // namespace internal {
+
+
+// Compatibility function. On POSIX, this function is trivial, but on Windows,
+// we have to check whether the file descriptor is a socket or a file to write
+// to it.
 inline ssize_t write(int fd, const void* data, size_t size)
 {
   return ::write(fd, data, size);
-}
-
-// Write out the string to the file at the current fd position.
-inline Try<Nothing> write(int fd, const std::string& message)
-{
-  size_t offset = 0;
-
-  while (offset < message.length()) {
-    ssize_t length =
-      ::write(fd, message.data() + offset, message.length() - offset);
-
-    if (length < 0) {
-      // TODO(benh): Handle a non-blocking fd? (EAGAIN, EWOULDBLOCK)
-      if (errno == EINTR) {
-        continue;
-      }
-      return ErrnoError();
-    }
-
-    offset += length;
-  }
-
-  return Nothing();
-}
-
-
-// A wrapper function that wraps the above write() with
-// open and closing the file.
-inline Try<Nothing> write(const std::string& path, const std::string& message)
-{
-  Try<int> fd = os::open(
-      path,
-      O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
-      S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-  if (fd.isError()) {
-    return ErrnoError("Failed to open file '" + path + "'");
-  }
-
-  Try<Nothing> result = write(fd.get(), message);
-
-  // We ignore the return value of close(). This is because users
-  // calling this function are interested in the return value of
-  // write(). Also an unsuccessful close() doesn't affect the write.
-  os::close(fd.get());
-
-  return result;
 }
 
 } // namespace os {

@@ -13,18 +13,23 @@
 #ifndef __STOUT_OS_WINDOWS_WRITE_HPP__
 #define __STOUT_OS_WINDOWS_WRITE_HPP__
 
+#include <io.h>
 
-#include <stout/error.hpp>
-#include <stout/nothing.hpp>
-#include <stout/try.hpp>
+#include <stout/windows.hpp> // For order-dependent networking headers.
 
-#include <stout/os/close.hpp>
-#include <stout/os/open.hpp>
-
-#include <stout/windows.hpp>
 #include <stout/os/socket.hpp>
 
+
 namespace os {
+namespace internal {
+
+inline bool write_interrupted()
+{
+  return WSAGetLastError() == WSAEWOULDBLOCK;
+}
+
+} // namespace internal {
+
 
 inline ssize_t write(int fd, const void* data, size_t size)
 {
@@ -36,53 +41,6 @@ inline ssize_t write(int fd, const void* data, size_t size)
   }
 
   return ::_write(fd, data, size);
-}
-
-// Write out the string to the file at the current fd position.
-inline Try<Nothing> write(int fd, const std::string& message)
-{
-  size_t offset = 0;
-
-  while (offset < message.length()) {
-    ssize_t length =
-      os::write(fd, message.data() + offset, message.length() - offset);
-
-    if (length < 0) {
-      // TODO(benh): Handle a non-blocking fd? (EAGAIN, EWOULDBLOCK)
-      if (WSAGetLastError() == WSAEWOULDBLOCK) {
-        continue;
-      }
-      return ErrnoError();
-    }
-
-    offset += length;
-  }
-
-  return Nothing();
-}
-
-
-// A wrapper function that wraps the above write() with
-// open and closing the file.
-inline Try<Nothing> write(const std::string& path, const std::string& message)
-{
-  Try<int> fd = os::open(
-      path,
-      O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
-      S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-  if (fd.isError()) {
-    return ErrnoError("Failed to open file '" + path + "'");
-  }
-
-  Try<Nothing> result = write(fd.get(), message);
-
-  // We ignore the return value of close(). This is because users
-  // calling this function are interested in the return value of
-  // write(). Also an unsuccessful close() doesn't affect the write.
-  os::close(fd.get());
-
-  return result;
 }
 
 } // namespace os {
