@@ -319,11 +319,19 @@ endif (NOT WIN32)
 set(URI_SRC
   uri/fetcher.cpp
   uri/utils.cpp
-  uri/fetchers/copy.cpp
   uri/fetchers/curl.cpp
-  uri/fetchers/docker.cpp
-  uri/fetchers/hadoop.cpp
+  uri/fetchers/copy.cpp
   )
+
+if (NOT WIN32)
+  set(URI_SRC
+    ${URI_SRC}
+
+
+    uri/fetchers/docker.cpp
+    uri/fetchers/hadoop.cpp
+    )
+endif (NOT WIN32)
 
 set(USAGE_SRC
   usage/usage.cpp
@@ -376,6 +384,7 @@ set(MESOS_SRC
   ${EXEC_SRC}
   ${DOCKER_SRC}
   ${USAGE_SRC}
+  ${URI_SRC}  
   )
 
 if (NOT WIN32)
@@ -389,7 +398,6 @@ if (NOT WIN32)
     ${SCHED_SRC}
     ${SCHEDULER_SRC}
     ${STATE_SRC}
-    ${URI_SRC}
     ${WATCHER_SRC}
     )
 endif (NOT WIN32)
