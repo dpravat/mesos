@@ -39,9 +39,12 @@ namespace fetcher {
  */
 class Flags :
   public CopyFetcherPlugin::Flags,
-  public CurlFetcherPlugin::Flags,
+  public CurlFetcherPlugin::Flags
+#ifndef __WINDOWS__
   public HadoopFetcherPlugin::Flags,
-  public DockerFetcherPlugin::Flags {};
+  public DockerFetcherPlugin::Flags 
+#endif
+  {};
 
 
 /**
