@@ -127,7 +127,7 @@ inline std::string escape_arg(const std::string& arg)
 // Concatenates multiple command-line arguments and escaps the values. If `arg`
 // is not specified (or takes the value `0`), the function will scan `argv`
 // until a `NULL` is encountered.
-inline std::string stringify_args(const char** argv, unsigned long argc = 0)
+inline std::string stringify_args(char** argv, unsigned long argc = 0)
 {
   std::string arg_line = "";
   unsigned long index = 0;
