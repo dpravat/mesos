@@ -35,7 +35,6 @@ namespace Shell {
   constexpr const char* name = "cmd.exe";
   constexpr const char* arg0 = "cmd";
   constexpr const char* arg1 = "/c";
-
 } // namespace Shell {
 
 // Runs a shell command formatted with varargs and return the return value
