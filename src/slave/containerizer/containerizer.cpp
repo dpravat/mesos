@@ -238,7 +238,6 @@ Try<Containerizer*> Containerizer::create(
       } else {
         containerizers.push_back(containerizer.get());
       }
-#ifdef POSTMVP
     } else if (type == "docker") {
       Try<DockerContainerizer*> containerizer =
         DockerContainerizer::create(flags, fetcher);
@@ -248,7 +247,6 @@ Try<Containerizer*> Containerizer::create(
       } else {
         containerizers.push_back(containerizer.get());
       }
-#endif // POSTMVP
     } else if (type == "external") {
       if (flags.container_logger.isSome()) {
         return Error(
