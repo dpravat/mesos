@@ -24,23 +24,20 @@
 // A useful type that can be used to represent a Try that has failed. This is a
 // lot like `ErrnoError`, except instead of wrapping an error coming from the C
 // standard libraries, it wraps an error coming from the Windows APIs.
-class WindowsError : public Error
+class WindowsErrorBase : public Error
 {
 public:
-  WindowsError()
-    : Error(get_last_error_as_string()), code(::GetLastError()) {}
+  WindowsError(DWORD code)
+    : Error(get_last_error_as_string(code)), code(code) {}
 
-  WindowsError(const std::string& message)
-    : Error(message + ": " + get_last_error_as_string()),
-      code(::GetLastError()) {}
+  WindowsError(DWORD code, const std::string& message)
+    : Error(message + ": " + get_last_error_as_string(code)), code(code) {}
 
   const DWORD code;
 
 private:
-  static std::string get_last_error_as_string()
+  static std::string get_last_error_as_string(DWORD errorCode)
   {
-    DWORD errorCode = ::GetLastError();
-
     // Default if no error.
     if (errorCode == 0) {
       return std::string();
@@ -101,6 +98,22 @@ private:
 
     return message;
   }
+};
+
+
+class WindowsError : public WindowsErrorBase {
+  WindowsError() : WindowsErrorBase(::GetLastError()) {}
+
+  WindowsError(const std::string& message)
+    : WindowsErrorBase(::GetLastError(), message) {}
+};
+
+
+class WindowsSocketError : public WindowsErrorBase {
+  WindowsSocketError() : WindowsErrorBase(::WSAGetLastError()) {}
+
+  WindowsError(const std::string& message)
+    : WindowsErrorBase(::WSAGetLastError(), message) {}
 };
 
 #endif // __STOUT_WINDOWS_ERROR_HPP__
