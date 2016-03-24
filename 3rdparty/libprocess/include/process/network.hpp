@@ -57,14 +57,22 @@ inline Try<int> bind(int s, const Address& address)
 
 
 // TODO(benh): Remove and defer to Socket::connect.
-inline Try<int> connect(int s, const Address& address)
+
+using ConnectError =
+#ifndef __WINDOWS__
+  ErrnoError;
+#else
+  WindowsSocketError;
+#endif
+
+inline Try<int, ConnectError> connect(int s, const Address& address)
 {
   struct sockaddr_storage storage =
     net::createSockaddrStorage(address.ip, address.port);
 
   int error = ::connect(s, (struct sockaddr*) &storage, address.size());
   if (error < 0) {
-    return ErrnoError("Failed to connect to " + stringify(address));
+    return ConnectError("Failed to connect to " + stringify(address));
   }
 
   return error;
