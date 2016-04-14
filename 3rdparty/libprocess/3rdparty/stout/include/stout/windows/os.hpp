@@ -416,6 +416,7 @@ inline Try<long> cpus()
   return static_cast<long>(sysInfo.dwNumberOfProcessors);
 }
 
+
 // Returns load struct with average system loads for the last
 // 1, 5 and 15 minutes respectively.
 // Load values should be interpreted as usual average loads from
@@ -533,9 +534,9 @@ inline Try<bool> access(const std::string& fileName, int how)
 
 inline Result<PROCESSENTRY32> process_entry(pid_t pid)
 {
-  // Get a snapshot of the processes in the system. NOTE: We should not check
-  // whether the handle is `NULL`, because this API will always return
-  // `INVALID_HANDLE_VALUE` on error.
+  // Get a snapshot of the processes in the system.
+  // NOTE: We should not check whether the handle is `NULL`, because this API
+  // will always return `INVALID_HANDLE_VALUE` on error.
   HANDLE snapshot_handle = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, pid);
   if (snapshot_handle == INVALID_HANDLE_VALUE) {
     return WindowsError(
