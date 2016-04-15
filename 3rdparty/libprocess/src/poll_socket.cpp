@@ -132,7 +132,7 @@ Future<Nothing> PollSocketImpl::connect(const Address& address)
 {
   Try<int, SocketError> connect = network::connect(get(), address);
   if (connect.isError()) {
-    if (connect.error().code == EINPROGRESS) {
+    if (net::is_inprogress_error(connect.error().code)) {
       return io::poll(get(), io::WRITE)
         .then(lambda::bind(&internal::connect, socket()));
     }
@@ -199,32 +199,23 @@ Future<size_t> socket_send_file(int s, int fd, off_t offset, size_t size)
   CHECK(size > 0);
 
   while (true) {
-    ssize_t length = os::sendfile(s, fd, offset, size);
+    Try<ssize_t, SocketError> length = os::sendfile(s, fd, offset, size);
 
-    if (length < 0 && (errno == EINTR)) {
+    if (length.isError() && net::is_restartable_error(length.error().code)) {
       // Interrupted, try again now.
       continue;
-    } else if (length < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+    } else if (length.isError() &&
+               net::is_retryable_error(length.error().code)) {
       // Might block, try again later.
       return io::poll(s, io::WRITE)
         .then(lambda::bind(&internal::socket_send_file, s, fd, offset, size));
-    } else if (length <= 0) {
+    } else if (length.isError()) {
       // Socket error or closed.
-      if (length < 0) {
-        const string error = os::strerror(errno);
-        VLOG(1) << "Socket error while sending: " << error;
-      } else {
-        VLOG(1) << "Socket closed while sending";
-      }
-      if (length == 0) {
-        return length;
-      } else {
-        return Failure(ErrnoError("Socket sendfile failed"));
-      }
+      VLOG(1) << length.error().message;
+      Failure(length.error());
     } else {
-      CHECK(length > 0);
-
-      return length;
+      CHECK(length.get() >= 0);
+      return length.get();
     }
   }
 }
