@@ -73,6 +73,13 @@ private:
     mach_port_deallocate(mach_task_self(), cclock);
     ts.tv_sec = mts.tv_sec;
     ts.tv_nsec = mts.tv_nsec;
+#elif __WINDOWS__
+    __int64 wintime;
+    GetSystemTimeAsFileTime((FILETIME*)&wintime);
+    wintime      -=116444736000000000i64;   // 1jan1601 to 1jan1970.
+
+    ts.tv_sec  =wintime / 10000000i64;      // Seconds.
+    ts.tv_nsec =wintime % 10000000i64 *100; // Nano-seconds.
 #else
     clock_gettime(CLOCK_REALTIME, &ts);
 #endif // __MACH__
