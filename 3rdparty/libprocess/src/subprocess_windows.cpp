@@ -33,6 +33,7 @@
 #include <stout/unreachable.hpp>
 #include <stout/windows.hpp>
 
+using std::array;
 using std::map;
 using std::string;
 using std::vector;
@@ -47,7 +48,8 @@ namespace internal {
 static void cleanup(
     const Future<Option<int>>& result,
     Promise<Option<int>>* promise,
-    const Subprocess& subprocess)
+    const Subprocess& subprocess,
+    HANDLE process)
 {
   CHECK(!result.isPending());
   CHECK(!result.isDiscarded());
@@ -59,14 +61,16 @@ static void cleanup(
   }
 
   delete promise;
+  ::CloseHandle(process);
 }
+
 
 static void close(
     const InputFileDescriptors& stdinfds,
     const OutputFileDescriptors& stdoutfds,
     const OutputFileDescriptors& stderrfds)
 {
-  HANDLE handles[6] = {
+  const HANDLE handles[6] = {
     stdinfds.read, stdinfds.write.getOrElse(INVALID_HANDLE_VALUE),
     stdoutfds.read.getOrElse(INVALID_HANDLE_VALUE), stdoutfds.write,
     stderrfds.read.getOrElse(INVALID_HANDLE_VALUE), stderrfds.write
@@ -79,37 +83,145 @@ static void close(
   }
 }
 
+
+static Try<HANDLE> duplicateHandle(const HANDLE handle)
+{
+  HANDLE duplicate = INVALID_HANDLE_VALUE;
+
+  // TODO(anaparu): Do we need to scope the duplicated handle
+  // to the child process?
+  BOOL result = ::DuplicateHandle(
+      ::GetCurrentProcess(),  // Source process == current.
+      handle,                 // Handle to duplicate.
+      ::GetCurrentProcess(),  // Target process == current.
+      &duplicate,
+      0,                      // Ignored (DUPLICATE_SAME_ACCESS).
+      TRUE,                   // Inheritable handle.
+      DUPLICATE_SAME_ACCESS); // Same access level as source.
+
+  if (!result) {
+    return WindowsError("Failed to duplicate handle of stdin file");
+  } else {
+    return duplicate;
+  }
+}
+
+
 // Returns either the file descriptor associated to the Windows handle, or
 // `Nothing` if the handle is invalid.
 static Option<int> getFileDescriptorFromHandle(
     const Option<HANDLE>& handle,
-    int flags)
+    const int flags)
 {
   int fd = ::_open_osfhandle(
-      (intptr_t)handle.getOrElse(INVALID_HANDLE_VALUE), flags);
+      reinterpret_cast<intptr_t>(handle.getOrElse(INVALID_HANDLE_VALUE)),
+      flags);
 
   return fd > 0 ? Option<int>(fd) : None();
 }
 
-// Opens a in inheritable pipe[1]. On success, `handles[0]` receives the 'read'
-// handle of the pipe, while `handles[1]` receives the 'write' handle. The pipe
-// handles can then be passed to a child process, as exemplified in [2].
+
+static Try<HANDLE> getHandleFromFileDescriptor(int fd)
+{
+  // Extract handle from file descriptor.
+  const HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(fd));
+  if (handle == INVALID_HANDLE_VALUE) {
+    return WindowsError("Failed to get `HANDLE` for file descriptor");
+  } else {
+    return handle;
+  }
+}
+
+
+static Try<HANDLE> getHandleFromFileDescriptor(
+    const int fd,
+    const Subprocess::IO::FDType type)
+{
+  Try<HANDLE> handle = getHandleFromFileDescriptor(fd);
+  if (handle.isError()) {
+    return Error(handle.error());
+  }
+
+  switch (type) {
+    case Subprocess::IO::DUPLICATED: {
+      const Try<HANDLE> duplicate = duplicateHandle(handle.get());
+
+      if (duplicate.isError()) {
+        return Error(duplicate.error());
+      }
+
+      handle = duplicate;
+    }
+    case Subprocess::IO::OWNED:
+      return handle;
+
+    // NOTE: By not setting a default we leverage the compiler
+    // errors when the enumeration is augmented to find all
+    // the cases we need to provide. Same for below.
+  }
+}
+
+
+// TODO(hausdorff): Rethink name here, write a comment about this function.
+static Try<HANDLE> createIoPath(const string& path, DWORD accessFlags)
+{
+  // The `TRUE` in the last field makes this duplicate handle inheritable.
+  SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
+  const HANDLE handle = ::CreateFile(
+      path.c_str(),
+      accessFlags,
+      FILE_SHARE_READ,
+      &sa,
+      CREATE_NEW,
+      FILE_ATTRIBUTE_NORMAL,
+      NULL);
+
+  if (handle == INVALID_HANDLE_VALUE) {
+    return WindowsError("Failed to open '" + path + "'");
+  }
+
+  return handle;
+}
+
+
+static Try<HANDLE> createInputFile(const string& path)
+{
+  // Get a handle to the `stdin` file. Use `GENERIC_READ` and
+  // `FILE_SHARE_READ` to make the handle read/only (as `stdin` should
+  // be), but allow others to read from the same file.
+  return createIoPath(path, GENERIC_READ);
+}
+
+
+static Try<HANDLE> createOutputFile(const string& path)
+{
+  // Get a handle to the `stdout` file. Use `GENERIC_WRITE` to make the
+  // handle writeable (as `stdout` should be) and do not allow others to
+  // share the file.
+  return createIoPath(path, GENERIC_WRITE);
+}
+
+
+// Opens an inheritable pipe[1] represented as a pair of file handles. On
+// success, the first handle returned recieves the 'read' handle of the pipe,
+// while the second receives the 'write' handle. The pipe handles can then be
+// passed to a child process, as exemplified in [2].
 //
 // [1] https://msdn.microsoft.com/en-us/library/windows/desktop/aa379560(v=vs.85).aspx
 // [2] https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx
-Try<Nothing> CreatePipeHandles(HANDLE handles[2])
+static Try<array<HANDLE, 2>> createPipeHandles()
 {
-  SECURITY_ATTRIBUTES securityAttr;
-  securityAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
-  securityAttr.bInheritHandle = TRUE;
-  securityAttr.lpSecurityDescriptor = NULL;
+  // The `TRUE` in the last field makes this duplicate handle inheritable.
+  SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
+  array<HANDLE, 2> handles{ INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };
 
-  if (!::CreatePipe(&handles[0], &handles[1], &securityAttr, 0)) {
-    return WindowsError("CreatePipeHandles: could not create pipe");
+  if (!::CreatePipe(&handles[0], &handles[1], &sa, 0)) {
+    return WindowsError("createPipeHandles: could not create pipe");
   }
 
-  return Nothing();
+  return handles;
 }
+
 
 // Creates a NULL-terminated array of NULL-terminated strings that will be
 // passed to `CreateProcess` as the `lpEnvironment` argument, as described by
@@ -126,31 +238,36 @@ Try<Nothing> CreatePipeHandles(HANDLE handles[2])
 // limit, this function does not allocate any memory and instead returns `NULL`.
 //
 // [1] https://msdn.microsoft.com/en-us/library/windows/desktop/ms682425(v=vs.85).aspx
-char* CreateProcessEnvironment(const map<string, string>& env)
+static char* createProcessEnvironment(const map<string, string>& env)
 {
-  // Determine the size of buffer needed first.
-  size_t length = 0;
-  for (auto iterator = env.begin(); iterator != env.end(); iterator++)
-  {
-    length += iterator->first.size() + iterator->second.size() + 2;
-  }
-
-  // One more character for NULL-termination.
-  length++;
-
   // Per MSDN[1], the maximum size of the ASCII environment can be 32767 bytes.
   // This constraint is removed for Unicode.
-  if (length > 32767) {
+  const static int max_env_size = 32767;
+
+  // Determine the size of buffer needed first. For each key/value pair, we
+  // leave space for 2 additional characters: one for the null terminator, and
+  // one for the `=` sign.
+  uint64_t totalBytes = 0;
+  foreachpair(const std::string& key, const std::string& value, env) {
+    totalBytes += key.size() + value.size() + 2;
+  }
+
+  // One more character for the final, extra NULL character.
+  totalBytes++;
+
+  if (totalBytes > max_env_size) {
     return NULL;
   }
 
-  char *environment = new char[length];
+  char* environment = new char[totalBytes];
   size_t index = 0;
-  for (auto iterator = env.begin(); iterator != env.end(); iterator++)
-  {
-    string keyValue = iterator->first + "=" + iterator->second;
-    strcpy_s(environment + index, length - index, keyValue.c_str());
-    index += keyValue.size() + 1;
+  // For each key/value pair, create a string representing the definition of
+  // an environment variable: something like `key1=value1\0`. Then, copy that
+  // whole string, including null terminator, to `environment` array.
+  foreachpair(const std::string& key, const std::string& value, env) {
+    const string assignment = key + "=" + value;
+    strcpy_s(environment + index, totalBytes - index, assignment.c_str());
+    index += assignment.size() + 1;
   }
 
   // NULL-terminate the entire block.
@@ -158,13 +275,14 @@ char* CreateProcessEnvironment(const map<string, string>& env)
   return environment;
 }
 
-Try<pid_t> CreateChildProcess(
-  const string& path,
-  const vector<string>& argv,
-  const char* environment,
-  InputFileDescriptors stdinFds,
-  OutputFileDescriptors stdoutFds,
-  OutputFileDescriptors stderrFds)
+
+Try<PROCESS_INFORMATION> createChildProcess(
+    const string& path,
+    const vector<string>& argv,
+    const char* environment,
+    InputFileDescriptors stdinFds,
+    OutputFileDescriptors stdoutFds,
+    OutputFileDescriptors stderrFds)
 {
   PROCESS_INFORMATION processInfo;
   STARTUPINFO startupInfo;
@@ -220,64 +338,70 @@ Try<pid_t> CreateChildProcess(
   //
   // [1] https://msdn.microsoft.com/en-us/library/windows/desktop/ms682425(v=vs.85).aspx
   BOOL createProcessResult = CreateProcess(
-      (LPSTR)path.c_str(),  // Path of module to load[1].
-      (LPSTR)argumentsEscaped,     // Command line arguments[1].
-      NULL,                 // Default security attributes.
-      NULL,                 // Default primary thread security attributes.
-      TRUE,                 // Inherited parent process handles.
-      0,                    // Default creation flags.
-      (LPVOID)environment,  // Array of environment variables[1].
-      NULL,                 // Use parent's current directory.
-      &startupInfo,         // STARTUPINFO pointer.
-      &processInfo);        // PROCESS_INFORMATION pointer.
+      // TODO(hausdorff): Figure out how to write this part.
+      // (LPSTR)path.c_str(),  // Path of module to load[1].
+      NULL,
+      (LPSTR)argumentsEscaped, // Command line arguments[1].
+      NULL,                    // Default security attributes.
+      NULL,                    // Default primary thread security attributes.
+      TRUE,                    // Inherited parent process handles.
+      CREATE_SUSPENDED,        // Primary thread suspended until we start it.
+      (LPVOID)environment,     // Array of environment variables[1].
+      NULL,                    // Use parent's current directory.
+      &startupInfo,            // STARTUPINFO pointer.
+      &processInfo);           // PROCESS_INFORMATION pointer.
 
   if (arguments != NULL) {
     delete arguments;
   }
 
   if (!createProcessResult) {
-    return WindowsError("CreateChildProcess: failed to call 'CreateProcess'");
+    return WindowsError("createChildProcess: failed to call 'CreateProcess'");
   }
 
-  // Close handles to child process/main thread and return child process PID
-  ::CloseHandle(processInfo.hProcess);
-  ::CloseHandle(processInfo.hThread);
-  return processInfo.dwProcessId;
+  return processInfo;
 }
 
 }  // namespace internal {
+
 
 Subprocess::IO Subprocess::PIPE()
 {
   return Subprocess::IO(
       []() -> Try<InputFileDescriptors> {
-        HANDLE inHandle[2] = { INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };
+        const Try<array<HANDLE, 2>> handles = internal::createPipeHandles();
+        if (handles.isError()) {
+          return Error(handles.error());
+        }
+
         // Create STDIN pipe and set the 'write' component to not be
         // inheritable.
-        internal::CreatePipeHandles(inHandle);
-        if (!::SetHandleInformation(inHandle[1], HANDLE_FLAG_INHERIT, 0)) {
-          return WindowsError("CreatePipes: Failed to call SetHandleInformation"
-            " on stdin pipe");
+        if (!::SetHandleInformation(handles.get()[1], HANDLE_FLAG_INHERIT, 0)) {
+          return WindowsError(
+              "PIPE: Failed to call SetHandleInformation on stdin pipe");
         }
 
-        InputFileDescriptors inDescriptors;
-        inDescriptors.read = inHandle[0];
-        inDescriptors.write = inHandle[1];
-        return inDescriptors;
+        InputFileDescriptors fds;
+        fds.read = handles.get()[0];
+        fds.write = handles.get()[1];
+        return fds;
       },
       []() -> Try<OutputFileDescriptors> {
-        HANDLE outHandle[2] = { INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };
-        // Create OUT pipe and set the 'read' component to not be inheritable.
-        internal::CreatePipeHandles(outHandle);
-        if (!::SetHandleInformation(outHandle[0], HANDLE_FLAG_INHERIT, 0)) {
-          return WindowsError("CreatePipes: Failed to call SetHandleInformation"
-            " on out pipe");
+        const Try<array<HANDLE, 2>> handles = internal::createPipeHandles();
+        if (handles.isError()) {
+          return Error(handles.error());
         }
 
-        OutputFileDescriptors outDescriptors;
-        outDescriptors.read = outHandle[0];
-        outDescriptors.write = outHandle[1];
-        return outDescriptors;
+        // Create OUT pipe and set the 'read' component to not be inheritable.
+        if (!::SetHandleInformation(handles.get()[0], HANDLE_FLAG_INHERIT, 0)) {
+          return WindowsError(
+              "PIPE: Failed to call SetHandleInformation on out pipe");
+        }
+
+        OutputFileDescriptors fds;
+        fds.read = handles.get()[0];
+        fds.write = handles.get()[1];
+        return fds;
       });
 }
 
@@ -286,47 +410,25 @@ Subprocess::IO Subprocess::PATH(const string& path)
 {
   return Subprocess::IO(
       [path]() -> Try<InputFileDescriptors> {
-        // Get a handle to the `stdin` file. Use `GENERIC_READ` and
-        // `FILE_SHARE_READ` to make the handle read/only (as `stdin` should
-        // be), but allow others to read from the same file.
-      SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
-      HANDLE inHandle = ::CreateFile(
-            path.c_str(),
-            GENERIC_READ,
-            FILE_SHARE_READ,
-            &sa,
-            CREATE_NEW,
-            FILE_ATTRIBUTE_NORMAL,
-            NULL);
+        const Try<HANDLE> inHandle = internal::createInputFile(path);
 
-        if (inHandle == INVALID_HANDLE_VALUE) {
-          return WindowsError("Failed to open '" + path + "'");
+        if (inHandle.isError()) {
+          return Error(inHandle.error());
         }
 
         InputFileDescriptors inDescriptors;
-        inDescriptors.read = inHandle;
+        inDescriptors.read = inHandle.get();
         return inDescriptors;
       },
       [path]() -> Try<OutputFileDescriptors> {
-        // Get a handle to the `stdout` file. Use `GENERIC_WRITE` to make the
-        // handle writeable (as `stdout` should be) and do not allow others to
-        // share the file.
-        SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
-        HANDLE outHandle = ::CreateFile(
-            path.c_str(),
-            GENERIC_WRITE,
-            FILE_SHARE_READ,
-            &sa,
-            CREATE_NEW,
-            FILE_ATTRIBUTE_NORMAL,
-            NULL);
+        const Try<HANDLE> outHandle = internal::createOutputFile(path);
 
-        if (outHandle == INVALID_HANDLE_VALUE) {
-          return WindowsError("Failed to open '" + path + "'");
+        if (outHandle.isError()) {
+          return Error(outHandle.error());
         }
 
         OutputFileDescriptors outDescriptors;
-        outDescriptors.write = outHandle;
+        outDescriptors.write = outHandle.get();
         return outDescriptors;
       });
 }
@@ -336,90 +438,33 @@ Subprocess::IO Subprocess::FD(int fd, IO::FDType type)
 {
   return Subprocess::IO(
       [fd, type]() -> Try<InputFileDescriptors> {
-        HANDLE inHandle = INVALID_HANDLE_VALUE;
-        switch (type) {
-          case IO::DUPLICATED:
-          case IO::OWNED:
-            // Extract handle from file descriptor.
-            inHandle = (HANDLE)::_get_osfhandle(fd);
-            if (inHandle == INVALID_HANDLE_VALUE) {
-              return WindowsError("Failed to get handle of stdin file");
-            }
-            if (type == IO::DUPLICATED) {
-              HANDLE duplicateHandle = INVALID_HANDLE_VALUE;
+        const Try<HANDLE> inHandle =
+          internal::getHandleFromFileDescriptor(fd, type);
 
-              // Duplicate the handle. See MSDN documentation[1] for details
-              // on `DuplicateHandle` arguments and some sample code.
-              //
-              // [1] https://msdn.microsoft.com/en-us/library/windows/desktop/ms724251(v=vs.85).aspx
-              //
-              // TODO(anaparu): Do we need to scope the duplicated handle
-              // to the child process?
-              BOOL result = ::DuplicateHandle(
-                  ::GetCurrentProcess(),    // Source process == current.
-                  inHandle,                 // Handle to duplicate.
-                  ::GetCurrentProcess(),    // Target process == current.
-                  &duplicateHandle,
-                  0,                        // Ignored (DUPLICATE_SAME_ACCESS).
-                  TRUE,                     // Inheritable handle.
-                  DUPLICATE_SAME_ACCESS);   // Same access level as source.
-
-              if (!result) {
-                return WindowsError("Failed to duplicate handle of stdin file");
-              }
-
-              inHandle = duplicateHandle;
-            }
-            break;
-          // NOTE: By not setting a default we leverage the compiler
-          // errors when the enumeration is augmented to find all
-          // the cases we need to provide.  Same for below.
+        if (inHandle.isError()) {
+          return Error(inHandle.error());
         }
 
-        InputFileDescriptors inDescriptors;
-        inDescriptors.read = inHandle;
-        return inDescriptors;
+        InputFileDescriptors fds;
+        fds.read = inHandle.get();
+        return fds;
       },
       [fd, type]() -> Try<OutputFileDescriptors> {
-        HANDLE outHandle = INVALID_HANDLE_VALUE;
-        switch (type) {
-          case IO::DUPLICATED:
-          case IO::OWNED:
-            // Extract handle from file descriptor.
-            outHandle = (HANDLE)::_get_osfhandle(fd);
-            if (outHandle == INVALID_HANDLE_VALUE) {
-              return WindowsError("Failed to get handle of output file");
-            }
-            if (type == IO::DUPLICATED) {
-              HANDLE duplicateHandle = INVALID_HANDLE_VALUE;
+        const Try<HANDLE> outHandle =
+          internal::getHandleFromFileDescriptor(fd, type);
 
-              BOOL result = ::DuplicateHandle(
-                  ::GetCurrentProcess(),    // Source process == current.
-                  outHandle,                // Handle to duplicate.
-                  ::GetCurrentProcess(),    // Target process == current.
-                  &duplicateHandle,
-                  0,                        // Ignored (DUPLICATE_SAME_ACCESS).
-                  TRUE,                     // Inheritable handle.
-                  DUPLICATE_SAME_ACCESS);   // Same access level as source.
+        if (outHandle.isError()) {
+          return Error(outHandle.error());
+        }
 
-              if (!result) {
-                return WindowsError("Failed to duplicate handle of out file");
-              }
-
-              outHandle = duplicateHandle;
-            }
-            break;
-          }
-
-        OutputFileDescriptors outDescriptors;
-        outDescriptors.write = outHandle;
-        return outDescriptors;
+        OutputFileDescriptors fds;
+        fds.write = outHandle.get();
+        return fds;
       });
 }
 
 
-
-// TODO(alexnaparu): use RAII handles
+// TODO(hausdorff): use RAII handles
 Try<Subprocess> subprocess(
     const string& path,
     vector<string> argv,
@@ -448,8 +493,9 @@ Try<Subprocess> subprocess(
   InputFileDescriptors stdinfds;
   OutputFileDescriptors stdoutfds;
   OutputFileDescriptors stderrfds;
+
   // Prepare the file descriptor(s) for stdin.
-  Try<InputFileDescriptors> input = in.input();
+  const Try<InputFileDescriptors> input = in.input();
   if (input.isError()) {
     return Error(input.error());
   }
@@ -478,7 +524,7 @@ Try<Subprocess> subprocess(
   // stringify them and append them to the existing arguments.
   if (flags.isSome()) {
     foreachpair (const string& name, const flags::Flag& flag, flags.get()) {
-      Option<string> value = flag.stringify(flags.get());
+      const Option<string> value = flag.stringify(flags.get());
       if (value.isSome()) {
         argv.push_back("--" + name + "=" + value.get());
       }
@@ -486,31 +532,27 @@ Try<Subprocess> subprocess(
   }
 
   // Construct the environment that will be passed to `CreateProcess`.
-  char* env = NULL;
+  std::unique_ptr<char> env;
   if (environment.isSome()) {
-    env = internal::CreateProcessEnvironment(environment.get());
+    env = std::unique_ptr<char>(
+        internal::createProcessEnvironment(environment.get()));
   }
 
   // Create the child process and pass the stdin/stdout/stderr handles.
-  Try<pid_t> pid = internal::CreateChildProcess(
+  Try<PROCESS_INFORMATION> processInformation = internal::createChildProcess(
       path,
       argv,
-      env,
+      env.get(),
       stdinfds,
       stdoutfds,
       stderrfds);
 
-  // Need to delete `env` if any space was allocated.
-  if (env != NULL) {
-    delete env;
-  }
-
-  if (pid.isError()) {
+  if (processInformation.isError()) {
     internal::close(stdinfds, stdoutfds, stderrfds);
-    return Error("Could not launch child process" + pid.error());
+    return Error("Could not launch child process" + processInformation.error());
   }
 
-  if (pid.get() == -1) {
+  if (processInformation.get().dwProcessId == -1) {
     // Save the errno as 'close' below might overwrite it.
     ErrnoError error("Failed to clone");
     internal::close(stdinfds, stdoutfds, stderrfds);
@@ -518,15 +560,15 @@ Try<Subprocess> subprocess(
   }
 
   Subprocess process;
-  process.data->pid = pid.get();
+  process.data->pid = processInformation.get().dwProcessId;
 
-  // TODO(alexnaparu): Investigate if handles need to be closed here.
+  // TODO(hausdorff): Investigate if handles need to be closed here.
   //
   // Close the handles that are created by this function. For pipes, we close
   // the child ends and store the parent ends (see thecode below).
-  // ::CloseHandle(stdinfds.read);
-  // ::CloseHandle(stdoutfds.write);
-  // ::CloseHandle(stderrfds.write);
+  ::CloseHandle(stdinfds.read);
+  ::CloseHandle(stdoutfds.write);
+  ::CloseHandle(stderrfds.write);
 
   // If the mode is PIPE, store the parent side of the pipe so that
   // the user can communicate with the subprocess. Windows uses handles for all
@@ -553,8 +595,16 @@ Try<Subprocess> subprocess(
   // the subprocess has terminated (i.e., because the caller doesn't
   // keep a copy of this Subprocess around themselves).
   process::reap(process.data->pid)
-    .onAny(lambda::bind(internal::cleanup, lambda::_1, promise, process));
+    .onAny(
+        lambda::bind(
+            internal::cleanup,
+            lambda::_1,
+            promise,
+            process,
+            processInformation.get().hProcess));
 
+  ResumeThread(processInformation.get().hThread);
+  ::CloseHandle(processInformation.get().hThread);
   return process;
 }
 

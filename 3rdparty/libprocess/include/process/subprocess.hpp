@@ -376,7 +376,7 @@ inline Try<Subprocess> subprocess(
     const Option<std::string>& working_directory = None(),
     const Watchdog watchdog = NO_MONITOR)
 {
-  std::vector<std::string> argv = {os::Shell::name, os::Shell::arg1, command};
+  std::vector<std::string> argv = {os::Shell::arg0, os::Shell::arg1, command};
 
   return subprocess(
       os::Shell::name,
