@@ -60,9 +60,12 @@ TEST_F(OsSendfileTest, Sendfile)
   // Construct a socket pair and use sendfile to transmit the text.
   int s[2];
   ASSERT_NE(-1, socketpair(AF_UNIX, SOCK_STREAM, 0, s)) << os::strerror(errno);
+  Try<ssize_t, ErrnoError> length =
+    os::sendfile(s[0], fd.get(), 0, LOREM_IPSUM.size());
+  ASSERT_EQ(true, length.isSome());
   ASSERT_EQ(
       LOREM_IPSUM.size(),
-      os::sendfile(s[0], fd.get(), 0, LOREM_IPSUM.size()));
+      length.get());
 
   char* buffer = new char[LOREM_IPSUM.size()];
   ASSERT_EQ(LOREM_IPSUM.size(), read(s[1], buffer, LOREM_IPSUM.size()));
@@ -75,9 +78,10 @@ TEST_F(OsSendfileTest, Sendfile)
   ASSERT_SOME(fd);
   ASSERT_SOME(os::close(s[1]));
 
-  ssize_t result = os::sendfile(s[0], fd.get(), 0, LOREM_IPSUM.size());
+  Try<ssize_t, ErrnoError> result =
+    os::sendfile(s[0], fd.get(), 0, LOREM_IPSUM.size());
   int _errno = errno;
-  ASSERT_EQ(-1, result);
+  ASSERT_ERROR(result);
 
 #ifdef __linux__
   ASSERT_EQ(EPIPE, _errno) << os::strerror(_errno);
