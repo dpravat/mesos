@@ -33,6 +33,9 @@
 #include <stout/option.hpp>
 #include <stout/try.hpp>
 
+#include <stout/os/shell.hpp>
+
+
 namespace process {
 
 // Flag describing whether a new process should generate a new sid.
@@ -373,10 +376,10 @@ inline Try<Subprocess> subprocess(
     const Option<std::string>& working_directory = None(),
     const Watchdog watchdog = NO_MONITOR)
 {
-  std::vector<std::string> argv = {"sh", "-c", command};
+  std::vector<std::string> argv = {os::Shell::name, os::Shell::arg1, command};
 
   return subprocess(
-      "sh",
+      os::Shell::name,
       argv,
       in,
       out,
