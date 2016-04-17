@@ -76,7 +76,7 @@ inline bool exists(pid_t pid)
   // NOTE: Windows quirk, the exit code returned by the process can
   // be the same number as `STILL_ACTIVE`, in which case this
   // function will mis-report that the process still exists.
-  return exitCodeExists && (exitCode == STILL_ACTIVE);
+  return exitCodeExists || (exitCode == STILL_ACTIVE);
 }
 
 
