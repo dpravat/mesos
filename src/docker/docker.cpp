@@ -689,6 +689,7 @@ Future<Nothing> Docker::run(
       Subprocess::PATH("/dev/null"),
       stdOut,
       stdErr,
+      NO_SETSID,
       None(),
       environment);
 

@@ -27,6 +27,8 @@
 
 #include "slave/constants.hpp"
 
+using string = std::string;
+
 namespace mesos {
 namespace internal {
 namespace slave {
