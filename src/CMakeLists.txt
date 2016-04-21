@@ -303,11 +303,6 @@ set(AGENT_SRC
 if (NOT WIN32)
   set(AGENT_SRC
     ${AGENT_SRC}
-    slave/container_logger.cpp
-    slave/container_loggers/sandbox.cpp
-    slave/resource_estimator.cpp
-    slave/slave.cpp
-    slave/containerizer/docker.cpp
     slave/containerizer/mesos/isolators/filesystem/posix.cpp
     slave/containerizer/mesos/isolators/posix/disk.cpp
     slave/containerizer/mesos/isolators/network/cni/paths.cpp
@@ -497,52 +492,52 @@ target_link_libraries(${AGENT_TARGET} ${PROCESS_AGENT_LIBS})
 
 # ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
 ####################################################################
-add_dependencies(${AGENT_TARGET} ${MESOS_TARGET})
+#add_dependencies(${AGENT_TARGET} ${MESOS_TARGET})
 
 # THE PROCESS AGENT EXECUTABLE .
 ###############################################################################
-add_executable(${MESOS_CONTAINERIZER} slave/containerizer/mesos/main.cpp)
+#add_executable(${MESOS_CONTAINERIZER} slave/containerizer/mesos/main.cpp)
 
 # ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
 ######################################################
-target_link_libraries(${MESOS_CONTAINERIZER} ${MESOS_TARGET})
+##target_link_libraries(${MESOS_CONTAINERIZER} ${MESOS_TARGET})
 
 # ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
 ####################################################################
-add_dependencies(${MESOS_CONTAINERIZER} ${MESOS_TARGET})
+#add_dependencies(${MESOS_CONTAINERIZER} ${MESOS_TARGET})
 
 ###############################################################################
-add_executable(${MESOS_EXECUTOR} launcher/executor.cpp)
-add_executable(${MESOS_FETCHER} launcher/fetcher.cpp)
+#add_executable(${MESOS_EXECUTOR} launcher/executor.cpp)
+#add_executable(${MESOS_FETCHER} launcher/fetcher.cpp)
 
 
 # ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
 ######################################################
-target_link_libraries(${MESOS_EXECUTOR} ${PROCESS_AGENT_LIBS})
-target_link_libraries(${MESOS_FETCHER} ${PROCESS_AGENT_LIBS})
+#target_link_libraries(${MESOS_EXECUTOR} ${PROCESS_AGENT_LIBS})
+#target_link_libraries(${MESOS_FETCHER} ${PROCESS_AGENT_LIBS})
 
 # ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
 ####################################################################
-add_dependencies(${MESOS_EXECUTOR} ${AGENT_DEPENDENCIES})
-add_dependencies(${MESOS_FETCHER} ${AGENT_DEPENDENCIES})
+#add_dependencies(${MESOS_EXECUTOR} ${AGENT_DEPENDENCIES})
+#add_dependencies(${MESOS_FETCHER} ${AGENT_DEPENDENCIES})
 
 # mesos-health-check
 ###############################################################################
-add_executable(${MESOS_HEALTH_CHECK} health-check/main.cpp)
-target_link_libraries(${MESOS_HEALTH_CHECK} ${PROCESS_AGENT_LIBS})
-add_dependencies(${MESOS_HEALTH_CHECK} ${MESOS_FETCHER})
+#add_executable(${MESOS_HEALTH_CHECK} health-check/main.cpp)
+#target_link_libraries(${MESOS_HEALTH_CHECK} ${PROCESS_AGENT_LIBS})
+#add_dependencies(${MESOS_HEALTH_CHECK} ${MESOS_FETCHER})
 
 # mesos-docker-executor
 ###############################################################################
-add_executable(${MESOS_DOCKER_EXECUTOR} docker/executor.cpp)
-target_link_libraries(${MESOS_DOCKER_EXECUTOR} ${PROCESS_AGENT_LIBS})
-add_dependencies(${MESOS_DOCKER_EXECUTOR} ${MESOS_HEALTH_CHECK})
+#add_executable(${MESOS_DOCKER_EXECUTOR} docker/executor.cpp)
+#target_link_libraries(${MESOS_DOCKER_EXECUTOR} ${PROCESS_AGENT_LIBS})
+#add_dependencies(${MESOS_DOCKER_EXECUTOR} ${MESOS_HEALTH_CHECK})
 
 # mesos-usage
 ###############################################################################
-add_executable(${MESOS_USAGE} usage/main.cpp)
-target_link_libraries(${MESOS_USAGE} ${PROCESS_AGENT_LIBS})
-add_dependencies(${MESOS_USAGE} ${MESOS_DOCKER_EXECUTOR})
+#add_executable(${MESOS_USAGE} usage/main.cpp)
+#target_link_libraries(${MESOS_USAGE} ${PROCESS_AGENT_LIBS})
+#add_dependencies(${MESOS_USAGE} ${MESOS_DOCKER_EXECUTOR})
 
 # mesos-log
 ###############################################################################
