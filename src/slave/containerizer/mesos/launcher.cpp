@@ -79,29 +79,6 @@ Future<hashset<ContainerID>> PosixLauncher::recover(
 }
 
 
-// The setup function in child before the exec.
-static int childSetup(const Option<lambda::function<int()>>& setup)
-{
-#ifndef __WINDOWS__
-  // POSIX guarantees a forked child's pid does not match any existing
-  // process group id so only a single setsid() is required and the
-  // session id will be the pid.
-  // TODO(idownes): perror is not listed as async-signal-safe and
-  // should be reimplemented safely.
-  // TODO(jieyu): Move this logic to the subprocess (i.e.,
-  // mesos-containerizer launch).
-  if (::setsid() == -1) {
-    perror("Failed to put child in a new session");
-    _exit(1);
-  }
-
-  if (setup.isSome()) {
-    return setup.get()();
-  }
-#endif // __WINDOWS__
-  return 0;
-}
-
 
 Try<pid_t> PosixLauncher::fork(
     const ContainerID& containerId,
@@ -188,15 +165,6 @@ Future<Nothing> _destroy(const Future<Option<int>>& future)
   }
 }
 
-// No-op setup function to be used by `WindowsLauncher`.
-static int windowsNoOpChildSetup(const Option<lambda::function<int()>>& setup)
-{
-  if (setup.isSome()) {
-    return setup.get()();
-  }
-
-  return 0;
-}
 
 Try<Launcher*> WindowsLauncher::create(const Flags& flags)
 {
@@ -212,8 +180,8 @@ Try<pid_t> WindowsLauncher::fork(
   const Subprocess::IO& err,
   const Option<flags::FlagsBase>& flags,
   const Option<map<string, string>>& environment,
-  const Option<lambda::function<int()>>& setup,
-  const Option<int>& namespaces)
+  const Option<int>& namespaces,
+  vector<process::Subprocess::Hook> parentHooks)
 {
   if (pids.contains(containerId)) {
     return Error("Process has already been forked for container " +
@@ -226,9 +194,11 @@ Try<pid_t> WindowsLauncher::fork(
     in,
     out,
     err,
+    SETSID,
     flags,
     environment,
-    lambda::bind(&windowsNoOpChildSetup, setup));
+    None(),
+    parentHooks);
 
   if (child.isError()) {
     return Error("Failed to fork a child process: " + child.error());
