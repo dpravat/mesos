@@ -273,6 +273,7 @@ inline Try<std::string> getHostname(const IP& ip)
 }
 
 
+#ifndef __WINDOWS__
 // Returns a `Try` of the result of attempting to set the `hostname`.
 inline Try<Nothing> setHostname(const std::string& hostname)
 {
@@ -282,6 +283,7 @@ inline Try<Nothing> setHostname(const std::string& hostname)
 
   return Nothing();
 }
+#endif // __WINDOWS__
 
 
 // Returns the names of all the link devices in the system.
