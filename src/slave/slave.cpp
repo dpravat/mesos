@@ -96,6 +96,7 @@
 #ifdef __WINDOWS__
 // Used to install a Windows console ctrl handler.
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ms682066(v=vs.85).aspx
+#include <stout/windows.hpp>
 #include <slave/windows_ctrlhandler.hpp>
 #else
 // Used to install a handler for POSIX signal.
@@ -954,7 +955,7 @@ void Slave::detected(const Future<Option<MasterInfo>>& _master)
     // Wait for a random amount of time before authentication or
     // registration.
     Duration duration =
-      flags.registration_backoff_factor * ((double) ::random() / RAND_MAX);
+      flags.registration_backoff_factor * ((double) os::random() / RAND_MAX);
 
     if (credential.isSome()) {
       // Authenticate with the master.
@@ -1470,7 +1471,7 @@ void Slave::doReliableRegistration(Duration maxBackoff)
 
   // Determine the delay for next attempt by picking a random
   // duration between 0 and 'maxBackoff'.
-  Duration delay = maxBackoff * ((double) ::random() / RAND_MAX);
+  Duration delay = maxBackoff * ((double) os::random() / RAND_MAX);
 
   VLOG(1) << "Will retry registration in " << delay << " if necessary";
 
