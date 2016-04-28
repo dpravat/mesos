@@ -586,7 +586,10 @@ inline Result<PROCESSENTRY32> process_entry(pid_t pid)
   return None();
 }
 
-
+inline Result<bool> find_process(pid_t pid)
+{
+  return true;
+}
 // Generate a `Process` object for the process associated with `pid`. If
 // process is not found, we return `None`; error is reserved for the case where
 // something went wrong.
