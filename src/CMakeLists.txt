@@ -43,6 +43,7 @@ PROTOC_TO_INCLUDE_DIR(V1_EXECUTOR      mesos/v1/executor/executor)
 PROTOC_TO_INCLUDE_DIR(V1_MESOS         mesos/v1/mesos)
 PROTOC_TO_INCLUDE_DIR(V1_SCHEDULER     mesos/v1/scheduler/scheduler)
 
+
 PROTOC_TO_SRC_DIR(REGISTRY                      master/registry)
 PROTOC_TO_SRC_DIR(INTERNAL_MESSAGES             messages/messages)
 PROTOC_TO_SRC_DIR(INTERNAL_FLAGS                messages/flags)
@@ -100,11 +101,17 @@ set(APPC_SRC
   )
 
 set(AUTHENTICATION_SRC
-  authentication/cram_md5/authenticatee.cpp
-  authentication/cram_md5/authenticator.cpp
-  authentication/cram_md5/auxprop.cpp
   authentication/http/basic_authenticator_factory.cpp
   )
+
+if (NOT WIN32)
+  set(AUTHENTICATION_SRC
+    ${AUTHENTICATION_SRC}
+    authentication/cram_md5/authenticatee.cpp
+    authentication/cram_md5/authenticator.cpp
+    authentication/cram_md5/auxprop.cpp
+    )
+endif (NOT WIN32)
 
 set(AUTHORIZER_SRC
   authorizer/acls.cpp
@@ -206,15 +213,15 @@ set(LOGGING_SRC
 
 set(MASTER_SRC
   master/validation.cpp
-  master/detector.cpp
-  master/constants.cpp
+  master/detector/detector.cpp
+  master/detector/standalone.cpp
+  master/detector/zookeeper.cpp
   )
 
 if (NOT WIN32)
 set(MASTER_SRC
   ${MASTER_SRC}
   master/contender.cpp
-  master/constants.cpp
   master/flags.cpp
   master/http.cpp
   master/maintenance.cpp
@@ -325,8 +332,6 @@ set(URI_SRC
 if (NOT WIN32)
   set(URI_SRC
     ${URI_SRC}
-
-
     uri/fetchers/docker.cpp
     uri/fetchers/hadoop.cpp
     )
@@ -366,7 +371,9 @@ set(MESSAGES_SRC
 
 set(MESOS_SRC
   ${MESOS_SRC}
+  ${AUTHENTICATION_SRC}
   ${AGENT_SRC}
+  ${APPC_SRC}
   ${MESOS_PROTOBUF_SRC}
   ${MODULE_SRC}
   ${COMMON_SRC}
@@ -388,8 +395,6 @@ set(MESOS_SRC
 if (NOT WIN32)
   set(MESOS_SRC
     ${MESOS_SRC}
-    ${APPC_SRC}
-    ${AUTHENTICATION_SRC}
     ${AUTHORIZER_SRC}
     ${HDFS_SRC}
     ${LOCAL_SRC}
