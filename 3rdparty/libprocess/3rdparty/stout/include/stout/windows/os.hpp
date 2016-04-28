@@ -666,6 +666,10 @@ inline Result<Process> process(pid_t pid)
       false);                                  // Is not zombie process.
 }
 
+inline int random()
+{
+  return rand();
+}
 
 } // namespace os {
 

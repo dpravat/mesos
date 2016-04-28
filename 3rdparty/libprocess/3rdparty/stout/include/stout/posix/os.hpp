@@ -93,6 +93,9 @@ using ::gmtime_r;
 // Import `::hstrerror` into `os::` namespace
 using ::hstrerror;
 
+// Import `::random` into `os::` namespace
+using ::random;
+
 // Forward declarations.
 inline Try<Nothing> utime(const std::string&);
 inline Try<std::list<Process>> processes();
