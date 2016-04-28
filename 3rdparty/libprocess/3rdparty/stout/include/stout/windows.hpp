@@ -13,6 +13,7 @@
 #ifndef __STOUT_WINDOWS_HPP__
 #define __STOUT_WINDOWS_HPP__
 
+
 #include <BaseTsd.h>  // For `SSIZE_T`.
 #include <direct.h>   // For `_mkdir`.
 #include <fcntl.h>    // For file access flags like `_O_CREAT`.
@@ -26,6 +27,7 @@
 #include <WS2tcpip.h>
 #include <Winsock2.h>
 #include <mswsock.h>
+#include <winioctl.h>
 #include <Windows.h>
 
 #include <memory>
