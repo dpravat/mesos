@@ -288,7 +288,7 @@ Future<size_t> peek(int fd, void* data, size_t size, size_t limit)
   // fixed in a newer version of libev (we use 3.8 at the time of
   // writing this comment).
   internal::read(fd, data, limit, internal::PEEK, promise, io::READ);
-  promise->future().onAny(lambda::bind(&os::close, fd));
+  promise->future().onAny(lambda::bind([](int fd) { os::close(fd); }, fd));
 
   return promise->future();
 }
@@ -437,7 +437,7 @@ Future<string> read(int fd)
   boost::shared_array<char> data(new char[BUFFERED_READ_SIZE]);
 
   return internal::_read(fd, buffer, data, BUFFERED_READ_SIZE)
-    .onAny(lambda::bind(&os::close, fd));
+    .onAny(lambda::bind([](int fd) { os::close(fd); }, fd));
 }
 
 
@@ -478,7 +478,7 @@ Future<Nothing> write(int fd, const string& data)
   }
 
   return internal::_write(fd, Owned<string>(new string(data)), 0)
-    .onAny(lambda::bind(&os::close, fd));
+    .onAny(lambda::bind([](int fd) { os::close(fd); }, fd));
 }
 
 
@@ -548,8 +548,8 @@ Future<Nothing> redirect(int from, Option<int> to, size_t chunk)
   }
 
   return internal::splice(from, to.get(), chunk)
-    .onAny(lambda::bind(&os::close, from))
-    .onAny(lambda::bind(&os::close, to.get()));
+    .onAny(lambda::bind([](int fd) { os::close(fd); }, from))
+    .onAny(lambda::bind([](int fd) { os::close(fd); }, to.get()));
 }
 
 

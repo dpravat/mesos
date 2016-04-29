@@ -215,21 +215,42 @@ public:
    *     write side) of this subprocess' stdin pipe or None if no pipe
    *     was requested.
    */
-  Option<int> in()  const { return data->in;  }
+#ifdef __WINDOWS__
+  Option<HANDLE> in() const
+#else
+  Option<int> in() const
+#endif // __WINDOWS__
+  {
+    return data->in;
+  }
 
   /**
    * @return File descriptor representing the parent side (i.e., write
    *     side) of this subprocess' stdout pipe or None if no pipe was
    *     requested.
    */
-  Option<int> out() const { return data->out; }
+#ifdef __WINDOWS__
+  Option<HANDLE> out() const
+#else
+  Option<int> out() const
+#endif // __WINDOWS__
+  {
+    return data->out;
+  }
 
   /**
    * @return File descriptor representing the parent side (i.e., write
    *     side) of this subprocess' stderr pipe or None if no pipe was
    *     requested.
    */
-  Option<int> err() const { return data->err; }
+#ifdef __WINDOWS__
+  Option<HANDLE> err() const
+#else
+  Option<int> err() const
+#endif // __WINDOWS__
+  {
+    return data->err;
+  }
 
   /**
    * Exit status of this subprocess captured as a Future (completed
@@ -272,13 +293,23 @@ private:
 
     pid_t pid;
 
+#ifdef __WINDOWS__
+    HANDLE handle;
+#endif // __WINDOWS__
+
     // The parent side of the pipe for stdin/stdout/stderr. If the
     // IO mode is not a pipe, `None` will be stored.
     // NOTE: stdin, stdout, stderr are macros on some systems, hence
     // these names instead.
+#ifdef __WINDOWS__
+    Option<HANDLE> in;
+    Option<HANDLE> out;
+    Option<HANDLE> err;
+#else
     Option<int> in;
     Option<int> out;
     Option<int> err;
+#endif // __WINDOWS__
 
     Future<Option<int>> status;
   };
