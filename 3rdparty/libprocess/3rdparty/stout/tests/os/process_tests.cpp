@@ -30,8 +30,10 @@
 
 class ProcessTest : public TemporaryDirectoryTest {};
 
+#ifndef __WINDOWS__
 using os::Exec;
 using os::Fork;
+#endif // __WINDOWS__
 using os::Process;
 using os::ProcessTree;
 
