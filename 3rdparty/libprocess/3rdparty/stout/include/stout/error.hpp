@@ -28,7 +28,7 @@
 #endif // __WINDOWS__
 
 using SocketError =
-#ifdef __WINDOWS_
+#ifdef __WINDOWS__
   WindowsSocketError;
 #else
   ErrnoError;
