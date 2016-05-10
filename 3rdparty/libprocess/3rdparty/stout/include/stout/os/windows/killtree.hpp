@@ -19,17 +19,65 @@
 
 namespace os {
 
-// Sends a signal to a process tree rooted at the specified pid.
-// If groups is true, this also sends the signal to all encountered
-// process groups.
-// If sessions is true, this also sends the signal to all encountered
-// process sessions.
-// Note that processes of the group and session of the parent of the
-// root process is not included unless they are part of the root
-// process tree.
-// Note that if the process 'pid' has exited we'll signal the process
-// tree(s) rooted at pids in the group or session led by the process
-// if groups = true or sessions = true, respectively.
+inline Try<std::list<ProcessTree>> pstree(pid_t pid)
+{
+  Try<std::list<Process>> processes = os::processes();
+
+  if (processes.isError()) {
+    return Error(processes.error());
+  }
+
+  Result<Process> process = os::process(pid, processes.get());
+
+  std::queue<pid_t> queue;
+
+  if (process.isNone()) {
+        queue.push(pid);
+  }
+
+  // Root process is not running so nothing we can do.
+  if (queue.empty()) {
+    return std::list<ProcessTree>();
+  }
+
+  struct {
+    std::set<pid_t> pids;
+    std::list<Process> processes;
+  } visited;
+
+
+  while (!queue.empty()) {
+    pid_t pid = queue.front();
+    queue.pop();
+
+    if (visited.pids.count(pid) != 0) {
+      continue;
+    }
+
+    // Make sure this process still exists.
+    process = os::process(pid);
+
+    if (process.isError()) {
+      return Error(process.error());
+    } else if (process.isNone()) {
+      continue;
+    }
+
+    visited.pids.insert(pid);
+    visited.processes.push_back(process.get());
+
+    // Enqueue the children for visiting.
+    foreach (pid_t child, os::children(pid, processes.get(), false)) {
+      queue.push(child);
+    }
+  // Return the process trees representing the visited pids.
+  return pstrees(visited.pids, visited.processes);
+}
+
+
+// Termintat the process tree rooted at the specified pid.
+// Note that if the process 'pid' has exited we'll terminate the process
+// tree(s) rooted at pids
 // Returns the process trees that were succesfully or unsuccessfully
 // signaled. Note that the process trees can be stringified.
 // TODO(benh): Allow excluding the root pid from stopping, killing,
@@ -42,9 +90,15 @@ inline Try<std::list<ProcessTree>> killtree(
     bool groups = false,
     bool sessions = false)
 {
-  UNIMPLEMENTED;
-}
+  Try<std::list<ProcessTree>> process_tree = os::pstree(pid);
 
+  Try<Nothing> kill_job = os::kill_job(pid);
+  if (kill_job.isError())
+  {
+    return Error(kill_job.error());
+  }
+  return process_tree;
+}
 } // namespace os {
 
 #endif // __STOUT_OS_WINDOWS_KILLTREE_HPP__
