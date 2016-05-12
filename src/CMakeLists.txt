@@ -226,7 +226,7 @@ set(MASTER_SRC
 if (NOT WIN32)
 set(MASTER_SRC
   ${MASTER_SRC}
-  master/contender.cpp
+  master/contender/contender.cpp
   master/flags.cpp
   master/http.cpp
   master/maintenance.cpp
