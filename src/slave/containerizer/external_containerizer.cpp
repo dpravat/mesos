@@ -633,7 +633,11 @@ Future<containerizer::Termination> ExternalContainerizerProcess::_wait(
   // Invoke the protobuf::read asynchronously.
   // TODO(tillt): Consider moving protobuf::read into libprocess and
   // making it work fully asynchronously.
+#ifdef __WINDOWS__
+  Result<containerizer::Termination>(*read)(HANDLE, bool, bool) =
+#else
   Result<containerizer::Termination>(*read)(int, bool, bool) =
+#endif // __WINDOWS__
     &::protobuf::read<containerizer::Termination>;
 
   Future<Result<containerizer::Termination>> future = async(
@@ -819,7 +823,11 @@ Future<ResourceStatistics> ExternalContainerizerProcess::_usage(
                    "' failed: " + invoked.error());
   }
 
+#ifdef __WINDOWS__
+  Result<ResourceStatistics>(*read)(HANDLE, bool, bool) =
+#else
   Result<ResourceStatistics>(*read)(int, bool, bool) =
+#endif // __WINDOWS__
     &::protobuf::read<ResourceStatistics>;
 
   Future<Result<ResourceStatistics>> future = async(
@@ -957,7 +965,11 @@ Future<hashset<ContainerID>> ExternalContainerizerProcess::containers()
     return Failure("Containers failed: " + invoked.error());
   }
 
+#ifdef __WINDOWS__
+  Result<containerizer::Containers>(*read)(HANDLE, bool, bool) =
+#else
   Result<containerizer::Containers>(*read)(int, bool, bool) =
+#endif // __WINDOWS__
     &::protobuf::read<containerizer::Containers>;
 
   Future<Result<containerizer::Containers>> future = async(

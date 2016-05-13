@@ -463,7 +463,7 @@ Future<Response> FilesProcess::read(
         offset,
         data,
         request.url.query.get("jsonp")))
-    .onAny(lambda::bind(&os::close, fd.get()));
+    .onAny([fd]() { os::close(fd.get()); });
 }
 
 
