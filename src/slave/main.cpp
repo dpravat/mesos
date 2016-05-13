@@ -147,6 +147,7 @@ int main(int argc, char** argv)
             "  `file:///path/to/file` (where file contains one of the above)");
 
 
+#ifndef __WINDOWS__
   // Optional IP discover script that will set the slave's IP.
   // If set, its output is expected to be a valid parseable IP string.
   Option<string> ip_discovery_command;
@@ -155,6 +156,7 @@ int main(int argc, char** argv)
             "Optional IP discovery binary: if set, it is expected to emit\n"
             "the IP address which the agent will try to bind to.\n"
             "Cannot be used in conjunction with `--ip`.");
+#endif // __WINDOWS__
 
   Try<Nothing> load = flags.load("MESOS_", argc, argv);
 
@@ -187,6 +189,7 @@ int main(int argc, char** argv)
     return EXIT_FAILURE;
   }
 
+#ifndef __WINDOWS__
   // Initialize libprocess.
   if (ip_discovery_command.isSome() && ip.isSome()) {
     EXIT(EXIT_FAILURE) << flags.usage(
@@ -204,6 +207,7 @@ int main(int argc, char** argv)
   } else if (ip.isSome()) {
     os::setenv("LIBPROCESS_IP", ip.get());
   }
+#endif // __WINDOWS__
 
   os::setenv("LIBPROCESS_PORT", stringify(port));
 

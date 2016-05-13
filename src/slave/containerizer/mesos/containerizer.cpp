@@ -1271,8 +1271,8 @@ Future<bool> MesosContainerizerProcess::__launch(
         user,
         slaveId))
       .then(defer(self(), &Self::exec, containerId, pipe.write))
-      .onAny(lambda::bind(&os::close, pipe.read))
-      .onAny(lambda::bind(&os::close, pipe.write));
+      .onAny([pipe]() { os::close(pipe.read); })
+      .onAny([pipe]() { os::close(pipe.write); });
   }));
 }
 
