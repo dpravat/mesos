@@ -444,6 +444,14 @@ Future<string> read(int fd)
 }
 
 
+#ifdef __WINDOWS__
+Future<string> read(HANDLE handle)
+{
+  return read(_open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDONLY));
+}
+#endif // __WINDOWS__
+
+
 Future<Nothing> write(int fd, const string& data)
 {
   process::initialize();
@@ -556,6 +564,17 @@ Future<Nothing> redirect(int from, Option<int> to, size_t chunk)
     .onAny([from]() { os::close(from); })
     .onAny([to]() { os::close(to.get()); });
 }
+
+
+#ifdef __WINDOWS__
+Future<Nothing> redirect(HANDLE from, Option<int> to, size_t chunk)
+{
+  return redirect(
+      _open_osfhandle(reinterpret_cast<intptr_t>(from), O_RDWR),
+      to,
+      chunk);
+}
+#endif // __WINDOWS__
 
 
 // TODO(hartem): Most of the boilerplate code here is the same as

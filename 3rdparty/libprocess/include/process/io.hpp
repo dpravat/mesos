@@ -19,6 +19,9 @@
 #include <process/future.hpp>
 
 #include <stout/nothing.hpp>
+#ifdef __WINDOWS__
+#include <stout/windows.hpp>
+#endif // __WINDOWS__
 
 namespace process {
 namespace io {
@@ -80,6 +83,22 @@ Future<size_t> read(int fd, void* data, size_t size);
 Future<std::string> read(int fd);
 
 
+#ifdef __WINDOWS__
+/**
+* Performs a series of asynchronous reads, until EOF is reached.
+*
+* **NOTE**: when using this, ensure the sender will close the connection
+* so that EOF can be reached.
+*
+* @return The concatentated result of the reads.
+*     A failure will be returned if the file descriptor is bad, or if the
+*     file descriptor cannot be duplicated, set to close-on-exec,
+*     or made non-blocking.
+*/
+Future<std::string> read(HANDLE fd);
+#endif // __WINDOWS__
+
+
 /**
  * Performs a single non-blocking write by polling on the specified
  * file descriptor until data can be be written.
@@ -119,6 +138,11 @@ Future<Nothing> write(int fd, const std::string& data);
  *     set to close-on-exec, or made non-blocking.
  */
 Future<Nothing> redirect(int from, Option<int> to, size_t chunk = 4096);
+
+
+#ifdef __WINDOWS__
+Future<Nothing> redirect(HANDLE from, Option<int> to, size_t chunk = 4096);
+#endif // __WINDOWS__
 
 
 /**
