@@ -126,7 +126,14 @@ inline Try<PROCESS_INFORMATION> createChildProcess(
   // to have been already quoted correctly before we generate `command`.
   // Incorrectly-quoted command arguments will probably lead the child process
   // to terminate with an error. See also NOTE on `process::subprocess`.
-  const string command = strings::join(" ", argv);
+  string command = strings::join(" ", argv);
+
+  // Escape the quotes that are part of json parameters.
+  size_t insert_pos = 0;
+  while((insert_pos = command.find('\"', insert_pos)) != string::npos) {
+    command.insert(insert_pos, 1, '\\');
+    insert_pos+=2;
+  }
 
   // NOTE: If Mesos is built against the ANSI version of this function, the
   // environment is limited to 32,767 characters. See[1].
