@@ -17,7 +17,9 @@
 #include <signal.h>
 #include <stdio.h>
 
+#ifndef __WINDOWS__
 #include <sys/wait.h>
+#endif // __WINDOWS__
 
 #include <iostream>
 #include <list>
@@ -46,6 +48,8 @@
 #include <stout/path.hpp>
 #include <stout/protobuf.hpp>
 #include <stout/strings.hpp>
+#include <stout/os/kill.hpp>
+#include <stout/os/killtree.hpp>
 
 #include "common/http.hpp"
 #include "common/status_utils.hpp"
@@ -59,6 +63,16 @@
 #include "messages/messages.hpp"
 
 #include "slave/constants.hpp"
+
+// Windows defines from NetBios header
+
+#ifdef REGISTERING
+#undef REGISTERING
+#endif // REGISTERING
+#ifdef REGISTERED
+#undef REGISTERED
+#endif // REGISTERED
+
 
 using namespace mesos::internal::slave;
 
@@ -210,11 +224,12 @@ public:
     // session. This is needed as the setsid call can fail from other
     // processes having the same group id.
     int pipes[2];
+#ifdef TOTO
     if (pipe(pipes) < 0) {
       perror("Failed to create a pipe");
       abort();
     }
-
+#endif
     // Set the FD_CLOEXEC flags on these pipes.
     Try<Nothing> cloexec = os::cloexec(pipes[0]);
     if (cloexec.isError()) {
@@ -274,11 +289,13 @@ public:
         strings::join(", ", command.arguments()) + "]";
     }
 
+#ifdef TODO
     if ((pid = fork()) == -1) {
       cerr << "Failed to fork to run " << commandString << ": "
            << os::strerror(errno) << endl;
       abort();
     }
+#endif
 
     // TODO(jieyu): Make the child process async signal safe.
     if (pid == 0) {
@@ -288,6 +305,7 @@ public:
 
       // NOTE: We setsid() in a loop because setsid() might fail if another
       // process has the same process group id as the calling process.
+#ifndef __WINDOWS__
       while ((pid = setsid()) == -1) {
         perror("Could not put command in its own session, setsid");
 
@@ -368,11 +386,11 @@ public:
       if (override.isNone()) {
         if (command.shell()) {
           execlp(
-              "sh",
-              "sh",
-              "-c",
-              command.value().c_str(),
-              (char*) NULL);
+                 os::Shell::name,
+                 os::Shell::arg0,
+                 os::Shell::arg1,
+                 task.command().value().c_str(),
+                 (char*) NULL);
         } else {
           execvp(command.value().c_str(), argv);
         }
@@ -546,7 +564,7 @@ private:
 
         // Send SIGTERM directly to process 'pid' as it may not have
         // received signal before os::killtree() failed.
-        ::kill(pid, SIGTERM);
+        os::kill(pid, SIGTERM);
       } else {
         cout << "Sent SIGTERM to the following process trees:\n"
              << stringify(trees.get()) << endl;
@@ -651,7 +669,7 @@ private:
       // Process 'pid' may not have received signal before
       // os::killtree() failed. To make sure process 'pid' is reaped
       // we send SIGKILL directly.
-      ::kill(pid, SIGKILL);
+      os::kill(pid, SIGKILL);
     } else {
       cout << "Killed the following process trees:\n" << stringify(trees.get())
            << endl;
