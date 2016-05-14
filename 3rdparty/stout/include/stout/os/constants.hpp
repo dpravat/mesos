@@ -17,7 +17,16 @@
 
 namespace os {
 
+const char WINDOWS_SEPARATOR_CHAR = '\\';
+const char POSIX_SEPARATOR_CHAR = '/';
+
+#ifndef __WINDOWS__
 const std::string DIRECTORY_SEPARATOR = "/";
+const char DIRECTORY_SEPARATOR_CHAR = '/';
+#else
+const std::string DIRECTORY_SEPARATOR = "\\";
+const char DIRECTORY_SEPARATOR_CHAR = '\\';
+#endif // __WINDOWS__
 
 } // namespace os {
 
