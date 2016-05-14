@@ -126,7 +126,7 @@ inline Try<long> mtime(const std::string& path)
     return ErrnoError("Error invoking stat for '" + path + "'");
   }
 
-  return s.st_mtime;
+  return static_cast<long>(s.st_mtime);
 }
 
 
