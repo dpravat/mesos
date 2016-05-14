@@ -398,6 +398,16 @@ decltype(_access(fileName, accessMode))
   return _access(fileName, accessMode);
 }
 
+inline long getpagesize(void) {
+  static long g_pagesize = 0;
+  if (!g_pagesize) {
+    SYSTEM_INFO system_info;
+    GetSystemInfo(&system_info);
+    g_pagesize = system_info.dwPageSize;
+  }
+  return g_pagesize;
+}
+
 // `os::system` returns -1 if the processor cannot be started
 // therefore any return value indicates the process has been started
 #ifndef WIFEXITED
@@ -416,5 +426,29 @@ decltype(_access(fileName, accessMode))
 #ifndef WNOHANG
 #define WNOHANG 1
 #endif // WNOHANG
+
+#ifndef WIFSIGNALED
+#define WIFSIGNALED(x) ((x) != -1)
+#endif // WIFSIGNALED
+
+#ifndef WUNTRACED
+#define WUNTRACED   2 // Tell about stopped, untraced children.
+#endif // WUNTRACED
+
+// Whether the child produced a core dump, only be used if WIFSIGNALED is true.
+#ifndef WCOREDUMP
+#define WCOREDUMP(x) false
+#endif // WCOREDUMP
+
+// Whether the child was stopped by delivery of a signal.
+#ifndef WIFSTOPPED
+#define WIFSTOPPED(x) false
+#endif // WIFSTOPPED
+
+// Returns the number of the signals that caused the child process to terminate,
+// only be used if WIFSIGNALED is true.
+#ifndef WTERMSIG
+#define WTERMSIG(x) 0
+#endif // WTERMSIG
 
 #endif // __STOUT_WINDOWS_HPP__
