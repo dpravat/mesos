@@ -30,6 +30,12 @@ inline ssize_t read(int fd, void* data, size_t size)
 
   return ::_read(fd, data, size);
 }
+#ifdef __WINDOWS__
+inline ssize_t read(HANDLE handle,void* data, size_t size)
+{
+  return read(_open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDONLY), data, size);
+}
+#endif // __WINDOWS__
 
 } // namespace os {
 
