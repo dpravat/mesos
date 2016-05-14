@@ -50,6 +50,8 @@
 #include <stout/strings.hpp>
 #include <stout/try.hpp>
 
+#include <stout/os/constants.hpp>
+
 #include "files/files.hpp"
 
 #include "logging/logging.hpp"
@@ -555,8 +557,8 @@ Result<string> FilesProcess::resolve(const string& path)
   // longest possible prefix match and if found append any suffix to
   // the attached path (provided the path is to a directory).
   vector<string> tokens = strings::split(
-      strings::remove(path, PATH_SEPARATOR_STRING, strings::SUFFIX),
-      PATH_SEPARATOR_STRING);
+      strings::remove(path, os::DIRECTORY_SEPARATOR, strings::SUFFIX),
+      os::DIRECTORY_SEPARATOR);
 
   string suffix;
   while (!tokens.empty()) {
@@ -578,7 +580,7 @@ Result<string> FilesProcess::resolve(const string& path)
     // 'Not Found'.
     string path = paths[prefix];
     if (os::stat::isdir(path)) {
-      path = path::join(path, suffix, PATH_SEPARATOR_CHAR);
+      path = path::join(path, suffix, os::DIRECTORY_SEPARATOR_CHAR);
 
       // Canonicalize the absolute path.
       Result<string> realpath = os::realpath(path);
