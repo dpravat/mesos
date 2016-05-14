@@ -86,6 +86,11 @@ inline Result<std::string> read(int fd, size_t size)
   return result;
 }
 
+#ifdef __WINDOWS__
+inline Result<std::string> read(HANDLE handle, size_t size) {
+  return read(_open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDONLY), size);
+}
+#endif // __WINDOWS__
 
 // Returns the contents of the file. NOTE: getline is not available on Solaris
 // or Windows, so we use STL.

@@ -31,6 +31,13 @@ inline ssize_t write(int fd, const void* data, size_t size)
   return ::_write(fd, data, size);
 }
 
+#ifdef __WINDOWS__
+  inline ssize_t read(HANDLE handle, const void* data, size_t size)
+  {
+    return write(_open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDWR), data, size);
+  }
+#endif // __WINDOWS__
+
 } // namespace os {
 
 
