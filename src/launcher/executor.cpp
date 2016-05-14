@@ -17,7 +17,9 @@
 #include <signal.h>
 #include <stdio.h>
 
+#ifndef __WINDOWS__
 #include <sys/wait.h>
+#endif // __WINDOWS__
 
 #include <iostream>
 #include <list>
@@ -37,6 +39,10 @@
 #include <process/reap.hpp>
 #include <process/timer.hpp>
 
+#ifdef __WINDOWS__
+#include <process/windows/winsock.hpp>    // WSAStartup code.
+#endif // __WINDOWS__
+
 #include <stout/duration.hpp>
 #include <stout/flags.hpp>
 #include <stout/json.hpp>
@@ -46,6 +52,8 @@
 #include <stout/path.hpp>
 #include <stout/protobuf.hpp>
 #include <stout/strings.hpp>
+#include <stout/os/kill.hpp>
+#include <stout/os/killtree.hpp>
 
 #include "common/http.hpp"
 #include "common/status_utils.hpp"
@@ -59,6 +67,16 @@
 #include "messages/messages.hpp"
 
 #include "slave/constants.hpp"
+
+// Windows defines from NetBios header
+
+#ifdef REGISTERING
+#undef REGISTERING
+#endif // REGISTERING
+#ifdef REGISTERED
+#undef REGISTERED
+#endif // REGISTERED
+
 
 using namespace mesos::internal::slave;
 
@@ -74,6 +92,7 @@ namespace mesos {
 namespace internal {
 
 using namespace process;
+
 
 class CommandExecutorProcess : public ProtobufProcess<CommandExecutorProcess>
 {
@@ -137,84 +156,24 @@ public:
 
   void disconnected(ExecutorDriver* driver) {}
 
-  void launchTask(ExecutorDriver* driver, const TaskInfo& task)
+#ifndef __WINDOWS__
+
+  pid_t launchTaskPosix(
+      const TaskInfo& task,
+      const CommandInfo& command,
+      char** argv)
   {
-    CHECK_EQ(REGISTERED, state);
-
-    if (launched) {
-      TaskStatus status;
-      status.mutable_task_id()->MergeFrom(task.task_id());
-      status.set_state(TASK_FAILED);
-      status.set_message(
-          "Attempted to run multiple tasks using a \"command\" executor");
-
-      driver->sendStatusUpdate(status);
-      return;
-    }
-
-    // Capture the TaskID.
-    taskId = task.task_id();
-
-    // Capture the kill policy.
-    if (task.has_kill_policy()) {
-      killPolicy = task.kill_policy();
-    }
-
-    // Determine the command to launch the task.
-    CommandInfo command;
-
-    if (taskCommand.isSome()) {
-      // Get CommandInfo from a JSON string.
-      Try<JSON::Object> object = JSON::parse<JSON::Object>(taskCommand.get());
-      if (object.isError()) {
-        cerr << "Failed to parse JSON: " << object.error() << endl;
-        abort();
-      }
-
-      Try<CommandInfo> parse = protobuf::parse<CommandInfo>(object.get());
-      if (parse.isError()) {
-        cerr << "Failed to parse protobuf: " << parse.error() << endl;
-        abort();
-      }
-
-      command = parse.get();
-    } else if (task.has_command()) {
-      command = task.command();
-    } else {
-      CHECK_SOME(override)
-        << "Expecting task '" << task.task_id()
-        << "' to have a command!";
-    }
-
-    if (override.isNone()) {
-      // TODO(jieyu): For now, we just fail the executor if the task's
-      // CommandInfo is not valid. The framework will receive
-      // TASK_FAILED for the task, and will most likely find out the
-      // cause with some debugging. This is a temporary solution. A more
-      // correct solution is to perform this validation at master side.
-      if (command.shell()) {
-        CHECK(command.has_value())
-          << "Shell command of task '" << task.task_id()
-          << "' is not specified!";
-      } else {
-        CHECK(command.has_value())
-          << "Executable of task '" << task.task_id()
-          << "' is not specified!";
-      }
-    }
-
-    cout << "Starting task " << task.task_id() << endl;
-
     // TODO(benh): Clean this up with the new 'Fork' abstraction.
     // Use pipes to determine which child has successfully changed
     // session. This is needed as the setsid call can fail from other
     // processes having the same group id.
     int pipes[2];
+#ifdef TOTO
     if (pipe(pipes) < 0) {
       perror("Failed to create a pipe");
       abort();
     }
-
+#endif
     // Set the FD_CLOEXEC flags on these pipes.
     Try<Nothing> cloexec = os::cloexec(pipes[0]);
     if (cloexec.isError()) {
@@ -250,13 +209,6 @@ public:
 #endif // __linux__
     }
 
-    // Prepare the argv before fork as it's not async signal safe.
-    char **argv = new char*[command.arguments().size() + 1];
-    for (int i = 0; i < command.arguments().size(); i++) {
-      argv[i] = (char*) command.arguments(i).c_str();
-    }
-    argv[command.arguments().size()] = NULL;
-
     // Prepare the command log message.
     string commandString;
     if (override.isSome()) {
@@ -267,7 +219,9 @@ public:
         commandString += string(argv[i]) + " ";
       }
     } else if (command.shell()) {
-      commandString = "sh -c '" + command.value() + "'";
+      commandString = string(os::Shell::arg0) + " " +
+        string(os::Shell::arg1) + " '" +
+        command.value() + "'";
     } else {
       commandString =
         "[" + command.value() + ", " +
@@ -368,11 +322,11 @@ public:
       if (override.isNone()) {
         if (command.shell()) {
           execlp(
-              "sh",
-              "sh",
-              "-c",
-              command.value().c_str(),
-              (char*) NULL);
+                 os::Shell::name,
+                 os::Shell::arg0,
+                 os::Shell::arg1,
+                 task.command().value().c_str(),
+                 (char*)NULL);
         } else {
           execvp(command.value().c_str(), argv);
         }
@@ -385,8 +339,6 @@ public:
       abort();
     }
 
-    delete[] argv;
-
     // In parent process.
     os::close(pipes[1]);
 
@@ -398,6 +350,172 @@ public:
     }
 
     os::close(pipes[0]);
+
+    return pid;
+  }
+
+#else
+
+pid_t launchTaskWindows(
+  const TaskInfo& task,
+  const CommandInfo& command,
+  char** argv)
+{
+  PROCESS_INFORMATION processInfo;
+  ::ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
+
+  STARTUPINFO startupInfo;
+  ::ZeroMemory(&startupInfo, sizeof(STARTUPINFO));
+  startupInfo.cb = sizeof(STARTUPINFO);
+
+  string executable;
+  string commandLine = task.command().value();
+
+  if (override.isNone()) {
+    if (command.shell()) {
+      // Use Windows shell (`cmd.exe`). Look for it in the system folder.
+      char systemDir[MAX_PATH];
+      if (!::GetSystemDirectory(systemDir, MAX_PATH)) {
+        // No way to recover from this, safe to exit the process.
+        abort();
+      }
+
+      executable = path::join(systemDir, os::Shell::name);
+
+      // `cmd.exe` needs to be used in conjunction with the `/c` parameter.
+      // For compliance with C-style applications, `cmd.exe` should be passed
+      // as `argv[0]`.
+      // TODO(alexnaparu): Quotes are probably needed after `/c`.
+      commandLine = os::args(
+          os::Shell::arg0, os::Shell::arg1, commandLine);
+    }
+    else {
+      // Not a shell command, execute as-is.
+      executable = command.value();
+      commandLine = os::stringify_args(argv);
+    }
+  }
+  else {
+    // Convert all arguments to a single space-separated string.
+    commandLine = os::stringify_args(override.get());
+  }
+
+  cout << commandLine << endl;
+
+  // There are many wrappers on `CreateProcess` that are more user-friendly,
+  // but they don't return the PID of the child process.
+  BOOL createProcessResult = ::CreateProcess(
+      executable.empty() ? NULL : executable.c_str(), // Module to load.
+      (LPSTR)commandLine.c_str(),                     // Command line.
+      NULL,                 // Default security attributes.
+      NULL,                 // Default primary thread security attributes.
+      TRUE,                 // Inherited parent process handles.
+      CREATE_SUSPENDED,     // Default creation flags.
+      NULL,                 // Use parent's environment.
+      NULL,                 // Use parent's current directory.
+      &startupInfo,         // STARTUPINFO pointer.
+      &processInfo);        // PROCESS_INFORMATION pointer.
+
+  if (!createProcessResult) {
+    cout << "launchTaskWindows: CreateProcess failed with error code" <<
+        GetLastError() << endl;
+
+    abort();
+  }
+
+  Try<HANDLE> job = os::create_job(processInfo.dwProcessId);
+  // The job handle is not closed. The job lifetime is equal or lower
+  // than the process lifetime.
+  if (job.isError()) {
+      abort();
+  }
+
+  ::ResumeThread(processInfo.hThread);
+  ::CloseHandle(processInfo.hThread);
+  ::CloseHandle(processInfo.hProcess);
+
+  return processInfo.dwProcessId;
+}
+
+#endif // !__WINDOWS__
+
+  void launchTask(ExecutorDriver* driver, const TaskInfo& task)
+  {
+    CHECK_EQ(REGISTERED, state);
+
+    if (launched) {
+      TaskStatus status;
+      status.mutable_task_id()->MergeFrom(task.task_id());
+      status.set_state(TASK_FAILED);
+      status.set_message(
+          "Attempted to run multiple tasks using a \"command\" executor");
+
+      driver->sendStatusUpdate(status);
+      return;
+    }
+
+    // Capture the TaskID.
+    taskId = task.task_id();
+
+    // Determine the command to launch the task.
+    CommandInfo command;
+
+    if (taskCommand.isSome()) {
+      // Get CommandInfo from a JSON string.
+      Try<JSON::Object> object = JSON::parse<JSON::Object>(taskCommand.get());
+      if (object.isError()) {
+        cerr << "Failed to parse JSON: " << object.error() << endl;
+        abort();
+      }
+
+      Try<CommandInfo> parse = protobuf::parse<CommandInfo>(object.get());
+      if (parse.isError()) {
+        cerr << "Failed to parse protobuf: " << parse.error() << endl;
+        abort();
+      }
+
+      command = parse.get();
+    } else if (task.has_command()) {
+      command = task.command();
+    } else {
+      CHECK_SOME(override)
+        << "Expecting task '" << task.task_id()
+        << "' to have a command!";
+    }
+
+    if (override.isNone()) {
+      // TODO(jieyu): For now, we just fail the executor if the task's
+      // CommandInfo is not valid. The framework will receive
+      // TASK_FAILED for the task, and will most likely find out the
+      // cause with some debugging. This is a temporary solution. A more
+      // correct solution is to perform this validation at master side.
+      if (command.shell()) {
+        CHECK(command.has_value())
+          << "Shell command of task '" << task.task_id()
+          << "' is not specified!";
+      } else {
+        CHECK(command.has_value())
+          << "Executable of task '" << task.task_id()
+          << "' is not specified!";
+      }
+    }
+
+    cout << "Starting task " << task.task_id() << endl;
+
+    // Prepare the argv before fork as it's not async signal safe.
+    char **argv = new char*[command.arguments().size() + 1];
+    for (int i = 0; i < command.arguments().size(); i++) {
+      argv[i] = (char*)command.arguments(i).c_str();
+    }
+    argv[command.arguments().size()] = NULL;
+
+#ifndef __WINDOWS__
+    pid = launchTaskPosix(task, command, argv);
+#else
+    pid = launchTaskWindows(task, command, argv);
+#endif
+
+    delete[] argv;
 
     cout << "Forked command at " << pid << endl;
 
@@ -546,7 +664,7 @@ private:
 
         // Send SIGTERM directly to process 'pid' as it may not have
         // received signal before os::killtree() failed.
-        ::kill(pid, SIGTERM);
+        os::kill(pid, SIGTERM);
       } else {
         cout << "Sent SIGTERM to the following process trees:\n"
              << stringify(trees.get()) << endl;
@@ -651,7 +769,7 @@ private:
       // Process 'pid' may not have received signal before
       // os::killtree() failed. To make sure process 'pid' is reaped
       // we send SIGKILL directly.
-      ::kill(pid, SIGKILL);
+      os::kill(pid, SIGKILL);
     } else {
       cout << "Killed the following process trees:\n" << stringify(trees.get())
            << endl;
@@ -879,6 +997,10 @@ int main(int argc, char** argv)
 {
   Flags flags;
 
+#ifdef __WINDOWS__
+  process::Winsock winsock;
+#endif
+
   // Load flags from command line.
   Try<Nothing> load = flags.load(None(), &argc, &argv);
 
@@ -940,6 +1062,8 @@ int main(int argc, char** argv)
       shutdownGracePeriod);
 
   mesos::MesosExecutorDriver driver(&executor);
+  int result =
+      (driver.run() == mesos::DRIVER_STOPPED ? EXIT_SUCCESS : EXIT_FAILURE);
 
-  return driver.run() == mesos::DRIVER_STOPPED ? EXIT_SUCCESS : EXIT_FAILURE;
+  return result;
 }
