@@ -1159,11 +1159,10 @@ Future<bool> MesosContainerizerProcess::__launch(
         [=](const ContainerLogger::SubprocessInfo& subprocessInfo)
           -> Future<bool> {
     // Use a pipe to block the child until it's been isolated.
-    process::Pipe pipe;
-    Try<Nothing> createPipe = pipe.Create();
+    Try<process::Pipe> pipe = process::Pipe::create();
 
-    if (createPipe.isError()) {
-      return Failure("Failed to create IPC pipe: " + createPipe.error());
+    if (pipe.isError()) {
+      return Failure("Failed to create IPC pipe: " + pipe.error());
     }
 
     // Prepare the flags to pass to the launch process.
@@ -1206,8 +1205,8 @@ Future<bool> MesosContainerizerProcess::__launch(
     // POSIX-compliant file descriptors might only be valid in the context of
     // the current process, so pass the platform-dependent pipe handles to the
     // child process.
-    launchFlags.pipe_read = pipe.nativeRead();
-    launchFlags.pipe_write = pipe.nativeWrite();
+    launchFlags.pipe_read = pipe.get().read;
+    launchFlags.pipe_write = pipe.get().write;
     launchFlags.commands = commands;
 
     // Fork the child using launcher.
@@ -1270,9 +1269,9 @@ Future<bool> MesosContainerizerProcess::__launch(
         directory,
         user,
         slaveId))
-      .then(defer(self(), &Self::exec, containerId, pipe.write))
-      .onAny([pipe]() { os::close(pipe.read); })
-      .onAny([pipe]() { os::close(pipe.write); });
+      .then(defer(self(), &Self::exec, containerId, pipe.get().write))
+      .onAny([pipe]() { os::close(pipe.get().read); })
+      .onAny([pipe]() { os::close(pipe.get().write); });
   }));
 }
 

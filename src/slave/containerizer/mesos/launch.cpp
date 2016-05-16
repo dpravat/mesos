@@ -135,15 +135,17 @@ int MesosContainerizerLaunch::execute()
     }
   }
 
-  process::Pipe pipe (flags.pipe_read.get(), flags.pipe_write.get());
+  Try<process::Pipe> pipe = process::Pipe::from_pair(
+      flags.pipe_read.get(),
+      flags.pipe_write.get());
 
   // Pipe file descriptors should be valid.
-  if (pipe.read < 0 || pipe.write < 0) {
+  if (pipe.isError()) {
     cerr << "Failed to open pipe." << endl;
     return 1;
   }
 
-  Try<Nothing> close = os::close(pipe.write);
+  Try<Nothing> close = os::close(pipe.get().write);
   if (close.isError()) {
     cerr << "Failed to close pipe[1]: " << close.error() << endl;
     return 1;
@@ -153,7 +155,7 @@ int MesosContainerizerLaunch::execute()
   char dummy;
   ssize_t length;
   while ((length = ::read(
-              pipe.read,
+              pipe.get().read,
               &dummy,
               sizeof(dummy))) == -1 &&
           errno == EINTR);
@@ -165,7 +167,7 @@ int MesosContainerizerLaunch::execute()
      return 1;
   }
 
-  close = os::close(pipe.read);
+  close = os::close(pipe.get().read);
   if (close.isError()) {
     cerr << "Failed to close pipe[0]: " << close.error() << endl;
     return 1;

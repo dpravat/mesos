@@ -168,22 +168,21 @@ public:
     // Use pipes to determine which child has successfully changed
     // session. This is needed as the setsid call can fail from other
     // processes having the same group id.
-    process::Pipe pipe;
-    Try<Nothing> createPipe = pipe.Create();
+    Try<process::Pipe> pipe = process::Pipe::create();
 
-    if (createPipe.isError()) {
+    if (pipe.isError()) {
       perror("Failed to create IPC pipe");
       abort();
     }
 
     // Set the FD_CLOEXEC flags on these pipes.
-    Try<Nothing> cloexec = os::cloexec(pipe.read);
+    Try<Nothing> cloexec = os::cloexec(pipe.get().read);
     if (cloexec.isError()) {
       cerr << "Failed to cloexec(pipe[0]): " << cloexec.error() << endl;
       abort();
     }
 
-    cloexec = os::cloexec(pipe.write);
+    cloexec = os::cloexec(pipe.get().write);
     if (cloexec.isError()) {
       cerr << "Failed to cloexec(pipe[1]): " << cloexec.error() << endl;
       abort();
@@ -240,7 +239,7 @@ public:
     if (pid == 0) {
       // In child process, we make cleanup easier by putting process
       // into it's own session.
-      os::close(pipe.read);
+      os::close(pipe.get().read);
 
       // NOTE: We setsid() in a loop because setsid() might fail if another
       // process has the same process group id as the calling process.
@@ -261,12 +260,12 @@ public:
         }
       }
 
-      if (write(pipe.write, &pid, sizeof(pid)) != sizeof(pid)) {
+      if (write(pipe.get().write, &pid, sizeof(pid)) != sizeof(pid)) {
         perror("Failed to write PID on pipe");
         abort();
       }
 
-      os::close(pipe.write);
+      os::close(pipe.get().write);
 
       if (rootfs.isSome()) {
 #ifdef __linux__
@@ -342,16 +341,16 @@ public:
     }
 
     // In parent process.
-    os::close(pipe.write);
+    os::close(pipe.get().write);
 
     // Get the child's pid via the pipe.
-    if (read(pipe.read, &pid, sizeof(pid)) == -1) {
+    if (read(pipe.get().read, &pid, sizeof(pid)) == -1) {
       cerr << "Failed to get child PID from pipe, read: "
            << os::strerror(errno) << endl;
       abort();
     }
 
-    os::close(pipe.read);
+    os::close(pipe.get().read);
 
     return pid;
   }
