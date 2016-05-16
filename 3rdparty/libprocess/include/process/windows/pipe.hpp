@@ -13,41 +13,27 @@
 #ifndef __PROCESS_WINDOWS_PIPE_HPP__
 #define __PROCESS_WINDOWS_PIPE_HPP__
 
-#include <stout/nothing.hpp>
 #include <stout/try.hpp>
 #include <stout/windows.hpp>
 
+
 namespace process {
 
-class Pipe {
-private:
-  // Platform-specific pipe handles (`HANDLE` values).
-  HANDLE _nativeRead;
-  HANDLE _nativeWrite;
-
+// A platform-independent, non-RAII pipe implementation.
+class Pipe
+{
 public:
-  Pipe() :
-      _nativeRead(INVALID_HANDLE_VALUE),
-      _nativeWrite(INVALID_HANDLE_VALUE),
-      read(-1),
-      write(-1) { }
+  const int read;
+  const int write;
 
-  // Use existing platform-specific handles instead of creating a pipe. Callers
-  // should verify that the `read` and `write` descriptors are valid before
-  // using them.
-  Pipe(uintptr_t readHandle, uintptr_t writeHandle) :
-      _nativeRead((HANDLE)readHandle), _nativeWrite((HANDLE)writeHandle) {
-    read = ::_open_osfhandle((intptr_t)_nativeRead, _O_RDONLY | _O_TEXT);
-    write = ::_open_osfhandle((intptr_t)_nativeWrite, _O_APPEND | _O_TEXT);
+  ~Pipe()
+  {
+    // Don't clean up. `Pipe` is not intended to be RAII.
   }
 
-  ~Pipe() {
-    // Do not cleanup pipe handles on destruction, this is the responsibility
-    // of the caller.
-  }
-
-  inline Try<Nothing> Create() {
-    // Create inheritable pipe, as described in MSDN[1]
+  static Try<Pipe> create()
+  {
+    // Create inheritable pipe, as described in MSDN[1].
     //
     // [1] https://msdn.microsoft.com/en-us/library/windows/desktop/aa365782(v=vs.85).aspx
     SECURITY_ATTRIBUTES securityAttr;
@@ -55,44 +41,52 @@ public:
     securityAttr.bInheritHandle = TRUE;
     securityAttr.lpSecurityDescriptor = NULL;
 
-    BOOL result = ::CreatePipe(
-        &_nativeRead,
-        &_nativeWrite,
-        &securityAttr,
-        0);
+    HANDLE read_handle;
+    HANDLE write_handle;
+
+    const BOOL result = ::CreatePipe(&read_handle, &write_handle,
+                                     &securityAttr, 0);
+
+    const int read_fd = handle_to_fd(read_handle, _O_RDONLY | _O_TEXT);
+    const int write_fd = handle_to_fd(write_handle, _O_RDONLY | _O_TEXT);
 
     if (!result) {
       return WindowsError("Pipe::Create: could not create pipe.");
     }
 
-    // Open POSIX-style file descriptors for both pipe handles.
-    read = ::_open_osfhandle((intptr_t)_nativeRead, _O_RDONLY | _O_TEXT);
-    if (read < 0) {
-      return WindowsError("Pipe::Create: could not open file descriptor for "
-          "read handle.");
+    return Pipe(read_fd, write_fd);
+  }
+
+  static Try<Pipe> from_pair(int read_fd, int write_fd)
+  {
+    return Pipe(read_fd, write_fd);
+  }
+
+  static Try<Pipe> from_pair(HANDLE read_handle, HANDLE write_handle)
+  {
+    const int read_fd = handle_to_fd(read_handle, _O_RDONLY | _O_TEXT);
+    const int write_fd = handle_to_fd(write_handle, _O_RDONLY | _O_TEXT);
+
+    if (read_fd == -1 || write_fd == -1) {
+      return WindowsError("Pipe::from_pair: Failed ot obtain file descriptors "
+                          "for one or more of the `HANDLE`s passed in "
+                          "as argument");
     }
 
-    write = ::_open_osfhandle((intptr_t)_nativeWrite, _O_APPEND | _O_TEXT);
-    if (write < 0) {
-      return WindowsError("Pipe::Create: could not open file descriptor for "
-          "write handle.");
-    }
-
-    return Nothing();
+    return Pipe(read_fd, write_fd);
   }
 
-  inline uintptr_t nativeRead() {
-    // Safe to cast this, since `uintptr_t` is guaranteed to hold a pointer.
-    return (uintptr_t)_nativeRead;
-  }
+private:
+  Pipe(int read_fd, int write_fd)
+    : read(read_fd),
+      write(write_fd) { }
 
-  inline uintptr_t nativeWrite() {
-    return (uintptr_t)_nativeWrite;
+  static int handle_to_fd(HANDLE handle, int flags)
+  {
+    return ::_open_osfhandle(
+        reinterpret_cast<intptr_t>(handle),
+        flags);
   }
-
-  // POSIX-compliant pipe descriptors (unsafe to use outside the process).
-  int read;
-  int write;
 };
 
 } // namespace process {

@@ -13,10 +13,11 @@
 #ifndef __PROCESS_PIPE_HPP__
 #define __PROCESS_PIPE_HPP__
 
+
 #ifdef __WINDOWS__
-#include "windows/pipe.hpp"
+#include <process/windows/pipe.hpp>
 #else
-#include "posix/pipe.hpp"
+#include <process/posix/pipe.hpp>
 #endif
 
 #endif // __PROCESS_PIPE_HPP__

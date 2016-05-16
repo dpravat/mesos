@@ -13,41 +13,44 @@
 #ifndef __PROCESS_POSIX_PIPE_HPP__
 #define __PROCESS_POSIX_PIPE_HPP__
 
+#include <unistd.h>
+
 #include <stout/error.hpp>
-#include <stout/nothing.hpp>
 #include <stout/try.hpp>
 
-#include <unistd.h>
 
 namespace process {
 
-class Pipe {
+// A platform-independent, non-RAII pipe implementation.
+class Pipe
+{
 public:
-  Pipe() : read(-1), write(-1) { }
+  const int read;
+  const int write;
 
-  Pipe(int readHandle, int writeHandle) : read(readHandle), write(writeHandle) {
+  ~Pipe()
+  {
+    // Don't clean up. `Pipe` is not intended to be RAII.
   }
 
-  inline Try<Nothing> Create() {
+  static Try<Pipe> create()
+  {
     int pipefd[2];
     if (::pipe(pipefd) == -1) {
-      return ErrnoError("Pipe::Create: could not create pipe.");
+      return ErrnoError("Pipe::create: could not create pipe.");
     }
-    read = pipefd[0];
-    write = pipefd[1];
-    return Nothing();
+
+    return Pipe(pipefd[0], pipefd[1]);
   }
 
-  inline int nativeRead() {
-    return read;
+  static Try<Pipe> from_pair(int read_fd, int write_fd)
+  {
+    return Pipe(read_fd, write_fd);
   }
 
-  inline int nativeWrite() {
-    return write;
-  }
-
-  int read;
-  int write;
+private:
+  Pipe(int readHandle, int writeHandle)
+    : read(readHandle), write(writeHandle) { }
 };
 
 } // namespace process {
