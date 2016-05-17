@@ -745,6 +745,22 @@ inline Try<Nothing> kill_job(pid_t pid)
   return Nothing();
 }
 
+
+inline std::string temp()
+{
+  // Get temp folder for current user.
+  char temp_folder[MAX_PATH + 1];
+  if (::GetTempPath(MAX_PATH + 1, temp_folder) == 0) {
+    // Failed, try current folder.
+    if (::GetCurrentDirectory(MAX_PATH + 1, temp_folder) == 0) {
+      // Failed, use relative path.
+      return ".";
+    }
+  }
+
+  return std::string(temp_folder);
+}
+
 } // namespace os {
 
 #endif // __STOUT_WINDOWS_OS_HPP__

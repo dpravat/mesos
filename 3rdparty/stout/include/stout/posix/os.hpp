@@ -459,6 +459,12 @@ inline Option<std::string> which(const std::string& command)
   return None();
 }
 
+
+inline std::string temp()
+{
+  return "/tmp";
+}
+
 } // namespace os {
 
 #endif // __STOUT_POSIX_OS_HPP__
