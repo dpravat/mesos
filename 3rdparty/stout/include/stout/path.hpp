@@ -18,6 +18,11 @@
 #include <vector>
 
 #include <stout/strings.hpp>
+#ifdef __WINDOWS__
+#include <stout/windows/path.hpp>
+#else
+#include <stout/posix/path.hpp>
+#endif // __WINDOWS__
 
 #include <stout/os/constants.hpp>
 
