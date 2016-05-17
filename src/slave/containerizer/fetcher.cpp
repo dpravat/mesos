@@ -25,9 +25,9 @@
 #include <stout/net.hpp>
 #include <stout/path.hpp>
 
-#include <stout/os/read.hpp>
 #include <stout/os/find.hpp>
 #include <stout/os/killtree.hpp>
+#include <stout/os/read.hpp>
 
 #include "hdfs/hdfs.hpp"
 
@@ -324,8 +324,9 @@ static Try<Bytes> fetchSize(
   }
 
   return size.get();
+#else
+  return Error("Windows currently does not support the Hadoop client");
 #endif // __WINDOWS__
-  return 0;
 }
 
 
@@ -571,9 +572,11 @@ Future<Nothing> FetcherProcess::__fetch(
       }
 
       return future; // Always propagate the failure!
-    }).operator std::function<process::Future<Nothing> (
-        const process::Future<Nothing> &)>()
-    )
+    })
+    // Call to `operator` here forces the conversion on MSVC. This is implicit
+    // on clang an gcc.
+    .operator std::function<process::Future<Nothing>(
+        const process::Future<Nothing> &)>())
     .then(defer(self(), [=]() {
       foreachvalue (const Option<shared_ptr<Cache::Entry>>& entry, entries) {
         if (entry.isSome()) {
@@ -744,9 +747,9 @@ Future<Nothing> FetcherProcess::run(
     return Failure("Failed to create 'stdout' file: " + out.error());
   }
 
-  string stder = path::join(info.sandbox_directory(), "stderr");
+  string stderr_sandbox = path::join(info.sandbox_directory(), "stderr");
   Try<int> err = os::open(
-      stder,
+      stderr_sandbox,
       O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK | O_CLOEXEC,
       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -755,7 +758,8 @@ Future<Nothing> FetcherProcess::run(
     return Failure("Failed to create 'stderr' file: " + err.error());
   }
 
-// os::chown() is not available on Windows
+// NOTE: `chown` does not exist on Windows. The flag that gets passed in here
+// is conditionally compiled out on Windows.
 #ifndef __WINDOWS__
   if (user.isSome()) {
     // This is a recursive chown that both checks if we have a valid user
@@ -845,7 +849,7 @@ Future<Nothing> FetcherProcess::run(
     .onFailed(defer(self(), [=](const string&) {
       // To aid debugging what went wrong when attempting to fetch, grab the
       // fetcher's local log output from the sandbox and log it here.
-      Try<string> text = os::read(stder);
+      Try<string> text = os::read(stderr_sandbox);
       if (text.isSome()) {
         LOG(WARNING) << "Begin fetcher log (stderr in sandbox) for container "
                      << containerId << " from running command: " << command
