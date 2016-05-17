@@ -160,6 +160,7 @@ nobase_include_HEADERS =			\
   stout/posix/fs.hpp				\
   stout/posix/net.hpp				\
   stout/posix/os.hpp				\
+  stout/posix/path.hpp				\
   stout/recordio.hpp				\
   stout/representation.hpp			\
   stout/result.hpp				\
@@ -186,4 +187,5 @@ nobase_include_HEADERS =			\
   stout/windows/format.hpp			\
   stout/windows/fs.hpp				\
   stout/windows/net.hpp				\
-  stout/windows/os.hpp
+  stout/windows/os.hpp				\
+  stout/windows/path.hpp
