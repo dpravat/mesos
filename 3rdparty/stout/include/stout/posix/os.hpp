@@ -446,12 +446,20 @@ inline Option<std::string> which(const std::string& command)
   return None();
 }
 
+
+inline std::string temp()
+{
+  return "/tmp";
+}
+
+
 // Create pipes for interprocess communication.
 inline Try<Nothing> pipe(int pipe_fd[2]) {
   if (::pipe(pipe_fd) == -1)
   {
       return ErrnoError();
   }
+
   return Nothing();
 }
 
