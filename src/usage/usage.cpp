@@ -16,7 +16,7 @@
 
 #ifndef __WINDOWS__
 #include <unistd.h> // For pid_t.
-#endif // !__WINDOWS__
+#endif // __WINDOWS__
 
 #include <deque>
 
@@ -24,6 +24,7 @@
 
 #include <stout/foreach.hpp>
 #include <stout/os.hpp>
+
 #include <stout/os/pstree.hpp>
 
 #include "usage/usage.hpp"

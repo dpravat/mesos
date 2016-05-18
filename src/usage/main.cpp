@@ -16,7 +16,7 @@
 
 #ifndef __WINDOWS__
 #include <unistd.h> // For pid_t and STDOUT_FILENO.
-#endif // !__WINDOWS__
+#endif // __WINDOWS__
 
 #include <iostream>
 

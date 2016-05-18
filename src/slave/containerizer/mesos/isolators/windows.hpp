@@ -19,16 +19,10 @@
 
 #include <process/future.hpp>
 
-#include <stout/hashmap.hpp>
-#include <stout/os.hpp>
-
-#include <stout/os/pstree.hpp>
-
 #include "slave/flags.hpp"
 
 #include "slave/containerizer/mesos/isolator.hpp"
-
-#include "usage/usage.hpp"
+#include "slave/containerizer/mesos/isolators/posix.hpp"
 
 namespace mesos {
 namespace internal {
@@ -37,125 +31,26 @@ namespace slave {
 // A basic MesosIsolatorProcess that keeps track of the pid but
 // doesn't do any resource isolation. Subclasses must implement
 // usage() for their appropriate resource(s).
-class WindowsIsolatorProcess : public MesosIsolatorProcess
+class WindowsIsolatorProcess : public PosixIsolatorProcess
 {
-public:
-  virtual process::Future<Nothing> recover(
-      const std::list<mesos::slave::ContainerState>& state,
-      const hashset<ContainerID>& orphans)
-  {
-    foreach (const mesos::slave::ContainerState& run, state) {
-      // This should (almost) never occur: see comment in
-      // PosixLauncher::recover().
-      if (pids.contains(run.container_id())) {
-        return process::Failure("Container already recovered");
-      }
-
-      pids.put(run.container_id(), run.pid());
-
-      process::Owned<process::Promise<mesos::slave::ContainerLimitation>>
-        promise(new process::Promise<mesos::slave::ContainerLimitation>());
-      promises.put(run.container_id(), promise);
-    }
-
-    return Nothing();
-  }
-
-  virtual process::Future<Option<mesos::slave::ContainerLaunchInfo>> prepare(
-      const ContainerID& containerId,
-      const mesos::slave::ContainerConfig& containerConfig)
-  {
-    if (promises.contains(containerId)) {
-      return process::Failure("Container " + stringify(containerId) +
-                              " has already been prepared");
-    }
-
-    process::Owned<process::Promise<mesos::slave::ContainerLimitation>> promise(
-        new process::Promise<mesos::slave::ContainerLimitation>());
-    promises.put(containerId, promise);
-
-    return None();
-  }
-
-  virtual process::Future<Nothing> isolate(
-      const ContainerID& containerId,
-      pid_t pid)
-  {
-    if (!promises.contains(containerId)) {
-      return process::Failure("Unknown container: " + stringify(containerId));
-    }
-
-    pids.put(containerId, pid);
-
-    return Nothing();
-  }
-
-  virtual process::Future<mesos::slave::ContainerLimitation> watch(
-      const ContainerID& containerId)
-  {
-    if (!promises.contains(containerId)) {
-      return process::Failure("Unknown container: " + stringify(containerId));
-    }
-
-    return promises[containerId]->future();
-  }
-
-  virtual process::Future<Nothing> update(
-      const ContainerID& containerId,
-      const Resources& resources)
-  {
-    if (!promises.contains(containerId)) {
-      return process::Failure("Unknown container: " + stringify(containerId));
-    }
-
-    // No resources are actually isolated so nothing to do.
-    return Nothing();
-  }
-
-  virtual process::Future<Nothing> cleanup(const ContainerID& containerId)
-  {
-    if (!promises.contains(containerId)) {
-      return process::Failure("Unknown container: " + stringify(containerId));
-    }
-
-    // TODO(idownes): We should discard the container's promise here to signal
-    // to anyone that holds the future from watch().
-    promises.erase(containerId);
-
-    pids.erase(containerId);
-
-    return Nothing();
-  }
-
-protected:
-  hashmap<ContainerID, pid_t> pids;
-  hashmap<ContainerID,
-          process::Owned<process::Promise<mesos::slave::ContainerLimitation>>>
-    promises;
 };
 
-class WindowsCpuIsolatorProcess : public WindowsIsolatorProcess
+class WindowsCpuIsolatorProcess : public PosixCpuIsolatorProcess
 {
 public:
   static Try<mesos::slave::Isolator*> create(const Flags& flags)
   {
     process::Owned<MesosIsolatorProcess> process(
-      new WindowsCpuIsolatorProcess());
+        new WindowsCpuIsolatorProcess());
 
     return new MesosIsolator(process);
   }
 
-  virtual process::Future<ResourceStatistics> usage(
-    const ContainerID& containerId)
-  {
-    return ResourceStatistics();
-  }
-
-protected:
+private:
   WindowsCpuIsolatorProcess() {}
 };
 
-class WindowsMemIsolatorProcess : public WindowsIsolatorProcess
+class WindowsMemIsolatorProcess : public PosixMemIsolatorProcess
 {
 public:
   static Try<mesos::slave::Isolator*> create(const Flags& flags)
@@ -166,27 +61,6 @@ public:
     return new MesosIsolator(process);
   }
 
-  virtual process::Future<ResourceStatistics> usage(
-      const ContainerID& containerId)
-  {
-    if (!pids.contains(containerId)) {
-      LOG(WARNING) << "No resource usage for unknown container '"
-                   << containerId << "'";
-      return ResourceStatistics();
-    }
-
-/*
-    // Use 'mesos-usage' but only request 'mem_' values.
-    Try<ResourceStatistics> usage =
-      mesos::internal::usage(pids.get(containerId).get(), true, false);
-    if (usage.isError()) {
-      return process::Failure(usage.error());
-    }
-    return usage.get();
-*/
-    return ResourceStatistics();
-  }
-
 private:
   WindowsMemIsolatorProcess() {}
 };
@@ -195,4 +69,4 @@ private:
 } // namespace internal {
 } // namespace mesos {
 
-#endif // __POSIX_ISOLATOR_HPP__
+#endif // __WINDOWS_ISOLATOR_HPP__
