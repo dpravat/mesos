@@ -22,60 +22,19 @@
 #include "slave/flags.hpp"
 
 #include "slave/containerizer/mesos/isolator.hpp"
+#include "slave/containerizer/mesos/isolators/filesystem/posix.hpp"
 
 namespace mesos {
 namespace internal {
 namespace slave {
 
-class WindowsFilesystemIsolatorProcess : public MesosIsolatorProcess
+class WindowsFilesystemIsolatorProcess : public PosixFilesystemIsolatorProcess
 {
 public:
   static Try<mesos::slave::Isolator*> create(const Flags& flags);
 
-  virtual ~WindowsFilesystemIsolatorProcess();
-
-  virtual process::Future<Nothing> recover(
-      const std::list<mesos::slave::ContainerState>& states,
-      const hashset<ContainerID>& orphans);
-
-  virtual process::Future<Option<mesos::slave::ContainerLaunchInfo>> prepare(
-      const ContainerID& containerId,
-      const mesos::slave::ContainerConfig& containerConfig);
-
-  virtual process::Future<Nothing> isolate(
-      const ContainerID& containerId,
-      pid_t pid);
-
-  virtual process::Future<mesos::slave::ContainerLimitation> watch(
-      const ContainerID& containerId);
-
-  virtual process::Future<Nothing> update(
-      const ContainerID& containerId,
-      const Resources& resources);
-
-  virtual process::Future<ResourceStatistics> usage(
-      const ContainerID& containerId);
-
-  virtual process::Future<Nothing> cleanup(
-      const ContainerID& containerId);
-
 private:
   WindowsFilesystemIsolatorProcess(const Flags& flags);
-
-  const Flags flags;
-
-  struct Info
-  {
-    explicit Info(const std::string& _directory)
-      : directory(_directory) {}
-
-    const std::string directory;
-
-    // Track resources so we can unlink unneeded persistent volumes.
-    Resources resources;
-  };
-
-  hashmap<ContainerID, process::Owned<Info>> infos;
 };
 
 } // namespace slave {

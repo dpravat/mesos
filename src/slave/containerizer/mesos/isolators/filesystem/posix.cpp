@@ -127,6 +127,7 @@ Future<Nothing> PosixFilesystemIsolatorProcess::update(
 
   const Owned<Info>& info = infos[containerId];
 
+#ifndef __WINDOWS__
   // TODO(jieyu): Currently, we only allow non-nested relative
   // container paths for volumes. This is enforced by the master. For
   // those volumes, we create symlinks in the executor directory.
@@ -259,6 +260,7 @@ Future<Nothing> PosixFilesystemIsolatorProcess::update(
       }
     }
   }
+#endif // __WINDOWS__
 
   // Store the updated resources.
   info->resources = resources;

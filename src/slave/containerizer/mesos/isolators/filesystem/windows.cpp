@@ -42,11 +42,7 @@ namespace slave {
 
 WindowsFilesystemIsolatorProcess::WindowsFilesystemIsolatorProcess(
     const Flags& _flags)
-  : flags(_flags) {}
-
-
-WindowsFilesystemIsolatorProcess::~WindowsFilesystemIsolatorProcess() {}
-
+  : PosixFilesystemIsolatorProcess(_flags) {}
 
 Try<Isolator*> WindowsFilesystemIsolatorProcess::create(const Flags& flags)
 {
@@ -54,102 +50,6 @@ Try<Isolator*> WindowsFilesystemIsolatorProcess::create(const Flags& flags)
       new WindowsFilesystemIsolatorProcess(flags));
 
   return new MesosIsolator(process);
-}
-
-
-Future<Nothing> WindowsFilesystemIsolatorProcess::recover(
-    const list<ContainerState>& states,
-    const hashset<ContainerID>& orphans)
-{
-  foreach (const ContainerState& state, states) {
-    infos.put(state.container_id(), Owned<Info>(new Info(state.directory())));
-  }
-
-  return Nothing();
-}
-
-
-Future<Option<ContainerLaunchInfo>> WindowsFilesystemIsolatorProcess::prepare(
-    const ContainerID& containerId,
-    const ContainerConfig& containerConfig)
-{
-  if (infos.contains(containerId)) {
-    return Failure("Container has already been prepared");
-  }
-
-  const ExecutorInfo& executorInfo = containerConfig.executorinfo();
-
-  if (executorInfo.has_container()) {
-    CHECK_EQ(executorInfo.container().type(), ContainerInfo::MESOS);
-
-    // Return failure if the container change the filesystem root
-    // because the symlinks will become invalid in the new root.
-    if (executorInfo.container().mesos().has_image()) {
-      return Failure("Container root filesystems not supported");
-    }
-
-    if (executorInfo.container().volumes().size() > 0) {
-      return Failure("Volumes in ContainerInfo is not supported");
-    }
-  }
-
-  infos.put(containerId, Owned<Info>(new Info(containerConfig.directory())));
-
-  return update(containerId, executorInfo.resources())
-      .then([]() -> Future<Option<ContainerLaunchInfo>> { return None(); });
-}
-
-
-Future<Nothing> WindowsFilesystemIsolatorProcess::isolate(
-    const ContainerID& containerId,
-    pid_t pid)
-{
-  // No-op.
-  return Nothing();
-}
-
-
-Future<ContainerLimitation> WindowsFilesystemIsolatorProcess::watch(
-    const ContainerID& containerId)
-{
-  // No-op.
-  return Future<ContainerLimitation>();
-}
-
-
-Future<Nothing> WindowsFilesystemIsolatorProcess::update(
-    const ContainerID& containerId,
-    const Resources& resources)
-{
-  if (!infos.contains(containerId)) {
-    return Failure("Unknown container");
-  }
-
-  const Owned<Info>& info = infos[containerId];
-
-  // Store the updated resources.
-  info->resources = resources;
-
-  return Nothing();
-}
-
-
-Future<ResourceStatistics> WindowsFilesystemIsolatorProcess::usage(
-    const ContainerID& containerId)
-{
-  // No-op, no usage gathered.
-  return ResourceStatistics();
-}
-
-
-Future<Nothing> WindowsFilesystemIsolatorProcess::cleanup(
-    const ContainerID& containerId)
-{
-  // Symlinks for persistent resources will be removed when the work
-  // directory is GC'ed, therefore no need to do explicit cleanup.
-  infos.erase(containerId);
-
-  return Nothing();
 }
 
 } // namespace slave {
