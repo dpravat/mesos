@@ -40,13 +40,12 @@ namespace fetcher {
 class Flags :
   public CopyFetcherPlugin::Flags,
 #ifdef __WINDOWS__
-  public CurlFetcherPlugin::Flags
+  public CurlFetcherPlugin::Flags {};
 #else
   public CurlFetcherPlugin::Flags,
   public HadoopFetcherPlugin::Flags,
-  public DockerFetcherPlugin::Flags
+  public DockerFetcherPlugin::Flags {};
 #endif // __WINDOWS__
-  {};
 
 
 /**
