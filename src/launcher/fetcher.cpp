@@ -443,6 +443,9 @@ int main(int argc, char* argv[])
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   mesos::internal::logging::Flags flags;
+#ifdef __WINDOWS__
+  flags.initialize(true);
+#endif // __WINDOWS__
 
   Try<flags::Warnings> load = flags.load("MESOS_", argc, argv);
 
