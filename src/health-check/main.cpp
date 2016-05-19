@@ -17,7 +17,9 @@
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#ifndef __WINDOWS__
 #include <unistd.h>
+#endif // __WINDOWS__
 
 #include <iostream>
 #include <string>
@@ -42,6 +44,8 @@
 #include <stout/path.hpp>
 #include <stout/protobuf.hpp>
 #include <stout/strings.hpp>
+
+#include <stout/os/killtree.hpp>
 
 #include "common/status_utils.hpp"
 
@@ -274,7 +278,9 @@ private:
 class Flags : public virtual flags::FlagsBase
 {
 public:
-  Flags()
+  Flags() {};
+
+  void initialize()
   {
     add(&Flags::health_check_json,
         "health_check_json",
@@ -303,12 +309,12 @@ void usage(const char* argv0, const flags::FlagsBase& flags)
        << flags.usage();
 }
 
-
 int main(int argc, char** argv)
 {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   Flags flags;
+  flags.initialize();
 
   Try<Nothing> load = flags.load(None(), argc, argv);
 
@@ -369,7 +375,7 @@ int main(int argc, char** argv)
   TaskID taskID;
   taskID.set_value(flags.task_id.get());
 
-  internal::HealthCheckerProcess process(
+  mesos::internal::HealthCheckerProcess process(
     check.get(),
     flags.executor.get(),
     taskID);
@@ -378,7 +384,7 @@ int main(int argc, char** argv)
 
   process::Future<Nothing> checking =
     process::dispatch(
-      process, &internal::HealthCheckerProcess::healthCheck);
+      process, &mesos::internal::HealthCheckerProcess::healthCheck);
 
   checking.await();
 
