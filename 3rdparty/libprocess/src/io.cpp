@@ -445,6 +445,8 @@ Future<string> read(int fd)
 
 
 #ifdef __WINDOWS__
+// NOTE: Ordinarily this would go in a Windows-specific header; we put it here
+// to avoid complex forward declarations.
 Future<string> read(HANDLE handle)
 {
   return read(_open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDONLY));
@@ -567,6 +569,8 @@ Future<Nothing> redirect(int from, Option<int> to, size_t chunk)
 
 
 #ifdef __WINDOWS__
+// NOTE: Ordinarily this would go in a Windows-specific header; we put it here
+// to avoid complex forward declarations.
 Future<Nothing> redirect(HANDLE from, Option<int> to, size_t chunk)
 {
   return redirect(
