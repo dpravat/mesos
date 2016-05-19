@@ -45,7 +45,12 @@ namespace flags {
 class FlagsBase
 {
 public:
-  FlagsBase() { add(&help, "help", "Prints this help message", false); }
+  FlagsBase() {
+#ifndef __WINDOWS__
+    initialize();
+#endif // __WINDOWS__
+  }
+  void initialize() { add(&help, "help", "Prints this help message", false); }
   virtual ~FlagsBase() {}
 
   // Load any flags from the environment given the variable prefix,
