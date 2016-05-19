@@ -30,8 +30,14 @@
 
 using namespace mesos::internal::slave;
 
+
 int main(int argc, char** argv)
 {
+#ifdef __WINDOWS__
+  // Initialize the Windows socket stack.
+  process::Winsock winsock;
+#endif
+
 #ifdef __linux__
   return Subcommand::dispatch(
       None(),
@@ -41,9 +47,6 @@ int main(int argc, char** argv)
       new MesosContainerizerMount(),
       new NetworkCniIsolatorSetup());
 #else
-#ifdef __WINDOWS__
-  process::Winsock winsock;
-#endif
   return Subcommand::dispatch(
       None(),
       argc,
