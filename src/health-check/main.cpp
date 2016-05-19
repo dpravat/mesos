@@ -19,7 +19,8 @@
 #include <string.h>
 #ifndef __WINDOWS__
 #include <unistd.h>
-#endif
+#endif // __WINDOWS__
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -43,6 +44,7 @@
 #include <stout/path.hpp>
 #include <stout/protobuf.hpp>
 #include <stout/strings.hpp>
+
 #include <stout/os/killtree.hpp>
 
 #include "common/status_utils.hpp"
@@ -277,6 +279,7 @@ class Flags : public virtual flags::FlagsBase
 {
 public:
   Flags() {};
+
   void initialize()
   {
     add(&Flags::health_check_json,

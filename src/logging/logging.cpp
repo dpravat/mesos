@@ -100,6 +100,7 @@ inline void handler(int signal, siginfo_t *siginfo, void *context)
 }
 
 
+
 google::LogSeverity getLogSeverity(const string& logging_level)
 {
   if (logging_level == "INFO") {
@@ -201,6 +202,13 @@ void initialize(
     google::InstallFailureSignalHandler();
 
     // Set up our custom signal handlers.
+    //
+    // NOTE: The code below sets the SIGTERM signal handler to the `handle`
+    // function declared above. While this is useful on POSIX systems, SIGTERM
+    // is generated and handled differently on Windows[1], so this code would
+    // not work.
+    //
+    // [1] https://msdn.microsoft.com/en-us/library/xdkz3x12.aspx
     struct sigaction action;
     action.sa_sigaction = handler;
 
