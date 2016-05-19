@@ -36,6 +36,8 @@
 #include <stout/hashset.hpp>
 #include <stout/os.hpp>
 
+#include <stout/os/killtree.hpp>
+
 #include "common/status_utils.hpp"
 
 #include "hook/manager.hpp"
@@ -246,6 +248,10 @@ DockerContainerizerProcess::Container::create(
     return Error("Failed to touch 'stderr': " + touch.error());
   }
 
+  // NOTE: `os::chown` has no meaningful interpretation on Windows. This is
+  // safe to `#ifdef` out because we don't compile the user flag on Windows, so
+  // this should always be `None`.
+#ifndef __WINDOWS__
   if (user.isSome()) {
     Try<Nothing> chown = os::chown(user.get(), directory);
 
@@ -253,6 +259,7 @@ DockerContainerizerProcess::Container::create(
       return Error("Failed to chown: " + chown.error());
     }
   }
+#endif // __WINDOWS__
 
   string dockerSymlinkPath = path::join(
       paths::getSlavePath(flags.work_dir, slaveId),
@@ -1262,7 +1269,7 @@ Future<pid_t> DockerContainerizerProcess::checkpointExecutor(
   // after we set Container::status.
   CHECK(containers_.contains(containerId));
 
-  Option<int> pid = dockerContainer.pid;
+  Option<pid_t> pid = dockerContainer.pid;
 
   if (!pid.isSome()) {
     return Failure("Unable to get executor pid after launch");

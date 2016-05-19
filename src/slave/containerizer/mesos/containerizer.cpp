@@ -51,9 +51,12 @@
 #include "slave/containerizer/mesos/launcher.hpp"
 #ifdef __linux__
 #include "slave/containerizer/mesos/linux_launcher.hpp"
-#endif
+#endif // __linux__
 
 #include "slave/containerizer/mesos/isolators/posix.hpp"
+#ifdef __WINDOWS__
+#include "slave/containerizer/mesos/isolators/windows.hpp"
+#endif // __WINDOWS__
 
 #include "slave/containerizer/mesos/isolators/posix/disk.hpp"
 
@@ -66,29 +69,32 @@
 #include "slave/containerizer/mesos/isolators/cgroups/mem.hpp"
 #include "slave/containerizer/mesos/isolators/cgroups/net_cls.hpp"
 #include "slave/containerizer/mesos/isolators/cgroups/perf_event.hpp"
-#endif
+#endif // __linux__
 
 #ifdef ENABLE_NVIDIA_GPU_SUPPORT
 #ifdef __linux__
 #include "slave/containerizer/mesos/isolators/cgroups/devices/gpus/nvidia.hpp"
-#endif
+#endif // __linux__
 #endif
 
 #ifdef __linux__
 #include "slave/containerizer/mesos/isolators/docker/runtime.hpp"
-#endif
+#endif // __linux__
 
 #ifdef __linux__
 #include "slave/containerizer/mesos/isolators/docker/volume/isolator.hpp"
-#endif
+#endif // __linux__
 
 #ifdef __linux__
 #include "slave/containerizer/mesos/isolators/filesystem/linux.hpp"
-#endif
+#endif // __linux__
 #include "slave/containerizer/mesos/isolators/filesystem/posix.hpp"
+#ifdef __WINDOWS__
+#include "slave/containerizer/mesos/isolators/filesystem/windows.hpp"
+#endif // __WINDOWS__
 #ifdef __linux__
 #include "slave/containerizer/mesos/isolators/filesystem/shared.hpp"
-#endif
+#endif // __linux__
 
 #ifdef __linux__
 #include "slave/containerizer/mesos/isolators/namespaces/pid.hpp"
@@ -101,6 +107,7 @@
 
 #include "slave/containerizer/mesos/containerizer.hpp"
 #include "slave/containerizer/mesos/launch.hpp"
+#include "slave/containerizer/mesos/pipe.hpp"
 #include "slave/containerizer/mesos/provisioner/provisioner.hpp"
 
 using std::list;
@@ -128,7 +135,11 @@ using state::FrameworkState;
 using state::ExecutorState;
 using state::RunState;
 
+#ifdef __WINDOWS__
+const char MESOS_CONTAINERIZER[] = "mesos-containerizer.exe";
+#else
 const char MESOS_CONTAINERIZER[] = "mesos-containerizer";
+#endif // __WINDOWS__
 
 Try<MesosContainerizer*> MesosContainerizer::create(
     const Flags& flags,
@@ -204,6 +215,15 @@ Try<MesosContainerizer*> MesosContainerizer::create(
     return LinuxLauncher::available()
       ? LinuxLauncher::create(flags_)
       : PosixLauncher::create(flags_);
+#elif __WINDOWS__
+    // NOTE: Because the most basic launcher historically has been "posix", we
+    // accept this flag on Windows, but map it to the `WindowsLauncher`.
+    if (flags_.launcher.isSome() && !(flags_.launcher.get() == "posix" ||
+        flags_.launcher.get() == "windows")) {
+      return Error("Unsupported launcher: " + flags_.launcher.get());
+    }
+
+    return WindowsLauncher::create(flags_);
 #else
     if (flags_.launcher.isSome() && flags_.launcher.get() != "posix") {
       return Error("Unsupported launcher: " + flags_.launcher.get());
@@ -226,21 +246,29 @@ Try<MesosContainerizer*> MesosContainerizer::create(
   const hashmap<string, lambda::function<Try<Isolator*>(const Flags&)>>
     creators = {
     // Filesystem isolators.
+#ifndef __WINDOWS__
     {"filesystem/posix", &PosixFilesystemIsolatorProcess::create},
+#else
+    {"filesystem/windows", &WindowsFilesystemIsolatorProcess::create},
+#endif // __WINDOWS__
 #ifdef __linux__
     {"filesystem/linux", &LinuxFilesystemIsolatorProcess::create},
 
     // TODO(jieyu): Deprecate this in favor of using filesystem/linux.
     {"filesystem/shared", &SharedFilesystemIsolatorProcess::create},
-#endif
+#endif // __linux__
 
     // Runtime isolators.
+#ifndef __WINDOWS__
     {"posix/cpu", &PosixCpuIsolatorProcess::create},
     {"posix/mem", &PosixMemIsolatorProcess::create},
     {"posix/disk", &PosixDiskIsolatorProcess::create},
 #if ENABLE_XFS_DISK_ISOLATOR
     {"xfs/disk", &XfsDiskIsolatorProcess::create},
 #endif
+#else
+    {"windows/cpu", &WindowsCpuIsolatorProcess::create},
+#endif // __WINDOWS__
 #ifdef __linux__
     {"cgroups/cpu", &CgroupsCpushareIsolatorProcess::create},
     {"cgroups/mem", &CgroupsMemIsolatorProcess::create},
@@ -253,8 +281,9 @@ Try<MesosContainerizer*> MesosContainerizer::create(
     {"docker/volume", &DockerVolumeIsolatorProcess::create},
     {"namespaces/pid", &NamespacesPidIsolatorProcess::create},
     {"network/cni", &NetworkCniIsolatorProcess::create},
-#endif
-#ifdef WITH_NETWORK_ISOLATOR
+#endif // __linux__
+    // NOTE: Network isolation is currently not supported on Windows builds.
+#if !defined(__WINDOWS__) && defined(WITH_NETWORK_ISOLATOR)
     {"network/port_mapping", &PortMappingIsolatorProcess::create},
 #endif
   };
@@ -1139,11 +1168,7 @@ Future<bool> MesosContainerizerProcess::__launch(
         [=](const ContainerLogger::SubprocessInfo& subprocessInfo)
           -> Future<bool> {
     // Use a pipe to block the child until it's been isolated.
-    int pipes[2];
-
-    // We assume this should not fail under reasonable conditions so
-    // we use CHECK.
-    CHECK(pipe(pipes) == 0);
+    auto pipe = mesos::internal::create_local_pipe();
 
     // Prepare the flags to pass to the launch process.
     MesosContainerizerLaunch::Flags launchFlags;
@@ -1182,8 +1207,14 @@ Future<bool> MesosContainerizerProcess::__launch(
     launchFlags.rootfs = executorRootfs;
     launchFlags.user = user;
 #endif // __WINDOWS__
-    launchFlags.pipe_read = pipes[0];
-    launchFlags.pipe_write = pipes[1];
+
+    auto shared_pipe = mesos::internal::global_from_local(pipe);
+
+    // POSIX-compliant file descriptors might only be valid in the context of
+    // the current process, so pass the platform-dependent pipe handles to the
+    // child process.
+    launchFlags.pipe_read = shared_pipe[0];
+    launchFlags.pipe_write = shared_pipe[1];
     launchFlags.commands = commands;
 
     // Fork the child using launcher.
@@ -1246,9 +1277,9 @@ Future<bool> MesosContainerizerProcess::__launch(
                   directory,
                   user,
                   slaveId))
-      .then(defer(self(), &Self::exec, containerId, pipes[1]))
-      .onAny(lambda::bind(&os::close, pipes[0]))
-      .onAny(lambda::bind(&os::close, pipes[1]));
+      .then(defer(self(), &Self::exec, containerId, pipe[1]))
+      .onAny([pipe]() { os::close(pipe[0]); })
+      .onAny([pipe]() { os::close(pipe[1]); });
   }));
 }
 
