@@ -124,19 +124,6 @@ public:
 
   virtual ~WindowsLauncher() {}
 
-  virtual Try<pid_t> fork(
-    const ContainerID& containerId,
-    const std::string& path,
-    const std::vector<std::string>& argv,
-    const process::Subprocess::IO& in,
-    const process::Subprocess::IO& out,
-    const process::Subprocess::IO& err,
-    const Option<flags::FlagsBase>& flags,
-    const Option<std::map<std::string, std::string>>& environment,
-    const Option<int>& namespaces,
-    std::vector<process::Subprocess::Hook> parentHooks =
-        process::Subprocess::Hook::None());
-
 private:
   WindowsLauncher() {}
 };

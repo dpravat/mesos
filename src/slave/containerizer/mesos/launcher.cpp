@@ -79,7 +79,6 @@ Future<hashset<ContainerID>> PosixLauncher::recover(
 }
 
 
-
 Try<pid_t> PosixLauncher::fork(
     const ContainerID& containerId,
     const string& path,
@@ -169,48 +168,6 @@ Future<Nothing> _destroy(const Future<Option<int>>& future)
 Try<Launcher*> WindowsLauncher::create(const Flags& flags)
 {
   return new WindowsLauncher();
-}
-
-Try<pid_t> WindowsLauncher::fork(
-  const ContainerID& containerId,
-  const string& path,
-  const vector<string>& argv,
-  const Subprocess::IO& in,
-  const Subprocess::IO& out,
-  const Subprocess::IO& err,
-  const Option<flags::FlagsBase>& flags,
-  const Option<map<string, string>>& environment,
-  const Option<int>& namespaces,
-  vector<process::Subprocess::Hook> parentHooks)
-{
-  if (pids.contains(containerId)) {
-    return Error("Process has already been forked for container " +
-      stringify(containerId));
-  }
-
-  Try<Subprocess> child = subprocess(
-    path,
-    argv,
-    in,
-    out,
-    err,
-    SETSID,
-    flags,
-    environment,
-    None(),
-    parentHooks);
-
-  if (child.isError()) {
-    return Error("Failed to fork a child process: " + child.error());
-  }
-
-  LOG(INFO) << "Forked child with pid '" << child.get().pid()
-    << "' for container '" << containerId << "'";
-
-  // Store the pid (session id and process group id).
-  pids.put(containerId, child.get().pid());
-
-  return child.get().pid();
 }
 
 } // namespace slave {

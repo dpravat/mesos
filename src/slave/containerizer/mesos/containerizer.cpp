@@ -52,9 +52,12 @@
 #include "slave/containerizer/mesos/launcher.hpp"
 #ifdef __linux__
 #include "slave/containerizer/mesos/linux_launcher.hpp"
-#endif
+#endif // __linux__
 
 #include "slave/containerizer/mesos/isolators/posix.hpp"
+#ifdef __WINDOWS__
+#include <slave/containerizer/mesos/isolators/windows.hpp>
+#endif // __WINDOWS__
 
 #include "slave/containerizer/mesos/isolators/posix/disk.hpp"
 
@@ -67,32 +70,32 @@
 #include "slave/containerizer/mesos/isolators/cgroups/mem.hpp"
 #include "slave/containerizer/mesos/isolators/cgroups/net_cls.hpp"
 #include "slave/containerizer/mesos/isolators/cgroups/perf_event.hpp"
-#endif
+#endif // __linux__
 
 #ifdef ENABLE_NVIDIA_GPU_SUPPORT
 #ifdef __linux__
 #include "slave/containerizer/mesos/isolators/cgroups/devices/gpus/nvidia.hpp"
-#endif
+#endif // __linux__
 #endif
 
 #ifdef __linux__
 #include "slave/containerizer/mesos/isolators/docker/runtime.hpp"
-#endif
+#endif // __linux__
 
 #ifdef __linux__
 #include "slave/containerizer/mesos/isolators/docker/volume/isolator.hpp"
-#endif
+#endif // __linux__
 
 #ifdef __linux__
 #include "slave/containerizer/mesos/isolators/filesystem/linux.hpp"
-#endif
+#endif // __linux__
 #include "slave/containerizer/mesos/isolators/filesystem/posix.hpp"
-#ifdef __linux__
-#include "slave/containerizer/mesos/isolators/filesystem/shared.hpp"
-#endif
 #ifdef __WINDOWS__
 #include "slave/containerizer/mesos/isolators/filesystem/windows.hpp"
 #endif // __WINDOWS__
+#ifdef __linux__
+#include "slave/containerizer/mesos/isolators/filesystem/shared.hpp"
+#endif // __linux__
 
 #ifdef __linux__
 #include "slave/containerizer/mesos/isolators/namespaces/pid.hpp"
@@ -102,10 +105,6 @@
 #ifdef WITH_NETWORK_ISOLATOR
 #include "slave/containerizer/mesos/isolators/network/port_mapping.hpp"
 #endif
-
-#ifdef __WINDOWS__
-#include <slave/containerizer/mesos/isolators/windows.hpp>
-#endif // __WINDOWS__
 
 #include "slave/containerizer/mesos/containerizer.hpp"
 #include "slave/containerizer/mesos/launch.hpp"
@@ -212,19 +211,21 @@ Try<MesosContainerizer*> MesosContainerizer::create(
     return LinuxLauncher::available()
       ? LinuxLauncher::create(flags_)
       : PosixLauncher::create(flags_);
-#else
-    if (flags_.launcher.isSome() && flags_.launcher.get() != "posix") {
+#elif __WINDOWS__
+    // NOTE: Because the most basic launcher historically has been "posix", we
+    // accept this flag on Windows, but map it to the `WindowsLauncher`.
+    if (flags_.launcher.isSome() && !(flags_.launcher.get() == "posix" ||
+        flags_.launcher.get() == "windows")) {
       return Error("Unsupported launcher: " + flags_.launcher.get());
     }
-#ifndef __WINDOWS__
+
+    return WindowsLauncher::create(flags_);
+#else
     if (flags_.launcher.isSome() && flags_.launcher.get() != "posix") {
       return Error("Unsupported launcher: " + flags_.launcher.get());
     }
 
     return PosixLauncher::create(flags_);
-#else
-    return WindowsLauncher::create(flags_);
-#endif // !__WINDOWS__
 #endif // __linux__
   }();
 
@@ -240,23 +241,30 @@ Try<MesosContainerizer*> MesosContainerizer::create(
   // Create the isolators for the MesosContainerizer.
   const hashmap<string, lambda::function<Try<Isolator*>(const Flags&)>>
     creators = {
-#ifndef __WINDOWS__
     // Filesystem isolators.
+#ifndef __WINDOWS__
     {"filesystem/posix", &PosixFilesystemIsolatorProcess::create},
+#else
+    {"filesystem/windows", &WindowsFilesystemIsolatorProcess::create},
+#endif // __WINDOWS__
 #ifdef __linux__
     {"filesystem/linux", &LinuxFilesystemIsolatorProcess::create},
 
     // TODO(jieyu): Deprecate this in favor of using filesystem/linux.
     {"filesystem/shared", &SharedFilesystemIsolatorProcess::create},
-#endif
+#endif // __linux__
 
     // Runtime isolators.
+#ifndef __WINDOWS__
     {"posix/cpu", &PosixCpuIsolatorProcess::create},
     {"posix/mem", &PosixMemIsolatorProcess::create},
     {"posix/disk", &PosixDiskIsolatorProcess::create},
 #if ENABLE_XFS_DISK_ISOLATOR
     {"xfs/disk", &XfsDiskIsolatorProcess::create},
 #endif
+#else
+    {"windows/cpu", &WindowsCpuIsolatorProcess::create},
+#endif // __WINDOWS__
 #ifdef __linux__
     {"cgroups/cpu", &CgroupsCpushareIsolatorProcess::create},
     {"cgroups/mem", &CgroupsMemIsolatorProcess::create},
@@ -269,14 +277,10 @@ Try<MesosContainerizer*> MesosContainerizer::create(
     {"docker/volume", &DockerVolumeIsolatorProcess::create},
     {"namespaces/pid", &NamespacesPidIsolatorProcess::create},
     {"network/cni", &NetworkCniIsolatorProcess::create},
-#endif
-#ifdef WITH_NETWORK_ISOLATOR
+#endif // __linux__
+#if !defined(__WINDOWS__) && defined(WITH_NETWORK_ISOLATOR)
     {"network/port_mapping", &PortMappingIsolatorProcess::create},
 #endif
-#else // !__WINDOWS__
-    { "windows/cpu", &WindowsCpuIsolatorProcess::create },
-    { "filesystem/windows", &WindowsFilesystemIsolatorProcess::create }
-#endif // !__WINDOWS__
   };
 
   vector<Owned<Isolator>> isolators;
@@ -1263,12 +1267,12 @@ Future<bool> MesosContainerizerProcess::__launch(
 
     return isolate(containerId, pid)
       .then(defer(self(),
-        &Self::fetch,
-        containerId,
-        executorInfo.command(),
-        directory,
-        user,
-        slaveId))
+                  &Self::fetch,
+                  containerId,
+                  executorInfo.command(),
+                  directory,
+                  user,
+                  slaveId))
       .then(defer(self(), &Self::exec, containerId, pipe.get().write))
       .onAny([pipe]() { os::close(pipe.get().read); })
       .onAny([pipe]() { os::close(pipe.get().write); });

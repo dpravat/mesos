@@ -44,6 +44,7 @@
 #include <stout/os.hpp>
 #include <stout/strings.hpp>
 #include <stout/uuid.hpp>
+
 #include <stout/os/killtree.hpp>
 
 #include "common/status_utils.hpp"
@@ -348,6 +349,10 @@ Future<Nothing> ExternalContainerizerProcess::__recover(
                   << "' of framework " << framework.id;
 
         Option<string> user = None();
+
+        // NOTE: `chown` has no meaningful interpretation on Windows. This is
+        // safe to `#ifdef` out because we don't compile the user flag on
+        // Windows, so this should always be `None`.
 #ifndef __WINDOWS__
         if (flags.switch_user) {
           // The command (either in form of task or executor command)
@@ -1094,6 +1099,9 @@ Try<Subprocess> ExternalContainerizerProcess::invoke(
   VLOG_IF(2, sandbox.isSome() &&
       sandbox.get().user.isSome()) << "user: " << sandbox.get().user.get();
 
+  // NOTE: `chown` has no meaningful interpretation on Windows. This is safe to
+  // `#ifdef` out because we don't compile the user flag on Windows, so this
+  // should always be `None`.
 #ifndef __WINDOWS__
   // Re/establish the sandbox conditions for the containerizer.
   if (sandbox.isSome() && sandbox.get().user.isSome()) {
@@ -1151,6 +1159,9 @@ Try<Subprocess> ExternalContainerizerProcess::invoke(
         err.error());
   }
 
+  // NOTE: `chown` has no meaningful interpretation on Windows. This is safe to
+  // `#ifdef` out because we don't compile the user flag on Windows, so this
+  // should always be `None`.
 #ifndef __WINDOWS__
   if (sandbox.isSome() && sandbox.get().user.isSome()) {
     Try<Nothing> chown = os::chown(

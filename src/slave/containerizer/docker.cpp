@@ -35,6 +35,7 @@
 #include <stout/hashmap.hpp>
 #include <stout/hashset.hpp>
 #include <stout/os.hpp>
+
 #include <stout/os/killtree.hpp>
 
 #include "common/status_utils.hpp"
@@ -56,9 +57,7 @@
 
 #include "slave/containerizer/mesos/isolators/cgroups/constants.hpp"
 
-#ifndef __WINDOWS__
 #include "usage/usage.hpp"
-#endif // __WINDOWS__
 
 
 using std::list;
@@ -249,6 +248,9 @@ DockerContainerizerProcess::Container::create(
     return Error("Failed to touch 'stderr': " + touch.error());
   }
 
+  // NOTE: `chown` has no meaningful interpretation on Windows. This is safe to
+  // `#ifdef` out because we don't compile the user flag on Windows, so this
+  // should always be `None`.
 #ifndef __WINDOWS__
   if (user.isSome()) {
     Try<Nothing> chown = os::chown(user.get(), directory);
