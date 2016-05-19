@@ -106,6 +106,9 @@ int main(int argc, char** argv)
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   slave::Flags flags;
+#ifdef __WINDOWS__
+  flags.initialize(true);
+#endif // __WINDOWS__
 
   // The following flags are executable specific (e.g., since we only
   // have one instance of libprocess per execution, we only want to

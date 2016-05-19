@@ -17,8 +17,12 @@
 #include "logging/flags.hpp"
 
 
-mesos::internal::logging::Flags::Flags()
+void mesos::internal::logging::Flags::initialize(bool recursive)
 {
+  if (recursive) {
+    flags::FlagsBase::initialize();
+  }
+
   add(&Flags::quiet,
       "quiet",
       "Disable logging to stderr",

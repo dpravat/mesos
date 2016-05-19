@@ -29,7 +29,12 @@ namespace logging {
 class Flags : public virtual flags::FlagsBase
 {
 public:
-  Flags();
+  Flags() {
+#ifndef __WINDOWS__
+    initialize();
+#endif // __WINDOWS__
+  }
+  void initialize(bool recursive = false);
 
   bool quiet;
   std::string logging_level;

@@ -154,6 +154,9 @@ public:
 
     // Load any logging flags from the environment.
     logging::Flags flags;
+#ifdef __WINDOWS__
+    flags.initialize(true);
+#endif // __WINDOWS__
 
     Try<Nothing> load = flags.load("MESOS_");
 

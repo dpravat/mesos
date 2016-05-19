@@ -38,7 +38,12 @@ namespace slave {
 class Flags : public logging::Flags
 {
 public:
-  Flags();
+  Flags() {
+#ifndef __WINDOWS__
+    initialize();
+#endif // __WINDOWS__
+  }
+  void initialize(bool recursive = false);
 
   bool version;
   Option<std::string> hostname;
