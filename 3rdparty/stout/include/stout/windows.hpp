@@ -417,4 +417,17 @@ decltype(_access(fileName, accessMode))
 #define WNOHANG 1
 #endif // WNOHANG
 
+// Redefine NetBios preprocessor macros as constant ints.
+#ifdef REGISTERING
+const int registering = REGISTERING;
+#undef REGISTERING
+const int REGISTERING = registering;
+#endif // REGISTERING
+
+#ifdef REGISTERED
+const int registered = REGISTERED;
+#undef REGISTERED
+const int REGISTERED = registered;
+#endif // REGISTERED
+
 #endif // __STOUT_WINDOWS_HPP__
