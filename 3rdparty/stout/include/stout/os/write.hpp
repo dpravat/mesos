@@ -58,11 +58,6 @@ inline Try<Nothing> write(int fd, const std::string& message)
   return Nothing();
 }
 
-#ifdef __WINDOWS__
-inline Try<Nothing> write(HANDLE handle, const std::string& message) {
-  return write(_open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDWR), message);
-}
-#endif // __WINDOWS__
 
 // A wrapper function that wraps the above write() with
 // open and closing the file.

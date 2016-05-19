@@ -15,11 +15,19 @@
 
 #include <unistd.h>
 
+#include <stout/nothing.hpp>
+#include <stout/try.hpp>
+
+
 namespace os {
 
-inline int fsync(int fd)
+inline Try<Nothing> fsync(int fd)
 {
-  return ::fsync(fd);
+  if (::fsync(fd) == -1) {
+    return ErrnoError();
+  }
+
+  return Nothing();
 }
 
 } // namespace os {

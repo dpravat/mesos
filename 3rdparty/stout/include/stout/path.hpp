@@ -30,13 +30,15 @@
 namespace path {
 
 // Base case.
-inline std::string join(const std::string& path1, const std::string& path2,
-        char char_separator = os::DIRECTORY_SEPARATOR_CHAR )
+inline std::string join(
+    const std::string& path1,
+    const std::string& path2,
+    const char char_separator = os::DIRECTORY_SEPARATOR_CHAR)
 {
   std::string string_separator = std::string(1, char_separator);
   return strings::remove(path1, string_separator, strings::SUFFIX) +
-      string_separator +
-      strings::remove(path2, string_separator, strings::PREFIX);
+         string_separator +
+         strings::remove(path2, string_separator, strings::PREFIX);
 }
 
 
@@ -78,10 +80,9 @@ inline bool absolute(const std::string& path)
 
 /**
  * Represents a POSIX or Windows file system path and offers common path
- * manipulations.
- * When reading the comments below, keep in mind that '/' refers to the path
- * separator character, so read it as "'/' or '\', depending on platform". For
- * obvious reasons, this was not spelled out every time.
+ * manipulations. When reading the comments below, keep in mind that '/' refers
+ * to the path separator character, so read it as "'/' or '\', depending on
+ * platform". For obvious reasons, this was not spelled out every time.
  */
 class Path
 {
@@ -146,7 +147,7 @@ public:
     return value.substr(start, end + 1 - start);
   }
 
-  // TODO(anaparu) Make sure this works on Windows for very short path names,
+  // TODO(hausdorff) Make sure this works on Windows for very short path names,
   // such as "C:\Temp". There is a distinction between "C:" and "C:\", the
   // former means "current directory of the C drive", while the latter means
   // "The root of the C drive". Also make sure that UNC paths are handled.

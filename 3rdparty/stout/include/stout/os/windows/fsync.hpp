@@ -14,40 +14,31 @@
 #define __STOUT_OS_WINDOWS_FSYNC_HPP__
 
 #include <io.h>
-#include <errno.h>
 
 #include <stout/error.hpp>
+#include <stout/nothing.hpp>
+#include <stout/try.hpp>
 #include <stout/windows.hpp>
 
-#define FSYNC_PASS 0
-#define FSYNC_FAIL -1
 
 namespace os {
 
-inline int fsync(int fd)
+inline Try<Nothing> fsync(int fd)
 {
-  HANDLE inhandle = (HANDLE)_get_osfhandle(fd);
-  if (inhandle == INVALID_HANDLE_VALUE) {
-    errno = EBADF;
-    return FSYNC_FAIL;
+  const HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+  if (handle == INVALID_HANDLE_VALUE) {
+    return WindowsError(
+        "os::fsync: Could not get handle for given file descriptor");
   }
 
-  bool result = FlushFileBuffers(inhandle);
-  if (!result) {
-    DWORD lasterror = GetLastError();
-    if (lasterror == ERROR_INVALID_HANDLE) {
-      errno = EINVAL;
-    }
-    else {
-      errno = EIO;
-    }
-    return FSYNC_FAIL;
+  if (!FlushFileBuffers(handle)) {
+    return WindowsError(
+        "os::fsync: Could not flush file buffers for given file descriptor");
   }
 
-  return FSYNC_PASS;
+  return Nothing();
 }
 
 } // namespace os {
-
 
 #endif // __STOUT_OS_WINDOWS_FSYNC_HPP__

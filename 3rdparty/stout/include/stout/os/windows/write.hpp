@@ -15,12 +15,18 @@
 
 #include <io.h>
 
+#include <stout/nothing.hpp>
+#include <stout/try.hpp>
 #include <stout/windows.hpp> // For order-dependent networking headers.
 
 #include <stout/os/socket.hpp>
 
 
 namespace os {
+
+// Forward declaration.
+inline Try<Nothing> write(int fd, const std::string& message);
+
 
 inline ssize_t write(int fd, const void* data, size_t size)
 {
@@ -31,12 +37,22 @@ inline ssize_t write(int fd, const void* data, size_t size)
   return ::_write(fd, data, size);
 }
 
-#ifdef __WINDOWS__
-  inline ssize_t read(HANDLE handle, const void* data, size_t size)
-  {
-    return write(_open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDWR), data, size);
-  }
-#endif // __WINDOWS__
+
+inline ssize_t read(HANDLE handle, const void* data, size_t size)
+{
+  return ::os::write(
+      _open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDWR),
+      data,
+      size);
+}
+
+
+inline Try<Nothing> write(HANDLE handle, const std::string& message)
+{
+  return ::os::write(
+      _open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDWR),
+      message);
+}
 
 } // namespace os {
 
