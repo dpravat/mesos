@@ -411,7 +411,7 @@ pid_t launchTaskWindows(
       NULL,                 // Default security attributes.
       NULL,                 // Default primary thread security attributes.
       TRUE,                 // Inherited parent process handles.
-      0,                    // Default creation flags.
+      CREATE_SUSPENDED,     // Default creation flags.
       NULL,                 // Use parent's environment.
       NULL,                 // Use parent's current directory.
       &startupInfo,         // STARTUPINFO pointer.
@@ -423,6 +423,16 @@ pid_t launchTaskWindows(
 
     abort();
   }
+  Try<HANDLE> job = os::create_job(processInfo.dwProcessId);
+  // The job handle is not closed. The job lifetime is equal or lower
+  // than the process lifetime.
+  if (job.isError()) {
+      abort();
+  }
+
+  ::ResumeThread(processInfo.hThread);
+  ::CloseHandle(processInfo.hThread);
+  ::CloseHandle(processInfo.hProcess);
 
   return processInfo.dwProcessId;
 }
