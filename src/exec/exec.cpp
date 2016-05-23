@@ -67,7 +67,8 @@ using std::string;
 
 using process::Latch;
 using process::wait; // Necessary on some OS's to disambiguate.
-using mesos::Executor; // Necessary to disambiguate.
+
+using mesos::Executor; // Necessary on some OS's to disambiguate.
 
 namespace mesos {
 namespace internal {
@@ -99,9 +100,18 @@ protected:
 
     // TODO(vinod): Invoke killtree without killing ourselves.
     // Kill the process group (including ourself).
-#ifdef TODO
+#ifndef __WINDOWS__
     killpg(0, SIGKILL);
-#endif
+#else
+    LOG(WARNING) << "Shutting down process group. Windows does not support "
+                    "`killpg`, so we simply call `exit` on the assumption "
+                    "that the process was generated with the "
+                    "`WindowsContainerizer`, which uses the 'close on exit' "
+                    "feature of job objects to make sure all child processes "
+                    "are killed when a parent process exits";
+    exit(0);
+#endif // __WINDOWS__
+
     // The signal might not get delivered immediately, so sleep for a
     // few seconds. Worst case scenario, exit abnormally.
     os::sleep(Seconds(5));
