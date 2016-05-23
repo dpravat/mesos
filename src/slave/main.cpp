@@ -30,6 +30,7 @@
 #include <mesos/slave/resource_estimator.hpp>
 
 #include <process/owned.hpp>
+
 #ifdef __WINDOWS__
 #include <process/windows/winsock.hpp>
 #endif // __WINDOWS__

@@ -14,12 +14,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <stout/none.hpp>
-#include <stout/subcommand.hpp>
-
 #ifdef __WINDOWS__
 #include <process/windows/winsock.hpp>
 #endif // __WINDOWS__
+
+#include <stout/none.hpp>
+#include <stout/subcommand.hpp>
 
 #include "slave/containerizer/mesos/launch.hpp"
 #include "slave/containerizer/mesos/mount.hpp"
