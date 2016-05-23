@@ -117,13 +117,11 @@ Try<Nothing> write(
 template <typename T>
 Try<Nothing> write(const std::string& path, const T& t)
 {
-  const int operation_flags =
+  int operation_flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
 #ifdef __WINDOWS__
     // NOTE: Windows does automatic linefeed conversions in I/O on text files.
     // We include the `_O_BINARY` flag here to avoid this.
-    O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC | _O_BINARY;
-#else
-    O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
+    operation_flags |= _O_BINARY;
 #endif // __WINDOWS__
 
   Try<int> fd = os::open(
@@ -150,13 +148,11 @@ inline Try<Nothing> append(
     const std::string& path,
     const google::protobuf::Message& message)
 {
-  const int operation_flags =
+  int operation_flags = O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC;
 #ifdef __WINDOWS__
     // NOTE: Windows does automatic linefeed conversions in I/O on text files.
     // We include the `_O_BINARY` flag here to avoid this.
-    O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC | _O_BINARY;
-#else
-    O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC;
+    operation_flags |= _O_BINARY;
 #endif // __WINDOWS__
 
   Try<int> fd = os::open(
@@ -336,13 +332,11 @@ Result<T> read(HANDLE handle, bool ignorePartial = false, bool undoFailed = fals
 template <typename T>
 Result<T> read(const std::string& path)
 {
-  const int operation_flags =
+  int operation_flags = O_RDONLY | O_CLOEXEC;
 #ifdef __WINDOWS__
     // NOTE: Windows does automatic linefeed conversions in I/O on text files.
     // We include the `_O_BINARY` flag here to avoid this.
-    O_RDONLY | O_CLOEXEC | _O_BINARY;
-#else
-    O_RDONLY | O_CLOEXEC;
+    operation_flags |= _O_BINARY;
 #endif // __WINDOWS__
 
   Try<int> fd = os::open(
