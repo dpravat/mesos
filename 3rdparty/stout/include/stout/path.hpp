@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <stout/strings.hpp>
+#include <stout/stringify.hpp>
 #ifdef __WINDOWS__
 #include <stout/windows/path.hpp>
 #else
@@ -33,7 +34,7 @@ namespace path {
 inline std::string join(
     const std::string& path1,
     const std::string& path2,
-    const char char_separator = os::DIRECTORY_SEPARATOR_CHAR)
+    const char char_separator = os::PATH_SEPARATOR)
 {
   std::string string_separator = std::string(1, char_separator);
   return strings::remove(path1, string_separator, strings::SUFFIX) +
@@ -68,7 +69,7 @@ inline std::string join(const std::vector<std::string>& paths)
 
 inline bool absolute(const std::string& path)
 {
-  if (path.empty() || path[0] != os::DIRECTORY_SEPARATOR_CHAR) {
+  if (path.empty() || path[0] != os::PATH_SEPARATOR) {
     return false;
   }
 
@@ -125,18 +126,18 @@ public:
     size_t end = value.size() - 1;
 
     // Remove trailing slashes.
-    if (value[end] == os::DIRECTORY_SEPARATOR_CHAR) {
-      end = value.find_last_not_of(os::DIRECTORY_SEPARATOR_CHAR, end);
+    if (value[end] == os::PATH_SEPARATOR) {
+      end = value.find_last_not_of(os::PATH_SEPARATOR, end);
 
       // Paths containing only slashes result into "/".
       if (end == std::string::npos) {
-        return std::string(os::DIRECTORY_SEPARATOR);
+        return stringify(os::PATH_SEPARATOR);
       }
     }
 
     // 'start' should point towards the character after the last slash
     // that is non trailing.
-    size_t start = value.find_last_of(os::DIRECTORY_SEPARATOR_CHAR, end);
+    size_t start = value.find_last_of(os::PATH_SEPARATOR, end);
 
     if (start == std::string::npos) {
       start = 0;
@@ -184,12 +185,12 @@ public:
     size_t end = value.size() - 1;
 
     // Remove trailing slashes.
-    if (value[end] == os::DIRECTORY_SEPARATOR_CHAR) {
-      end = value.find_last_not_of(os::DIRECTORY_SEPARATOR_CHAR, end);
+    if (value[end] == os::PATH_SEPARATOR) {
+      end = value.find_last_not_of(os::PATH_SEPARATOR, end);
     }
 
     // Remove anything trailing the last slash.
-    end = value.find_last_of(os::DIRECTORY_SEPARATOR_CHAR, end);
+    end = value.find_last_of(os::PATH_SEPARATOR, end);
 
     // Paths containing no slashes result in ".".
     if (end == std::string::npos) {
@@ -198,16 +199,16 @@ public:
 
     // Paths containing only slashes result in "/".
     if (end == 0) {
-      return std::string(os::DIRECTORY_SEPARATOR);
+      return stringify(os::PATH_SEPARATOR);
     }
 
     // 'end' should point towards the last non slash character
     // preceding the last slash.
-    end = value.find_last_not_of(os::DIRECTORY_SEPARATOR_CHAR, end);
+    end = value.find_last_not_of(os::PATH_SEPARATOR, end);
 
     // Paths containing no non slash characters result in "/".
     if (end == std::string::npos) {
-      return std::string(os::DIRECTORY_SEPARATOR);
+      return stringify(os::PATH_SEPARATOR);
     }
 
     return value.substr(0, end + 1);

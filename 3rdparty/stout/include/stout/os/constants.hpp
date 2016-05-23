@@ -17,15 +17,13 @@
 
 namespace os {
 
-const char WINDOWS_SEPARATOR_CHAR = '\\';
-const char POSIX_SEPARATOR_CHAR = '/';
+constexpr char WINDOWS_PATH_SEPARATOR = '\\';
+constexpr char POSIX_PATH_SEPARATOR = '/';
 
 #ifndef __WINDOWS__
-const std::string DIRECTORY_SEPARATOR = "/";
-const char DIRECTORY_SEPARATOR_CHAR = '/';
+constexpr char PATH_SEPARATOR = POSIX_PATH_SEPARATOR;
 #else
-const std::string DIRECTORY_SEPARATOR = "\\";
-const char DIRECTORY_SEPARATOR_CHAR = '\\';
+constexpr char PATH_SEPARATOR = WINDOWS_PATH_SEPARATOR;
 #endif // __WINDOWS__
 
 } // namespace os {
