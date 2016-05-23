@@ -24,7 +24,7 @@
 
 namespace os {
 
-// Forward declaration.
+// Forward declaration for an OS-agnostic `write`.
 inline Try<Nothing> write(int fd, const std::string& message);
 
 

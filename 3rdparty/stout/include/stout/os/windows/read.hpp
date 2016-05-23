@@ -23,7 +23,7 @@
 
 namespace os {
 
-// Forward declaration.
+// Forward declaration for an OS-agnostic `read`.
 inline Result<std::string> read(int fd, size_t size);
 
 

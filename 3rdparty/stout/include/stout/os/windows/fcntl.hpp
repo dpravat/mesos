@@ -69,7 +69,6 @@ inline Try<Nothing> nonblock(int fd)
 }
 
 
-// NOTE: This is not supported on Windows.
 inline Try<Nothing> nonblock(HANDLE handle)
 {
   return nonblock(
