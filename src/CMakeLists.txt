@@ -100,11 +100,17 @@ set(APPC_SRC
   )
 
 set(AUTHENTICATION_SRC
-  authentication/cram_md5/authenticatee.cpp
-  authentication/cram_md5/authenticator.cpp
-  authentication/cram_md5/auxprop.cpp
   authentication/http/basic_authenticator_factory.cpp
   )
+
+if (NOT WIN32)
+  set(AUTHENTICATION_SRC
+    ${AUTHENTICATION_SRC}
+    authentication/cram_md5/authenticatee.cpp
+    authentication/cram_md5/authenticator.cpp
+    authentication/cram_md5/auxprop.cpp
+    )
+endif (NOT WIN32)
 
 set(AUTHORIZER_SRC
   authorizer/acls.cpp
@@ -145,7 +151,6 @@ set(LINUX_SRC
   slave/containerizer/mesos/isolators/docker/volume/driver.cpp
   slave/containerizer/mesos/isolators/docker/volume/isolator.cpp
   slave/containerizer/mesos/isolators/filesystem/linux.cpp
-  slave/containerizer/mesos/isolators/filesystem/posix.cpp
   slave/containerizer/mesos/isolators/filesystem/shared.cpp
   slave/containerizer/mesos/isolators/namespaces/pid.cpp
   slave/containerizer/mesos/isolators/network/cni/cni.cpp
@@ -209,26 +214,34 @@ set(LOGGING_SRC
   )
 
 set(MASTER_SRC
-  master/contender/contender.cpp
-  master/detector/detector.cpp
-  master/flags.cpp
-  master/http.cpp
-  master/maintenance.cpp
-  master/master.cpp
-  master/metrics.cpp
-  master/quota.cpp
-  master/quota_handler.cpp
-  master/registry.hpp
-  master/registrar.cpp
-  master/repairer.cpp
   master/validation.cpp
-  master/weights.cpp
-  master/weights_handler.cpp
-  master/allocator/allocator.cpp
-  master/allocator/mesos/hierarchical.cpp
-  master/allocator/mesos/metrics.cpp
-  master/allocator/sorter/drf/sorter.cpp
+  master/detector/detector.cpp
+  master/detector/standalone.cpp
+  master/detector/zookeeper.cpp
   )
+
+if (NOT WIN32)
+  set(MASTER_SRC
+    ${MASTER_SRC}
+    master/flags.cpp
+    master/http.cpp
+    master/maintenance.cpp
+    master/master.cpp
+    master/metrics.cpp
+    master/quota.cpp
+    master/quota_handler.cpp
+    master/registry.hpp
+    master/registrar.cpp
+    master/repairer.cpp
+    master/weights.cpp
+    master/weights_handler.cpp
+    master/allocator/allocator.cpp
+    master/allocator/mesos/hierarchical.cpp
+    master/allocator/mesos/metrics.cpp
+    master/allocator/sorter/drf/sorter.cpp
+    master/contender/contender.cpp
+    )
+endif (NOT WIN32)
 
 set(MODULE_SRC
   module/manager.cpp
@@ -256,13 +269,42 @@ set(AGENT_SRC
   slave/http.cpp
   slave/metrics.cpp
   slave/paths.cpp
+  slave/slave.cpp
   slave/qos_controller.cpp
   slave/qos_controllers/noop.cpp
+  slave/resource_estimator.cpp
   slave/resource_estimators/noop.cpp
   slave/state.cpp
   slave/status_update_manager.cpp
   slave/validation.cpp
   slave/containerizer/mesos/launch.cpp
+  slave/containerizer/fetcher.cpp
+  slave/containerizer/containerizer.cpp
+  slave/containerizer/external_containerizer.cpp
+  slave/containerizer/composing.cpp
+  slave/containerizer/mesos/containerizer.cpp
+  slave/container_logger.cpp
+  slave/container_loggers/sandbox.cpp
+  slave/containerizer/mesos/isolator.cpp
+  slave/containerizer/mesos/launcher.cpp
+  slave/containerizer/mesos/mount.cpp
+  slave/containerizer/mesos/provisioner/paths.cpp
+  slave/containerizer/mesos/provisioner/provisioner.cpp
+  slave/containerizer/mesos/provisioner/store.cpp
+  slave/containerizer/mesos/provisioner/appc/cache.cpp
+  slave/containerizer/mesos/provisioner/appc/fetcher.cpp
+  slave/containerizer/mesos/provisioner/appc/paths.cpp
+  slave/containerizer/mesos/provisioner/appc/store.cpp
+  slave/containerizer/mesos/provisioner/backend.cpp
+  slave/containerizer/mesos/provisioner/backends/copy.cpp
+  slave/containerizer/mesos/provisioner/docker/local_puller.cpp
+  slave/containerizer/mesos/provisioner/docker/message.proto
+  slave/containerizer/mesos/provisioner/docker/metadata_manager.cpp
+  slave/containerizer/mesos/provisioner/docker/paths.cpp
+  slave/containerizer/mesos/provisioner/docker/puller.cpp
+  slave/containerizer/mesos/provisioner/docker/registry_puller.cpp
+  slave/containerizer/mesos/provisioner/docker/store.cpp
+  slave/containerizer/docker.cpp
   )
 
 if (NOT WIN32)
@@ -272,37 +314,13 @@ if (NOT WIN32)
     slave/container_loggers/sandbox.cpp
     slave/resource_estimator.cpp
     slave/slave.cpp
-    slave/containerizer/composing.cpp
-    slave/containerizer/composing.hpp
-    slave/containerizer/containerizer.cpp
     slave/containerizer/docker.cpp
-    slave/containerizer/docker.hpp
-    slave/containerizer/external_containerizer.cpp
-    slave/containerizer/fetcher.cpp
-    slave/containerizer/mesos/containerizer.cpp
-    slave/containerizer/mesos/isolator.cpp
-    slave/containerizer/mesos/launcher.cpp
     slave/containerizer/mesos/mount.cpp
     slave/containerizer/mesos/isolators/filesystem/posix.cpp
     slave/containerizer/mesos/isolators/posix/disk.cpp
     slave/containerizer/mesos/isolators/docker/volume/paths.cpp
     slave/containerizer/mesos/isolators/network/cni/paths.cpp
     slave/containerizer/mesos/isolators/network/cni/spec.cpp
-    slave/containerizer/mesos/provisioner/docker/local_puller.cpp
-    slave/containerizer/mesos/provisioner/paths.cpp
-    slave/containerizer/mesos/provisioner/provisioner.cpp
-    slave/containerizer/mesos/provisioner/store.cpp
-    slave/containerizer/mesos/provisioner/appc/cache.cpp
-    slave/containerizer/mesos/provisioner/appc/fetcher.cpp
-    slave/containerizer/mesos/provisioner/appc/paths.cpp
-    slave/containerizer/mesos/provisioner/appc/store.cpp
-    slave/containerizer/mesos/provisioner/backend.cpp
-    slave/containerizer/mesos/provisioner/backends/copy.cpp
-    slave/containerizer/mesos/provisioner/docker/metadata_manager.cpp
-    slave/containerizer/mesos/provisioner/docker/paths.cpp
-    slave/containerizer/mesos/provisioner/docker/puller.cpp
-    slave/containerizer/mesos/provisioner/docker/registry_puller.cpp
-    slave/containerizer/mesos/provisioner/docker/store.cpp
     )
 endif (NOT WIN32)
 
@@ -311,9 +329,15 @@ set(URI_SRC
   uri/utils.cpp
   uri/fetchers/copy.cpp
   uri/fetchers/curl.cpp
-  uri/fetchers/docker.cpp
-  uri/fetchers/hadoop.cpp
   )
+
+if (NOT WIN32)
+  set(URI_SRC
+    ${URI_SRC}
+    uri/fetchers/docker.cpp
+    uri/fetchers/hadoop.cpp
+    )
+endif (NOT WIN32)
 
 set(USAGE_SRC
   usage/usage.cpp
@@ -349,38 +373,38 @@ set(MESSAGES_SRC
 
 set(MESOS_SRC
   ${MESOS_SRC}
+  ${AUTHENTICATION_SRC}
+  ${AUTHORIZER_SRC}
   ${AGENT_SRC}
+  ${APPC_SRC}
   ${MESOS_PROTOBUF_SRC}
+  ${MODULE_SRC}
+  ${COMMON_SRC}
+  ${V1_SRC}
+  ${HOOK_SRC}
+  ${INTERNAL_SRC}
+  ${FILES_SRC}
+  ${MESSAGES_SRC}
+  ${LOGGING_SRC}
+  ${VERSION_SRC}
+  ${ZOOKEEPER_SRC}
+  ${MASTER_SRC}
+  ${EXEC_SRC}
+  ${DOCKER_SRC}
+  ${USAGE_SRC}
+  ${URI_SRC}
   )
 
 if (NOT WIN32)
   set(MESOS_SRC
     ${MESOS_SRC}
-    ${APPC_SRC}
-    ${AUTHENTICATION_SRC}
-    ${AUTHORIZER_SRC}
-    ${COMMON_SRC}
-    ${DOCKER_SRC}
-    ${EXEC_SRC}
-    ${FILES_SRC}
     ${HDFS_SRC}
-    ${HOOK_SRC}
-    ${INTERNAL_SRC}
     ${LOCAL_SRC}
     ${LOG_SRC}
-    ${LOGGING_SRC}
-    ${MESSAGES_SRC}
-    ${MASTER_SRC}
-    ${MODULE_SRC}
     ${SCHED_SRC}
     ${SCHEDULER_SRC}
     ${STATE_SRC}
-    ${URI_SRC}
-    ${USAGE_SRC}
-    ${V1_SRC}
-    ${VERSION_SRC}
     ${WATCHER_SRC}
-    ${ZOOKEEPER_SRC}
     )
 endif (NOT WIN32)
 
@@ -389,12 +413,20 @@ if (LINUX)
   set(MESOS_SRC ${MESOS_SRC} ${LINUX_SRC})
 endif (LINUX)
 
+# TODO(hausdorff): (MESOS-5455) These are placeholder values. Transition away
+# from them.
+set(BUILD_DATE "\"2016-3-3 10:20\"")
+set(BUILD_TIME "\"1111100\"")
+set(BUILD_USER "\"frank\"")
+set(BUILD_FLAGS "\"\"")
+set(BUILD_JAVA_JVM_LIBRARY "")
+
 # Include source for Windows build.
 if (WIN32)
   set(MESOS_SRC ${MESOS_SRC} ${WIN32_SRC})
 endif (WIN32)
 
-add_definitions(-DUSE_STATIC_LIB -DBUILD_DATE=0 -DBUILD_TIME=0 -DBUILD_USER="frank" -DBUILD_FLAGS="" -DBUILD_JAVA_JVM_LIBRARY="")
+add_definitions(-DUSE_STATIC_LIB -DBUILD_DATE=${BUILD_DATE} -DBUILD_TIME=${BUILD_TIME} -DBUILD_USER=${BUILD_USER} -DBUILD_FLAGS=${BUILD_FLAGS} -DBUILD_JAVA_JVM_LIBRARY="")
 
 # INCLUDE DIRECTIVES FOR MESOS LIBRARY (generates, e.g., -I/path/to/thing
 # on Linux).
@@ -419,3 +451,115 @@ add_dependencies(${MESOS_TARGET} ${AGENT_DEPENDENCIES})
 # ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
 ######################################################
 target_link_libraries(${MESOS_TARGET} ${AGENT_LIBS})
+
+
+# MESOS CONTAINERIZER TESTING INFRASTRUCTURE for Windows.
+#########################################################
+if (WIN32)
+  list(
+    APPEND CMAKE_MODULE_PATH
+    ${CMAKE_SOURCE_DIR}/src/tests/cmake
+    )
+  include(ContainerizerTestsConfigure)
+  add_subdirectory(tests/containerizer)
+endif (WIN32)
+
+
+add_definitions(-DUSE_STATIC_LIB)
+
+# INCLUDE DIRECTIVES FOR PROCESS TEST BINARY (generates, e.g., -I/path/to/thing
+# on Linux).
+###############################################################################
+include_directories(${PROCESS_AGENT_INCLUDE_DIRS})
+
+
+# LINKING LIBRARIES BY DIRECTORY (might generate, e.g., -L/path/to/thing on
+# Linux).
+###########################################################################
+link_directories(${PROCESS_AGENT_LIB_DIRS})
+
+
+# THE PROCESS AGENT EXECUTABLE .
+###############################################################################
+add_executable(${AGENT_TARGET} slave/main.cpp )
+
+set(PROCESS_AGENT_LIBS
+  ${PROCESS_AGENT_LIBS}
+  ${AGENT_LIBS}
+  ${MESOS_TARGET}
+  ${PROCESS_TARGET}
+  ${HTTP_PARSER_LFLAG}
+  ${ZOOKEEPER_LFLAG}
+  )
+
+if (WIN32)
+  set(PROCESS_AGENT_LIBS
+    ${PROCESS_AGENT_LIBS}
+    ws2_32
+    )
+endif (WIN32)
+
+# ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
+######################################################
+target_link_libraries(${AGENT_TARGET} ${PROCESS_AGENT_LIBS})
+
+# ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
+####################################################################
+add_dependencies(${AGENT_TARGET} ${MESOS_TARGET})
+
+# THE PROCESS AGENT EXECUTABLE .
+###############################################################################
+add_executable(${MESOS_CONTAINERIZER} slave/containerizer/mesos/main.cpp)
+
+# ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
+######################################################
+target_link_libraries(${MESOS_CONTAINERIZER} ${MESOS_TARGET})
+
+# ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
+####################################################################
+add_dependencies(${MESOS_CONTAINERIZER} ${MESOS_TARGET})
+
+###############################################################################
+add_executable(${MESOS_EXECUTOR} launcher/executor.cpp)
+add_executable(${MESOS_FETCHER} launcher/fetcher.cpp)
+
+
+# ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
+######################################################
+target_link_libraries(${MESOS_EXECUTOR} ${PROCESS_AGENT_LIBS})
+target_link_libraries(${MESOS_FETCHER} ${PROCESS_AGENT_LIBS})
+
+# ADD BINARY DEPENDENCIES (tells CMake what to compile/build first).
+####################################################################
+add_dependencies(${MESOS_EXECUTOR} ${AGENT_DEPENDENCIES})
+add_dependencies(${MESOS_FETCHER} ${AGENT_DEPENDENCIES})
+
+# mesos-health-check
+###############################################################################
+add_executable(${MESOS_HEALTH_CHECK} health-check/main.cpp)
+target_link_libraries(${MESOS_HEALTH_CHECK} ${PROCESS_AGENT_LIBS})
+add_dependencies(${MESOS_HEALTH_CHECK} ${MESOS_FETCHER})
+
+# mesos-docker-executor
+###############################################################################
+add_executable(${MESOS_DOCKER_EXECUTOR} docker/executor.cpp)
+target_link_libraries(${MESOS_DOCKER_EXECUTOR} ${PROCESS_AGENT_LIBS})
+add_dependencies(${MESOS_DOCKER_EXECUTOR} ${MESOS_HEALTH_CHECK})
+
+# mesos-usage
+###############################################################################
+add_executable(${MESOS_USAGE} usage/main.cpp)
+target_link_libraries(${MESOS_USAGE} ${PROCESS_AGENT_LIBS})
+add_dependencies(${MESOS_USAGE} ${MESOS_DOCKER_EXECUTOR})
+
+# mesos-log
+###############################################################################
+#add_executable(${MESOS_LOG} log/main.cpp)
+#target_link_libraries(${MESOS_LOG} ${PROCESS_AGENT_LIBS})
+#add_dependencies(${MESOS_LOG} ${MESOS_FETCHER})
+
+# mesos-master
+###############################################################################
+#add_executable(${MESOS_MASTER} master/main.cpp)
+#target_link_libraries(${MESOS_MASTER} ${PROCESS_AGENT_LIBS})
+#add_dependencies(${MESOS_MASTER} ${MESOS_FETCHER})
