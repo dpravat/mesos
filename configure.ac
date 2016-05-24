@@ -144,6 +144,10 @@ AC_CONFIG_FILES([mpi/mpiexec-mesos], [chmod +x mpi/mpiexec-mesos])
 ###############################################################################
 # Optional features.
 ###############################################################################
+AC_ARG_ENABLE([authentication],
+              AS_HELP_STRING([--disable-authentication],
+                             [disable master/slave/framework authentication]),
+              [], [enable_authentication=yes])
 
 AC_ARG_ENABLE([bundled],
               AS_HELP_STRING([--disable-bundled],
@@ -1815,6 +1819,9 @@ if test -n "`echo $with_protobuf`"; then
   CPPFLAGS="$CPPFLAGS -I${with_protobuf}/include"
   LDFLAGS="$LDFLAGS -L${with_protobuf}/lib"
 fi
+
+if test "x$enable_authentication" = "xyes"; then
+
 # Check if Sasl2 prefix path was provided, and if so, add it to
 # the CPPFLAGS and LDFLAGS with respective /include and /lib path
 # suffixes.
@@ -1900,6 +1907,10 @@ AS_IF([test "x$crammd5test" = "xfound"],
 -------------------------------------------------------------------
 We need CRAM-MD5 support for SASL authentication.
 -------------------------------------------------------------------])])
+
+fi
+
+AM_CONDITIONAL([HAS_AUTHENTICATION], [test "x$enable_authentication" = "xyes"])
 
 
 # Check if libssl prefix path was provided, and if so, add it to
