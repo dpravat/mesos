@@ -72,19 +72,28 @@ static Try<bool> extract(
   } else if (strings::endsWith(sourcePath, ".gz")) {
     string pathWithoutExtension = sourcePath.substr(0, sourcePath.length() - 3);
     string filename = Path(pathWithoutExtension).basename();
+
+#ifndef __WINDOWS__
     command = "gzip -dc > '" + destinationDirectory + "/" + filename + "' <";
+#else
+    command = "gzip -dc > \"" + destinationDirectory + "\\" + filename + "\" <";
+#endif // __WINDOWS__
   } else if (strings::endsWith(sourcePath, ".zip")) {
     command = "unzip -o -d '" + destinationDirectory + "'";
   } else {
     return false;
   }
 
+#ifndef __WINDOWS__
   command += " '" + sourcePath + "'";
+#else
+  command += " \"" + sourcePath + "\"";
+#endif // __WINDOWS__
 
   LOG(INFO) << "Extracting with command: " << command;
 
   int status = os::system(command);
-  if (status != 0) {
+  if (status == -1) {
     return Error("Failed to extract: command " + command +
                  " exited with status: " + stringify(status));
   }
@@ -101,6 +110,7 @@ static Try<string> downloadWithHadoopClient(
     const string& sourceUri,
     const string& destinationPath)
 {
+#ifndef __WINDOWS__
   Try<Owned<HDFS>> hdfs = HDFS::create();
   if (hdfs.isError()) {
     return Error("Failed to create HDFS client: " + hdfs.error());
@@ -118,6 +128,10 @@ static Try<string> downloadWithHadoopClient(
   }
 
   return destinationPath;
+#else
+  return Error("Hadoop client is not currently supported on Windows; could "
+               "not fetch '" + sourceUri + "'");
+#endif
 }
 
 
@@ -162,12 +176,18 @@ static Try<string> copyFile(
     const string& sourcePath,
     const string& destinationPath)
 {
+#ifndef __WINDOWS__
   const string command = "cp '" + sourcePath + "' '" + destinationPath + "'";
+#else
+  const string convertedSourcePath = strings::replace(sourcePath, "/", "\\");
+  const string command =
+    "cp \"" + convertedSourcePath + "\" \"" + destinationPath + "\"";
+#endif // __WINDOWS__
 
   LOG(INFO) << "Copying resource with command:" << command;
 
   int status = os::system(command);
-  if (status != 0) {
+  if (status == -1) {
     return Error("Failed to copy with command '" + command +
                  "', exit status: " + stringify(status));
   }
@@ -227,6 +247,7 @@ static Try<string> download(
 // TODO(bernd-mesos): Refactor this into stout so that we can more easily
 // chmod an executable. For example, we could define some static flags
 // so that someone can do: os::chmod(path, EXECUTABLE_CHMOD_FLAGS).
+#ifndef __WINDOWS__
 static Try<string> chmodExecutable(const string& filePath)
 {
   Try<Nothing> chmod = os::chmod(
@@ -238,6 +259,7 @@ static Try<string> chmodExecutable(const string& filePath)
 
   return filePath;
 }
+#endif // __WINDOWS__
 
 
 // Returns the resulting file or in case of extraction the destination
@@ -280,7 +302,13 @@ static Try<string> fetchBypassingCache(
   }
 
   if (uri.executable()) {
+#ifndef __WINDOWS__
     return chmodExecutable(downloaded.get());
+#else
+    LOG(WARNING) << "Fetcher is attempting to `os::chmod` an executable; this "
+                    "is not necessary on Windows";
+    return downloaded;
+#endif // __WINDOWS__
   } else if (uri.extract()) {
     Try<bool> extracted = extract(path, sandboxDirectory);
     if (extracted.isError()) {
@@ -339,7 +367,13 @@ static Try<string> fetchFromCache(
       return Error(copied.error());
     }
 
+#ifndef __WINDOWS__
     return chmodExecutable(copied.get());
+#else
+    LOG(WARNING) << "Fetcher is attempting to `os::chmod` an executable; this "
+                    "is not necessary on Windows";
+    return copied;
+#endif // __WINDOWS__
   } else if (item.uri().extract()) {
     Try<bool> extracted = extract(sourcePath, sandboxDirectory);
     if (extracted.isError()) {
@@ -491,6 +525,7 @@ int main(int argc, char* argv[])
     }
   }
 
+#ifndef __WINDOWS__
   // Recursively chown the sandbox directory if a user is provided.
   if (fetcherInfo.get().has_user()) {
     Try<Nothing> chowned = os::chown(
@@ -501,6 +536,10 @@ int main(int argc, char* argv[])
         << "Failed to chown " << sandboxDirectory << ": " << chowned.error();
     }
   }
+#else
+  LOG(WARNING) << "Fetcher is attempting to recursively `os::chown` a "
+                  "directory, but Windows does not support `chown`";
+#endif // __WINDOWS__
 
   return 0;
 }
