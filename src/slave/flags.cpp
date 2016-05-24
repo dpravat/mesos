@@ -20,6 +20,7 @@
 #include <stout/flags.hpp>
 #include <stout/json.hpp>
 #include <stout/option.hpp>
+#include <stout/path.hpp>
 
 #include <mesos/type_utils.hpp>
 
@@ -28,6 +29,13 @@
 #include "slave/constants.hpp"
 
 using std::string;
+
+
+std::string mesos_temp_path()
+{
+  return path::join(path::temp_path(), "mesos");
+}
+
 
 mesos::internal::slave::Flags::Flags()
 {
@@ -125,7 +133,7 @@ mesos::internal::slave::Flags::Flags()
   add(&Flags::appc_store_dir,
       "appc_store_dir",
       "Directory the appc provisioner will store images in.\n",
-      "/tmp/mesos/store/appc");
+      path::join(mesos_temp_path(), "store", "appc"));
 
   add(&Flags::docker_registry,
       "docker_registry",
@@ -171,11 +179,12 @@ mesos::internal::slave::Flags::Flags()
       "fetcher_cache_dir",
       "Parent directory for fetcher cache directories\n"
       "(one subdirectory per agent).",
-      "/tmp/mesos/fetch");
+      path::join(mesos_temp_path(), "fetch"));
 
   add(&Flags::work_dir,
       "work_dir",
-      "Directory path to place framework work directories\n", "/tmp/mesos");
+      "Directory path to place framework work directories\n",
+      mesos_temp_path());
 
   add(&Flags::launcher_dir, // TODO(benh): This needs a better name.
       "launcher_dir",
