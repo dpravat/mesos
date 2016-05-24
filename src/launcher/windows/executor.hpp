@@ -25,6 +25,8 @@
 #include <stout/os.hpp>
 #include <stout/strings.hpp>
 
+#include <stout/os/close.hpp>
+
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -92,7 +94,7 @@ inline pid_t launchTaskWindows(
       NULL,                 // Default security attributes.
       NULL,                 // Default primary thread security attributes.
       TRUE,                 // Inherited parent process handles.
-      0,                    // Default creation flags.
+      CREATE_SUSPENDED,     // Create suspended so we can wrap in job object.
       NULL,                 // Use parent's environment.
       NULL,                 // Use parent's current directory.
       &startupInfo,         // STARTUPINFO pointer.
@@ -104,6 +106,17 @@ inline pid_t launchTaskWindows(
 
     abort();
   }
+
+  Try<HANDLE> job = os::create_job(processInfo.dwProcessId);
+  // The job handle is not closed. The job lifetime is equal or lower
+  // than the process lifetime.
+  if (job.isError()) {
+      abort();
+  }
+
+  ::ResumeThread(processInfo.hThread);
+  os::close(processInfo.hThread);
+  os::close(processInfo.hProcess);
 
   return processInfo.dwProcessId;
 }
