@@ -648,9 +648,12 @@ Status MesosExecutorDriver::start()
 
     // Set stream buffering mode to flush on newlines so that we
     // capture logs from user processes even when output is redirected
-    // to a file.
-    setvbuf(stdout, 0, _IOLBF, 0);
-    setvbuf(stderr, 0, _IOLBF, 0);
+    // to a file. On POSIX, the buffer size is determined by the system
+    // when the last parameter is null. On Windows we have to specify
+    // the size, so we use 1024 bytes, a number that is arbitrary, but
+    // large enough to not affect performance.
+    setvbuf(stdout, 0, _IOLBF, 1024);
+    setvbuf(stderr, 0, _IOLBF, 1024);
 
     bool local;
 
