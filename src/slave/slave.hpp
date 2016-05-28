@@ -760,6 +760,16 @@ struct Executor
       std::ostream& stream,
       const Executor& executor);
 
+// Undefine NetBios preprocessor macros to avoid conflict with as agent states.
+#ifdef REGISTERING
+#undef REGISTERING
+#endif // REGISTERING
+
+#ifdef REGISTERED
+#undef REGISTERED
+#endif // REGISTERED
+
+
   enum State
   {
     REGISTERING,  // Executor is launched but not (re-)registered yet.
