@@ -26,6 +26,8 @@ Mesos runs on Linux (64 Bit) and Mac OS X (64 Bit). To build Mesos from source, 
 
 For full support of process isolation under Linux a recent kernel >=3.10 is required.
 
+Mesos agent also run on Windows. To build Mesos agent from sources, Visual Studio 2015 is required.
+
 Make sure your hostname is resolvable via DNS or via `/etc/hosts` to allow full support of Docker's host-networking capabilities, needed for some of the Mesos tests. When in doubt, please validate that `/etc/hosts` contains your hostname.
 
 ### Ubuntu 14.04
@@ -165,6 +167,18 @@ Following are the instructions for stock CentOS 7.1. If you are using a differen
     # Install other Mesos dependencies.
     $ sudo yum install -y apache-maven python-devel java-1.8.0-openjdk-devel zlib-devel libcurl-devel openssl-devel cyrus-sasl-devel cyrus-sasl-md5 apr-devel subversion-devel apr-util-devel
 
+### Windows
+
+Following are the instructions for stock Windows 10 and Windows Server 2012 or newer.
+
+    # Install the latest version of Visual Studio Community 2015. https://www.visualstudio.com/post-download-vs?sku=community
+    # Install CMake https://cmake.org/files/v3.5/cmake-3.5.2-win32-x86.msi
+    $ Install Gnu Patch http://downloads.sourceforge.net/project/gnuwin32/patch/2.5.9-7/patch-2.5.9-7-setup.exe
+
+    # Start Visual Studio Community to complete the setup and configuration.
+
+*NOTE: Don't start CMake before Visual Studio Community setup is complete*
+
 ## Building Mesos
 
     # Change working directory.
@@ -186,6 +200,35 @@ In order to speed up the build and reduce verbosity of the logs, you can append 
 
     # Install (Optional).
     $ make install
+
+## Building Mesos on Windows
+
+    # Start the build environment.
+    $ Start a VS2015 x64 Native Tool command prompt
+
+    # Change working directory.
+    $ cd mesos
+
+    # Generating solution and build.
+    $ mkdir build
+    $ cd build
+    $ cmake .. -DENABLE_LIB_EVENT=1
+    $ msbuild Mesos.sln /p:PreferredToolArchitecture=x64
+
+    # After generating the Visual Studio solution you can use the IDE to
+    # open the project. In this case it is recommended to set
+    # PreferredToolArchitecture environment variable to x64.
+    # Mesos-agent.exe can be found in the  <repository>\build\src\Debug folder.
+    # To get started point the agent to a working master, using eiher an IP
+    # address or zookeeper information.
+    # Windows agent exposes new isolators that must be used as with
+    # the --isolation flag.
+
+    #Change to the build directory
+    $ cd <repository>\build\src\Debug
+
+    #start the mesos-agent
+    $ mesos-agent.exe --master=<master> --work_dir=<work folder> --isolation=windows/cpu,filesystem/windows --launcher_dir=<repository>\build\src\Debug
 
 ## Examples
 
