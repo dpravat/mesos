@@ -15,6 +15,7 @@
 
 #include <io.h>
 
+#include <stout/error.hpp>
 #include <stout/result.hpp>
 #include <stout/windows.hpp> // For order-dependent networking headers.
 
@@ -33,9 +34,31 @@ inline ssize_t read(int fd, void* data, size_t size)
     return ::recv(fd, (char*) data, size, 0);
   }
 
+  // Workaround for process eneded.
+  HANDLE handle = (HANDLE)_get_osfhandle(fd);
+ 
+  if (GetFileType(handle) == FILE_TYPE_PIPE)
+  { 
+    int length = ::_read(fd, data, size);
+    int error;
+      _get_errno(&error);
+//    if (length == -1 && GetLastError() == ERROR_NO_DATA) {
+//        return 0;
+//      }     
+    return length;
+  }
   return ::_read(fd, data, size);
 }
 
+inline Try<ssize_t, WindowsErrnoError> read_err(int fd, void* data, size_t size)
+{
+  int length = read(fd, data, size);
+  
+  if (length <0)
+    return WindowsErrnoError();
+ 
+  return length;
+}
 
 inline ssize_t read(HANDLE handle, void* data, size_t size)
 {

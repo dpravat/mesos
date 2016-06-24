@@ -118,4 +118,9 @@ public:
     : WindowsErrorBase(::WSAGetLastError(), message) {}
 };
 
+class WindowsErrnoError : public WindowsErrorBase {
+public:
+  WindowsErrnoError() : WindowsErrorBase(errno) {} 
+};
+
 #endif // __STOUT_WINDOWS_ERROR_HPP__
