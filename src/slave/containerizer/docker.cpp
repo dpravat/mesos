@@ -88,7 +88,11 @@ const string DOCKER_NAME_SEPERATOR = ".";
 
 
 // Declared in header, see explanation there.
+#ifdef __WINDOWS__
+const string DOCKER_SYMLINK_DIRECTORY = "docker\\links";
+#else
 const string DOCKER_SYMLINK_DIRECTORY = "docker/links";
+#endif // __WINDOWS__
 
 
 // Parse the ContainerID from a Docker container and return None if
