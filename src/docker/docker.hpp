@@ -212,7 +212,11 @@ protected:
          const std::string& _socket,
          const Option<JSON::Object>& _config)
        : path(_path),
+#ifdef __WINDOWS__
+         socket("npipe://"),
+#else
          socket("unix://" + _socket),
+#endif // __WINDOWS__
          config(_config) {}
 
 private:
