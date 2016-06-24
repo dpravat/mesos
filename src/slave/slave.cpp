@@ -999,6 +999,7 @@ void Slave::authenticate()
   }
 #endif // HAS_AUTHENTICATION
 
+
   if (authenticatee == nullptr) {
     Try<Authenticatee*> module =
       modules::ModuleManager::create<Authenticatee>(authenticateeName);
