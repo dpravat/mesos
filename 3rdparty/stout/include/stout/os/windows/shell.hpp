@@ -110,6 +110,10 @@ inline int execlp(const char* file, T... t)
   exit(::_spawnlp(_P_WAIT, file, t...));
 }
 
+inline int execvp(const char* file, char* const argv[])
+{
+  exit(::_spawnvp(_P_WAIT, file, argv));
+}
 
 // Concatenates multiple command-line arguments and escapes the values.
 // If `arg` is not specified (or takes the value `0`), the function will

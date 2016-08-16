@@ -32,6 +32,7 @@ namespace os {
 
 namespace Shell {
 
+using ::execvp;
 // Canonical constants used as platform-dependent args to `exec`
 // calls. `name` is the command name, `arg0` is the first argument
 // received by the callee, usually the command name and `arg1` is the
