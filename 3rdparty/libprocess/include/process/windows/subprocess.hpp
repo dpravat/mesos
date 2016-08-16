@@ -78,8 +78,39 @@ inline Option<string> createProcessEnvironment(
     return None();
   }
 
+  map<string, string> all_env = env.get();
+
+  LPTCH lpvEnv = GetEnvironmentStrings();
+  LPTCH lpEnvStart = lpvEnv;
+
+  if (lpvEnv == nullptr)
+  {
+    return None();
+  }
+
+  int currEnvSize = 0;
+  while (*lpvEnv != '\0') {
+
+    // Skip invalid environment variables
+    if (*lpvEnv == '=')
+    {
+      lpvEnv += strlen(lpvEnv)+1;
+      continue;
+    }
+
+    // Process one entry at the time
+    char *eq_pos= strchr(lpvEnv, '=');
+    string varName = strings::upper(string(lpvEnv, eq_pos));
+    
+    string varVal = string(eq_pos + 1);
+    all_env.insert_or_assign(varName, varVal);
+    lpvEnv += varName.length() + varVal.length() + 2;
+  }
+
+  FreeEnvironmentStrings(lpEnvStart);
+
   string environmentString;
-  foreachpair (const string& key, const string& value, env.get()) {
+  foreachpair (const string& key, const string& value, all_env) {
     environmentString += key + '=' + value + '\0';
   }
 
