@@ -103,13 +103,24 @@ inline int system(const std::string& command)
       _P_WAIT, Shell::name, Shell::arg0, Shell::arg1, command.c_str(), nullptr);
 }
 
-
+// On Windows, the `_spawnlp` call creates a new process.
+// In order to emulate the semantics of `execlp`, we spawn with `_P_WAIT`,
+// which force the parent process to block on the child.  When the child exits,
+// the exit code is propagated back through the parent (via `exit()`).
 template<typename... T>
 inline int execlp(const char* file, T... t)
 {
   exit(::_spawnlp(_P_WAIT, file, t...));
 }
 
+// On Windows, the `_spawnvp` call creates a new process.
+// In order to emulate the semantics of `execvp`, we spawn with `_P_WAIT`,
+// which force the parent process to block on the child.  When the child exits,
+// the exit code is propagated back through the parent (via `exit()`).
+inline int execvp(const char* file, char* const argv[])
+{
+  exit(::_spawnvp(_P_WAIT, file, argv));
+}
 
 // Concatenates multiple command-line arguments and escapes the values.
 // If `arg` is not specified (or takes the value `0`), the function will
