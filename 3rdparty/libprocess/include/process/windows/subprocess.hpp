@@ -30,6 +30,8 @@
 #include <stout/os/close.hpp>
 #include <stout/os/environment.hpp>
 
+#include <userEnv.h>
+
 using std::map;
 using std::string;
 using std::vector;
@@ -62,6 +64,45 @@ inline void close(
   }
 }
 
+// Retrieves curent user's environment.
+inline Option<map<string, string>> getCUEnvironment()
+{
+  std::wstring_convert<std::codecvt<wchar_t, char, mbstate_t>, wchar_t> converter;
+  map<string, string> environment;
+  wchar_t*  lpvEnv = nullptr;
+
+  BOOL envCode = CreateEnvironmentBlock((LPVOID*)&lpvEnv, nullptr, FALSE);
+  wchar_t* lpEnvStart = lpvEnv;
+
+  if (lpvEnv == nullptr)
+  {
+    return None();
+  }
+
+  int currEnvSize = 0;
+  while (*lpvEnv != '\0') {
+
+    // Skip invalid environment variables
+    if (*lpvEnv == '=')
+    {
+      lpvEnv += wcslen(lpvEnv) + 1;
+      continue;
+    }
+
+    // Process one entry at the time
+    wchar_t *eq_pos = wcschr(lpvEnv, L'=');
+    std::wstring varName = std::wstring(lpvEnv, eq_pos);
+    std::transform(varName.begin(), varName.end(), varName.begin(), ::towupper);
+
+    std::wstring varVal = std::wstring(eq_pos + 1);
+    environment.insert_or_assign(converter.to_bytes(varName.c_str()), converter.to_bytes(varVal.c_str()));
+    lpvEnv += varName.length() + varVal.length() + 2;
+  }
+
+  DestroyEnvironmentBlock(lpEnvStart);
+
+  return environment;
+}
 
 // Creates a null-terminated array of null-terminated strings that will be
 // passed to `CreateProcess` as the `lpEnvironment` argument, as described by
@@ -78,39 +119,20 @@ inline Option<string> createProcessEnvironment(
     return None();
   }
 
-  map<string, string> all_env = env.get();
+  Option<map<string, string>> cuEnv = getCUEnvironment();
 
-  LPTCH lpvEnv = GetEnvironmentStrings();
-  LPTCH lpEnvStart = lpvEnv;
-
-  if (lpvEnv == nullptr)
-  {
+  if (cuEnv.isNone() || (cuEnv.isSome() && cuEnv.get().size() == 0)) {
     return None();
   }
 
-  int currEnvSize = 0;
-  while (*lpvEnv != '\0') {
+  map<string, string> combEnv = env.get();
 
-    // Skip invalid environment variables
-    if (*lpvEnv == '=')
-    {
-      lpvEnv += strlen(lpvEnv)+1;
-      continue;
-    }
-
-    // Process one entry at the time
-    char *eq_pos= strchr(lpvEnv, '=');
-    string varName = strings::upper(string(lpvEnv, eq_pos));
-    
-    string varVal = string(eq_pos + 1);
-    all_env.insert_or_assign(varName, varVal);
-    lpvEnv += varName.length() + varVal.length() + 2;
+  foreachpair(const string& key, const string& value, cuEnv.get()) {
+    combEnv[key] = value;
   }
 
-  FreeEnvironmentStrings(lpEnvStart);
-
   string environmentString;
-  foreachpair (const string& key, const string& value, all_env) {
+  foreachpair (const string& key, const string& value, combEnv) {
     environmentString += key + '=' + value + '\0';
   }
 
