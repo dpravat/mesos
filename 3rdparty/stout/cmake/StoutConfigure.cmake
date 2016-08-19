@@ -111,6 +111,7 @@ if (WIN32)
     ${ZLIB_LFLAG}
     ws2_32
     Mswsock
+    userenv
     )
 else (WIN32)
   set(STOUT_LIBS
