@@ -6340,11 +6340,14 @@ map<string, string> executorEnvironment(
     }
   }
 
+#ifndef __WINDOWS__
   // Include a default $PATH if there isn't.
+  // On Windows we expect the agent is configured with the correct path.
   if (environment.count("PATH") == 0) {
     environment["PATH"] =
       "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
   }
+#endif // __WINDOWS__
 
   // Set LIBPROCESS_PORT so that we bind to a random free port (since
   // this might have been set via --port option). We do this before
