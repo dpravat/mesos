@@ -104,7 +104,7 @@ public:
             "'" + stringify(multiplier) + "'");
     }
 
-    value *= multiplier;
+    value *= static_cast<uint64_t>(multiplier);
     return *this;
   }
 
@@ -115,7 +115,7 @@ public:
             "'" + stringify(divisor) + "'");
     }
 
-    value /= divisor;
+    value /= static_cast<uint64_t>(divisor);
     return *this;
   }
 
