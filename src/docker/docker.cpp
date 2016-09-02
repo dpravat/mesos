@@ -112,7 +112,7 @@ Try<Owned<Docker>> Docker::create(
     const Option<JSON::Object>& config)
 {
   if (!path::absolute(socket) &&
-      !strings::startsWith(socket, "npipe")) {
+      !strings::startsWith(socket, "npipe://")) {
     return Error("Invalid Docker socket path: " + socket);
   }
 
