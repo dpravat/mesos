@@ -29,7 +29,6 @@
 #include <stout/attributes.hpp>
 
 // NOTE: These macros are already defined in Visual Studio (Windows) headers.
-#ifndef __WINDOWS__
 #define __STRINGIZE(x) #x
 #define _STRINGIZE(x) __STRINGIZE(x)
 #endif // __WINDOWS__
