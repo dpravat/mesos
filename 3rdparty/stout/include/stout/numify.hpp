@@ -26,6 +26,18 @@
 #include "try.hpp"
 
 template <typename T>
+typename std::enable_if<std::is_unsigned<T>::value,T>::type negate(const T t)
+{
+  return t;
+}
+
+template <typename T>
+typename std::enable_if<std::is_signed<T>::value, T>::type negate(const T t)
+{
+  return -t;
+}
+
+template <typename T>
 Try<T> numify(const std::string& s)
 {
   try {
@@ -50,7 +62,7 @@ Try<T> numify(const std::string& s)
         if (strings::startsWith(s, "-")) {
           ss << std::hex << s.substr(1);
           ss >> result;
-          result = -result;
+          result = negate(result);
         } else {
           ss << std::hex << s;
           ss >> result;
