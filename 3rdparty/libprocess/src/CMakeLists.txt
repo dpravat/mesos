@@ -92,8 +92,15 @@ set_target_properties(
   ${PROCESS_TARGET} PROPERTIES
   VERSION ${PROCESS_PACKAGE_VERSION}
   SOVERSION ${PROCESS_PACKAGE_SOVERSION}
-  COMPILE_FLAGS "-fPIC"
   )
+
+if (NOT WIN32)
+  set_target_properties(
+    ${PROCESS_TARGET} PROPERTIES
+    COMPILE_FLAGS "-fPIC"
+    )
+endif (NOT WIN32)
+
 add_dependencies(${PROCESS_TARGET} ${PROCESS_DEPENDENCIES})
 
 # ADD LINKER FLAGS (generates, e.g., -lglog on Linux).
