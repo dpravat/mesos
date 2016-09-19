@@ -48,7 +48,7 @@ inline bool safe_closehandle(HANDLE handle)
     ::SetLastError(ERROR_INVALID_HANDLE);
   }
 
-  return static_cast<bool>(closed);
+  return static_cast<bool>(closed != 0);
 }
 
 
