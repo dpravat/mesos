@@ -32,5 +32,7 @@ set(HTTP_PARSER_SRC
   )
 
 add_definitions(-D HTTP_PARSER_STRICT=0)
-add_definitions(-fPIC)
+if (NOT WIN32)
+  add_definitions(-fPIC)
+endif (NOT WIN32)
 add_library(http_parser STATIC ${HTTP_PARSER_SRC})
