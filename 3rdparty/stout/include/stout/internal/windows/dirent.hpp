@@ -193,8 +193,10 @@ inline bool open_dir_stream(DIR* directory)
   // don't have to `malloc`.
   //
   // [1] https://msdn.microsoft.com/en-us/library/windows/desktop/aa365740(v=vs.85).aspx
+  // The `static_cast` conversion is appropiate for `d_name` size. 
   strcpy(directory->curr.d_name, directory->fd.cFileName);
-  directory->curr.d_namlen = strlen(directory->curr.d_name);
+
+  directory->curr.d_namlen = static_cast<unsigned short>(strlen(directory->curr.d_name));
 
   return true;
 }
@@ -213,8 +215,9 @@ inline bool reentrant_advance_dir_stream(DIR* directory)
   // don't have to `malloc`.
   //
   // [1] https://msdn.microsoft.com/en-us/library/windows/desktop/aa365740(v=vs.85).aspx
+  // The `static_cast` conversion is appropiate for `d_name` size. 
   strcpy(directory->curr.d_name, directory->fd.cFileName);
-  directory->curr.d_namlen = strlen(directory->curr.d_name);
+  directory->curr.d_namlen = static_cast<unsigned short>(strlen(directory->curr.d_name));
 
   return true;
 }
