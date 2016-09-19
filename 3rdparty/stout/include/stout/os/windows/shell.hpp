@@ -101,8 +101,8 @@ Try<std::string> shell(const std::string& fmt, const T&... t)
 // return -1 on error
 inline int system(const std::string& command)
 {
-  return ::_spawnlp(
-      _P_WAIT, Shell::name, Shell::arg0, Shell::arg1, command.c_str(), nullptr);
+  return static_cast<int>(::_spawnlp(
+      _P_WAIT, Shell::name, Shell::arg0, Shell::arg1, command.c_str(), nullptr));
 }
 
 
