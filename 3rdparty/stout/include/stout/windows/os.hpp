@@ -41,6 +41,7 @@
 namespace os {
 namespace internal {
 
+#pragma warning(disable:4996)
 inline Try<OSVERSIONINFOEX> os_version()
 {
   OSVERSIONINFOEX os_version;
@@ -52,7 +53,7 @@ inline Try<OSVERSIONINFOEX> os_version()
 
   return os_version;
 }
-
+#pragma warning(default:4996)
 
 inline Try<std::string> nodename()
 {
@@ -450,7 +451,7 @@ inline Try<Memory> memory()
   return memory;
 }
 
-
+#pragma warning(disable:4996)
 inline Try<Version> release()
 {
   OSVERSIONINFOEX os_version;
@@ -461,7 +462,7 @@ inline Try<Version> release()
 
   return Version(os_version.dwMajorVersion, os_version.dwMinorVersion, 0);
 }
-
+#pragma warning(default:4996)
 
 // Return the system information.
 inline Try<UTSInfo> uname()
