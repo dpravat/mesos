@@ -124,7 +124,7 @@ inline int spawn(
 template<typename... T>
 inline int execlp(const char* file, T... t)
 {
-  exit(::_spawnlp(_P_WAIT, file, t...));
+  exit(static_cast<int>(::_spawnlp(_P_WAIT, file, t...)));
 }
 
 
@@ -134,7 +134,7 @@ inline int execlp(const char* file, T... t)
 // the exit code is propagated back through the parent via `exit()`.
 inline int execvp(const char* file, char* const argv[])
 {
-  exit(::_spawnvp(_P_WAIT, file, argv));
+  exit(static_cast<int>(::_spawnvp(_P_WAIT, file, argv)));
 }
 
 
