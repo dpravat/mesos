@@ -32,7 +32,7 @@ typename std::enable_if<std::is_unsigned<T>::value,T>::type negate(const T t)
 }
 
 template <typename T>
- std::enable_if<std::is_signed<T>::value, T>::type negate(const T t)
+typename std::enable_if<std::is_signed<T>::value, T>::type negate(const T t)
 {
   return -t;
 }
