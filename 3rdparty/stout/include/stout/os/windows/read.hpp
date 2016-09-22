@@ -30,34 +30,12 @@ inline Result<std::string> read(int fd, size_t size);
 
 inline ssize_t read(int fd, void* data, size_t size)
 {
+  assert(size < UINT_MAX);
+
   if (net::is_socket(fd)) {
-    return ::recv(fd, (char*) data, size, 0);
+    return ::recv(fd, (char*) data, static_cast<unsigned int>(size), 0);
   }
-
-  // Workaround for process eneded.
-  HANDLE handle = (HANDLE)_get_osfhandle(fd);
- 
-  if (GetFileType(handle) == FILE_TYPE_PIPE)
-  { 
-    int length = ::_read(fd, data, size);
-    int error;
-      _get_errno(&error);
-//    if (length == -1 && GetLastError() == ERROR_NO_DATA) {
-//        return 0;
-//      }     
-    return length;
-  }
-  return ::_read(fd, data, size);
-}
-
-inline Try<ssize_t, WindowsErrnoError> read_err(int fd, void* data, size_t size)
-{
-  int length = read(fd, data, size);
-  
-  if (length <0)
-    return WindowsErrnoError();
- 
-  return length;
+  return ::_read(fd, data, static_cast<unsigned int>(size));
 }
 
 inline ssize_t read(HANDLE handle, void* data, size_t size)
