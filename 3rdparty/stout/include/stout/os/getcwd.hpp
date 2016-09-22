@@ -24,7 +24,7 @@ namespace os {
 
 inline std::string getcwd()
 {
-  size_t size = 100;
+  unsigned short size = 100;
 
   while (true) {
     char* temp = new char[size];
