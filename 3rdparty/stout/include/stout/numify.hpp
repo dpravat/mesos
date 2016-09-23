@@ -25,17 +25,9 @@
 #include "strings.hpp"
 #include "try.hpp"
 
-template <typename T>
-typename std::enable_if<std::is_unsigned<T>::value,T>::type negate(const T t)
-{
-  return t;
-}
-
-template <typename T>
-typename std::enable_if<std::is_signed<T>::value, T>::type negate(const T t)
-{
-  return -t;
-}
+#ifdef __WINDOWS__
+  #pragma warning(disable:4146)
+#endif
 
 template <typename T>
 Try<T> numify(const std::string& s)
@@ -62,7 +54,7 @@ Try<T> numify(const std::string& s)
         if (strings::startsWith(s, "-")) {
           ss << std::hex << s.substr(1);
           ss >> result;
-          result = negate(result);
+          result = -result;
         } else {
           ss << std::hex << s;
           ss >> result;
@@ -100,5 +92,9 @@ Result<T> numify(const Option<std::string>& s)
 
   return None();
 }
+
+#ifdef __WINDOWS__
+  #pragma warning(default:4146)
+#endif
 
 #endif // __STOUT_NUMIFY_HPP__
