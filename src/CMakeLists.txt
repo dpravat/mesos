@@ -488,16 +488,28 @@ set_target_properties(
   ${MESOS_TARGET} PROPERTIES
   VERSION ${MESOS_PACKAGE_VERSION}
   SOVERSION ${MESOS_PACKAGE_SOVERSION}
+  )
+
+if (NOT WIN32)
+set_target_properties(
+  ${MESOS_TARGET} PROPERTIES
   COMPILE_FLAGS "-fPIC"
   )
+endif (NOT WIN32)
 
 add_library(${MESOS_PROTOBUF_TARGET} STATIC ${MESOS_PROTOBUF_SRC})
 set_target_properties(
   ${MESOS_PROTOBUF_TARGET} PROPERTIES
   VERSION ${MESOS_PACKAGE_VERSION}
   SOVERSION ${MESOS_PACKAGE_SOVERSION}
+  )
+
+if (NOT WIN32)
+set_target_properties(
+  ${MESOS_PROTOBUF_TARGET} PROPERTIES
   COMPILE_FLAGS "-fPIC"
   )
+endif (NOT WIN32)
 
 # ADD LIBRARY DEPENDENCIES (tells CMake what to compile/build first).
 ####################################################################
