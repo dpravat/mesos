@@ -310,7 +310,7 @@ public:
 
   // Test-only method to fetch the file descriptor behind a
   // persistent socket.
-  Option<int> get_persistent_socket(const UPID& to);
+  Option<FileDesc> get_persistent_socket(const UPID& to);
 
   PID<HttpProxy> proxy(const Socket& socket);
 
@@ -321,9 +321,9 @@ public:
   void send(Message* message,
             const Socket::Kind& kind = Socket::DEFAULT_KIND());
 
-  Encoder* next(int s);
+  Encoder* next(const FileDesc& s);
 
-  void close(int s);
+  void close(const FileDesc& s);
 
   void exited(const Address& address);
   void exited(ProcessBase* process);
@@ -362,32 +362,32 @@ private:
       Message* message);
 
   // Collection of all active sockets (both inbound and outbound).
-  map<int, Socket> sockets;
+  map<FileDesc, Socket> sockets;
 
   // Collection of sockets that should be disposed when they are
   // finished being used (e.g., when there is no more data to send on
   // them). Can contain both inbound and outbound sockets.
-  set<int> dispose;
+  set<FileDesc> dispose;
 
   // Map from socket to socket address for outbound sockets.
-  map<int, Address> addresses;
+  map<FileDesc, Address> addresses;
 
   // Map from socket address to temporary sockets (outbound sockets
   // that will be closed once there is no more data to send on them).
-  map<Address, int> temps;
+  map<Address, FileDesc> temps;
 
   // Map from socket address (ip, port) to persistent sockets
   // (outbound sockets that will remain open even if there is no more
   // data to send on them).  We distinguish these from the 'temps'
   // collection so we can tell when a persistent socket has been lost
   // (and thus generate ExitedEvents).
-  map<Address, int> persists;
+  map<Address, FileDesc> persists;
 
   // Map from outbound socket to outgoing queue.
-  map<int, queue<Encoder*>> outgoing;
+  map<FileDesc, queue<Encoder*>> outgoing;
 
   // HTTP proxies.
-  map<int, HttpProxy*> proxies;
+  map<FileDesc, HttpProxy*> proxies;
 
   // Protects instance variables.
   std::recursive_mutex mutex;
@@ -1585,7 +1585,7 @@ void SocketManager::link(
           return;
         }
         socket = create.get();
-        int s = socket.get().get();
+        FileDesc s = socket.get().get();
 
         CHECK(sockets.count(s) == 0);
         sockets.emplace(s, socket.get());
@@ -1666,12 +1666,12 @@ void SocketManager::link(
 // declaring this function, it is not visible. This is the preferred
 // behavior as we do not want applications to have easy access to
 // managed FD's.
-Option<int> get_persistent_socket(const UPID& to)
+Option<FileDesc> get_persistent_socket(const UPID& to)
 {
   return socket_manager->get_persistent_socket(to);
 }
 
-Option<int> SocketManager::get_persistent_socket(const UPID& to)
+Option<FileDesc> SocketManager::get_persistent_socket(const UPID& to)
 {
   synchronized (mutex) {
     if (persists.count(to.address) > 0) {
@@ -1938,7 +1938,7 @@ void SocketManager::send(Message* message, const Socket::Kind& kind)
     bool persist = persists.count(address) > 0;
     bool temp = temps.count(address) > 0;
     if (persist || temp) {
-      int s = persist ? persists[address] : temps[address];
+      FileDesc s = persist ? persists[address] : temps[address];
       CHECK(sockets.count(s) > 0);
       socket = sockets.at(s);
 
@@ -1969,7 +1969,7 @@ void SocketManager::send(Message* message, const Socket::Kind& kind)
         return;
       }
       socket = create.get();
-      int s = socket.get();
+      FileDesc s = socket.get();
 
       CHECK(sockets.count(s) == 0);
       sockets.emplace(s, socket.get());
@@ -2005,7 +2005,7 @@ void SocketManager::send(Message* message, const Socket::Kind& kind)
 }
 
 
-Encoder* SocketManager::next(int s)
+Encoder* SocketManager::next(const FileDesc& s)
 {
   HttpProxy* proxy = nullptr; // Non-null if needs to be terminated.
 
@@ -2087,7 +2087,7 @@ Encoder* SocketManager::next(int s)
 }
 
 
-void SocketManager::close(int s)
+void SocketManager::close(const FileDesc& s)
 {
   HttpProxy* proxy = nullptr; // Non-null if needs to be terminated.
 

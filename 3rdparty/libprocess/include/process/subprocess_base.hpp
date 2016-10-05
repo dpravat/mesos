@@ -30,6 +30,7 @@
 #include <stout/try.hpp>
 
 #include <stout/os/shell.hpp>
+#include <stout/os/filedescriptor.hpp>
 
 
 namespace process {
@@ -74,13 +75,8 @@ public:
      */
     struct InputFileDescriptors
     {
-#ifndef __WINDOWS__
-      int read = -1;
-      Option<int> write = None();
-#else
-      HANDLE read = INVALID_HANDLE_VALUE;
-      Option<HANDLE> write = None();
-#endif // __WINDOWS__
+        FileDesc read;
+        Option<FileDesc> write = None();
     };
 
     /**
@@ -94,13 +90,8 @@ public:
      */
     struct OutputFileDescriptors
     {
-#ifndef __WINDOWS__
-      Option<int> read = None();
-      int write = -1;
-#else
-      Option<HANDLE> read = None();
-      HANDLE write = INVALID_HANDLE_VALUE;
-#endif // __WINDOWS__
+    Option<FileDesc> read = None();
+    FileDesc write;
     };
 
     /**
@@ -232,11 +223,8 @@ public:
    *     write side) of this subprocess' stdin pipe or None if no pipe
    *     was requested.
    */
-#ifdef __WINDOWS__
-  Option<HANDLE> in() const
-#else
-  Option<int> in() const
-#endif // __WINDOWS__
+
+  Option<FileDesc> in() const
   {
     return data->in;
   }
@@ -246,11 +234,7 @@ public:
    *     side) of this subprocess' stdout pipe or None if no pipe was
    *     requested.
    */
-#ifdef __WINDOWS__
-  Option<HANDLE> out() const
-#else
-  Option<int> out() const
-#endif // __WINDOWS__
+  Option<FileDesc> out() const
   {
     return data->out;
   }
@@ -260,11 +244,7 @@ public:
    *     side) of this subprocess' stderr pipe or None if no pipe was
    *     requested.
    */
-#ifdef __WINDOWS__
-  Option<HANDLE> err() const
-#else
-  Option<int> err() const
-#endif // __WINDOWS__
+  Option<FileDesc> err() const
   {
     return data->err;
   }
@@ -306,8 +286,8 @@ private:
       if (err.isSome()) { os::close(err.get()); }
 
 #ifdef __WINDOWS__
-      os::close(processInformation.hProcess);
-      os::close(processInformation.hThread);
+      CloseHandle(processInformation.hProcess);
+      CloseHandle(processInformation.hThread);
 #endif // __WINDOWS__
     }
 
@@ -321,15 +301,9 @@ private:
     // IO mode is not a pipe, `None` will be stored.
     // NOTE: stdin, stdout, stderr are macros on some systems, hence
     // these names instead.
-#ifdef __WINDOWS__
-    Option<HANDLE> in;
-    Option<HANDLE> out;
-    Option<HANDLE> err;
-#else
-    Option<int> in;
-    Option<int> out;
-    Option<int> err;
-#endif // __WINDOWS__
+    Option<FileDesc> in;
+    Option<FileDesc> out;
+    Option<FileDesc> err;
 
     Future<Option<int>> status;
   };

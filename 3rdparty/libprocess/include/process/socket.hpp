@@ -70,7 +70,7 @@ public:
    * TODO(josephw): MESOS-5729: Consider making the CLOEXEC option
    * configurable by the caller of the interface.
    */
-  static Try<Socket> create(Kind kind = DEFAULT_KIND(), Option<int> s = None());
+  static Try<Socket> create(Kind kind = DEFAULT_KIND(), Option<FileDesc> s = None());
 
   /**
    * Returns the default `Kind` of implementation of `Socket`.
@@ -107,15 +107,15 @@ public:
     virtual ~Impl()
     {
       // Don't close if the socket was released.
-      if (s >= 0) {
-        CHECK_SOME(os::close(s)) << "Failed to close socket";
-      }
+//      if (s >= 0) {
+//        CHECK_SOME(os::close(s)) << "Failed to close socket";
+//      }
     }
 
     /**
      * Returns the file descriptor wrapped by the `Socket`.
      */
-    int get() const
+    FileDesc get() const
     {
       return s;
     }
@@ -153,7 +153,7 @@ public:
     virtual Future<Nothing> connect(const Address& address) = 0;
     virtual Future<size_t> recv(char* data, size_t size) = 0;
     virtual Future<size_t> send(const char* data, size_t size) = 0;
-    virtual Future<size_t> sendfile(int fd, off_t offset, size_t size) = 0;
+    virtual Future<size_t> sendfile(const FileDesc& fd, off_t offset, size_t size) = 0;
 
     /**
      * An overload of `recv`, which receives data based on the specified
@@ -224,7 +224,7 @@ public:
     }
 
   protected:
-    explicit Impl(int _s) : s(_s) { CHECK(s >= 0); }
+    explicit Impl(FileDesc _s) : s(_s) { /*CHECK(s >= 0);*/ }
 
     /**
      * Releases ownership of the file descriptor. Not exposed
@@ -232,10 +232,10 @@ public:
      * support `Socket::Impl` implementations that need to
      * override the file descriptor ownership.
      */
-    int release()
+    FileDesc release()
     {
-      int released = s;
-      s = -1;
+      FileDesc released = s;
+      //s = -1;
       return released;
     }
 
@@ -256,7 +256,7 @@ public:
       return pointer;
     }
 
-    int s;
+    FileDesc s;
   };
 
   bool operator==(const Socket& that) const
@@ -264,7 +264,7 @@ public:
     return impl == that.impl;
   }
 
-  operator int() const
+  operator FileDesc() const
   {
     return impl->get();
   }
@@ -279,7 +279,7 @@ public:
     return impl->peer();
   }
 
-  int get() const
+  FileDesc get() const
   {
     return impl->get();
   }
@@ -314,7 +314,7 @@ public:
     return impl->send(data, size);
   }
 
-  Future<size_t> sendfile(int fd, off_t offset, size_t size) const
+  Future<size_t> sendfile(FileDesc fd, off_t offset, size_t size) const
   {
     return impl->sendfile(fd, offset, size);
   }
