@@ -96,6 +96,12 @@ using ::hstrerror;
 // Import `::random` into `os::` namespace.
 using ::random;
 
+// Import `::getcwd` into `os::` namespace.
+using ::getcwd;
+
+// Import `::dup` into `os::` namespace.
+using ::dup;
+
 // Forward declarations.
 inline Try<Nothing> utime(const std::string&);
 inline Try<std::list<Process>> processes();
