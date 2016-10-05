@@ -160,26 +160,6 @@ static Try<HANDLE> createOutputFile(const string& path)
 }
 
 
-// Opens an inheritable pipe[1] represented as a pair of file handles. On
-// success, the first handle returned recieves the 'read' handle of the pipe,
-// while the second receives the 'write' handle. The pipe handles can then be
-// passed to a child process, as exemplified in [2].
-//
-// [1] https://msdn.microsoft.com/en-us/library/windows/desktop/aa379560(v=vs.85).aspx
-// [2] https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx
-static Try<array<HANDLE, 2>> createPipeHandles()
-{
-  // The `TRUE` in the last field makes this duplicate handle inheritable.
-  SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE };
-  array<HANDLE, 2> handles{ INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };
-
-  if (!::CreatePipe(&handles[0], &handles[1], &sa, 0)) {
-    return WindowsError("createPipeHandles: could not create pipe");
-  }
-
-  return handles;
-}
-
 }  // namespace internal {
 
 
@@ -187,38 +167,22 @@ Subprocess::IO Subprocess::PIPE()
 {
   return Subprocess::IO(
       []() -> Try<InputFileDescriptors> {
-        const Try<array<HANDLE, 2>> handles = internal::createPipeHandles();
-        if (handles.isError()) {
-          return Error(handles.error());
-        }
-
-        // Create STDIN pipe and set the 'write' component to not be
-        // inheritable.
-        if (!::SetHandleInformation(handles.get()[1], HANDLE_FLAG_INHERIT, 0)) {
-          return WindowsError(
-              "PIPE: Failed to call SetHandleInformation on stdin pipe");
-        }
-
+        std::array<FileDesc, 2> handles;
+        MakePipe(handles, os::SOCKETMODE::WRITE);
+ //         return Error(handles.error());
+ 
         InputFileDescriptors fds;
-        fds.read = handles.get()[0];
-        fds.write = handles.get()[1];
+        fds.read = handles[0];
+        fds.write = handles[1];
         return fds;
       },
       []() -> Try<OutputFileDescriptors> {
-        const Try<array<HANDLE, 2>> handles = internal::createPipeHandles();
-        if (handles.isError()) {
-          return Error(handles.error());
-        }
-
-        // Create OUT pipe and set the 'read' component to not be inheritable.
-        if (!::SetHandleInformation(handles.get()[0], HANDLE_FLAG_INHERIT, 0)) {
-          return WindowsError(
-              "PIPE: Failed to call SetHandleInformation on out pipe");
-        }
+        std::array<FileDesc, 2> handles;
+        MakePipe(handles, os::SOCKETMODE::READ);
 
         OutputFileDescriptors fds;
-        fds.read = handles.get()[0];
-        fds.write = handles.get()[1];
+        fds.read = handles[0];
+        fds.write = handles[1];
         return fds;
       });
 }

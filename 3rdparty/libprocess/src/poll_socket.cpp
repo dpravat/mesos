@@ -33,7 +33,7 @@ using std::string;
 namespace process {
 namespace network {
 
-Try<std::shared_ptr<Socket::Impl>> PollSocketImpl::create(int s)
+Try<std::shared_ptr<Socket::Impl>> PollSocketImpl::create(const FileDesc& s)
 {
   return std::make_shared<PollSocketImpl>(s);
 }
@@ -50,14 +50,14 @@ Try<Nothing> PollSocketImpl::listen(int backlog)
 
 namespace internal {
 
-Future<Socket> accept(int fd)
+Future<Socket> accept(FileDesc fd)
 {
-  Try<int> accepted = network::accept(fd);
+  Try<FileDesc> accepted = network::accept(fd);
   if (accepted.isError()) {
     return Failure(accepted.error());
   }
 
-  int s = accepted.get();
+  FileDesc s = accepted.get();
   Try<Nothing> nonblock = os::nonblock(s);
   if (nonblock.isError()) {
     LOG_IF(INFO, VLOG_IS_ON(1)) << "Failed to accept, nonblock: "
@@ -256,7 +256,7 @@ Future<size_t> PollSocketImpl::send(const char* data, size_t size)
 }
 
 
-Future<size_t> PollSocketImpl::sendfile(int fd, off_t offset, size_t size)
+Future<size_t> PollSocketImpl::sendfile(const FileDesc& fd, off_t offset, size_t size)
 {
   return io::poll(get(), io::WRITE)
     .then(lambda::bind(

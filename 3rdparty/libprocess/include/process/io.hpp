@@ -66,7 +66,7 @@ Future<short> poll(int fd, short events);
  * @return The number of bytes read or zero on EOF.
  *     A failure will be returned if an error is detected.
  */
-Future<size_t> read(int fd, void* data, size_t size);
+Future<size_t> read(const FileDesc& fd, void* data, size_t size);
 
 
 /**
@@ -80,11 +80,7 @@ Future<size_t> read(int fd, void* data, size_t size);
  *     file descriptor cannot be duplicated, set to close-on-exec,
  *     or made non-blocking.
  */
-Future<std::string> read(int fd);
-#ifdef __WINDOWS__
-// Version of this function compatible with Windows `HANDLE`.
-Future<std::string> read(HANDLE fd);
-#endif // __WINDOWS__
+Future<std::string> read(const FileDesc& fd);
 
 
 /**
@@ -99,7 +95,7 @@ Future<std::string> read(HANDLE fd);
  *     If writing to a socket or pipe, an error will be returned if the
  *     the read end of the socket or pipe has been closed.
  */
-Future<size_t> write(int fd, const void* data, size_t size);
+Future<size_t> write(const FileDesc& fd, const void* data, size_t size);
 
 
 /**
@@ -111,7 +107,7 @@ Future<size_t> write(int fd, const void* data, size_t size);
  *     file descriptor cannot be duplicated, set to close-on-exec,
  *     or made non-blocking.
  */
-Future<Nothing> write(int fd, const std::string& data);
+Future<Nothing> write(const FileDesc& fd, const std::string& data);
 
 /**
  * Redirect output from the 'from' file descriptor to the 'to' file
@@ -125,11 +121,7 @@ Future<Nothing> write(int fd, const std::string& data);
  *     descriptor is bad, or if the file descriptor cannot be duplicated,
  *     set to close-on-exec, or made non-blocking.
  */
-Future<Nothing> redirect(int from, Option<int> to, size_t chunk = 4096);
-#ifdef __WINDOWS__
-// Version of this function compatible with Windows `HANDLE`.
-Future<Nothing> redirect(HANDLE from, Option<int> to, size_t chunk = 4096);
-#endif // __WINDOWS__
+Future<Nothing> redirect(const FileDesc& from, Option<FileDesc> to, size_t chunk = 4096);
 
 
 /**
@@ -155,7 +147,7 @@ Future<Nothing> redirect(HANDLE from, Option<int> to, size_t chunk = 4096);
  * @return The number of bytes peeked.
  *     A failure will be returned if an error is detected.
  */
-Future<size_t> peek(int fd, void* data, size_t size, size_t limit);
+Future<size_t> peek(const FileDesc& fd, void* data, size_t size, size_t limit);
 
 
 /**
@@ -181,7 +173,7 @@ Future<size_t> peek(int fd, void* data, size_t size, size_t limit);
  * @return Peeked bytes.
  *     A failure will be returned if an error is detected.
  */
-Future<std::string> peek(int fd, size_t limit);
+Future<std::string> peek(const FileDesc& fd, size_t limit);
 
 } // namespace io {
 } // namespace process {

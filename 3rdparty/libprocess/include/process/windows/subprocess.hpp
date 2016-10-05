@@ -51,16 +51,14 @@ inline void close(
     const OutputFileDescriptors& stdoutfds,
     const OutputFileDescriptors& stderrfds)
 {
-  HANDLE fds[6] = {
+  FileDesc fds[6] = {
     stdinfds.read, stdinfds.write.getOrElse(INVALID_HANDLE_VALUE),
     stdoutfds.read.getOrElse(INVALID_HANDLE_VALUE), stdoutfds.write,
     stderrfds.read.getOrElse(INVALID_HANDLE_VALUE), stderrfds.write
   };
 
-  foreach (HANDLE fd, fds) {
-    if (fd != INVALID_HANDLE_VALUE) {
+  foreach (FileDesc fd, fds) {
       os::close(fd);
-    }
   }
 }
 
