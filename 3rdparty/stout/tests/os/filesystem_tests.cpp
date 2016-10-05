@@ -370,7 +370,7 @@ TEST_F(FsTest, Close)
 
   // Open a file, and verify that writing to that file descriptor succeeds
   // before we close it, and fails after.
-  const Try<int> open_valid_fd = os::open(testfile, O_RDWR);
+  Try<FileDesc> open_valid_fd = os::open(testfile, O_RDWR);
   ASSERT_SOME(open_valid_fd);
   ASSERT_SOME(os::write(open_valid_fd.get(), test_message1));
 
@@ -385,7 +385,7 @@ TEST_F(FsTest, Close)
 #ifdef __WINDOWS__
   // Open a file with the traditional Windows `HANDLE` API, then verify that
   // writing to that `HANDLE` succeeds before we close it, and fails after.
-  const HANDLE open_valid_handle = CreateFile(
+  FileDesc open_valid_handle = CreateFile(
       testfile.c_str(),
       FILE_APPEND_DATA,
       0,                     // No sharing mode.
@@ -421,15 +421,7 @@ TEST_F(FsTest, Close)
   ASSERT_EQ(test_message1 + test_message1, read_valid_handle.get());
 #endif // __WINDOWS__
 
-  // Try `close` with invalid file descriptor.
-  EXPECT_ERROR(os::close(static_cast<int>(-1)));
 
-#ifdef __WINDOWS__
-  // Try `close` with invalid `SOCKET` and `HANDLE`.
-  EXPECT_ERROR(os::close(static_cast<SOCKET>(INVALID_SOCKET)));
-  EXPECT_ERROR(os::close(INVALID_SOCKET));
-  EXPECT_ERROR(os::close(static_cast<HANDLE>(open_valid_handle)));
-#endif // __WINDOWS__
 
 #ifdef __WINDOWS__
   // Reset the CRT assert dialog settings.

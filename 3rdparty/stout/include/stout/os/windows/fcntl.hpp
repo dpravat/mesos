@@ -25,7 +25,7 @@
 namespace os {
 
 // NOTE: This is not supported on Windows.
-inline Try<Nothing> cloexec(int fd)
+inline Try<Nothing> cloexec(const FileDesc& fd)
 {
   LOG(WARNING) << "`os::cloexec` has been called, but is a no-op on Windows";
   return Nothing();
@@ -33,16 +33,16 @@ inline Try<Nothing> cloexec(int fd)
 
 
 // NOTE: This is not supported on Windows.
-inline Try<bool> isCloexec(int fd)
+inline Try<bool> isCloexec(const FileDesc& fd)
 {
   LOG(WARNING) << "`os::isCloexec` has been called, but is a stub on Windows";
   return true;
 }
 
 
-inline Try<Nothing> nonblock(int fd)
+inline Try<Nothing> nonblock(const FileDesc& fd)
 {
-  if (net::is_socket(fd)) {
+  if (fd.isSocket()) {
     const u_long non_block_mode = 1;
     u_long mode = non_block_mode;
 
@@ -50,7 +50,8 @@ inline Try<Nothing> nonblock(int fd)
     if (result != NO_ERROR) {
       return WindowsSocketError();
     }
-  } else {
+  }
+/*  else {
     // Extract handle from file descriptor.
     HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(fd));
     if (handle == INVALID_HANDLE_VALUE) {
@@ -64,20 +65,20 @@ inline Try<Nothing> nonblock(int fd)
       }
     }
   }
-
+  */
   return Nothing();
 }
 
-
+/*
 inline Try<Nothing> nonblock(HANDLE handle)
 {
   return nonblock(
       _open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDONLY));
 }
-
+*/
 
 // NOTE: This is not supported on Windows.
-inline Try<bool> isNonblock(int fd)
+inline Try<bool> isNonblock(const FileDesc& fd)
 {
   LOG(WARNING) << "`os::isNonblock` has been called, but is a stub on Windows";
   return true;

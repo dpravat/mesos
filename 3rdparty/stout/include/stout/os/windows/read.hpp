@@ -24,35 +24,17 @@
 namespace os {
 
 // Forward declaration for an OS-agnostic `read`.
-inline Result<std::string> read(int fd, size_t size);
+inline Result<std::string> read(const FileDesc& fd, size_t size);
 
 
-inline ssize_t read(int fd, void* data, size_t size)
+inline ssize_t read(const FileDesc& fd, void* data, size_t size)
 {
   CHECK_LE(size, UINT_MAX);
 
-  if (net::is_socket(fd)) {
-    return net::recv(fd, (char*) data, size, 0);
+  if (fd.isSocket()) {
+    return ::recv(fd, (char*) data, static_cast<unsigned int>(size), 0);
   }
-
-  return ::_read(fd, data, static_cast<unsigned int>(size));
-}
-
-
-inline ssize_t read(HANDLE handle, void* data, size_t size)
-{
-  return ::os::read(
-      _open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDONLY),
-      data,
-      size);
-}
-
-
-inline Result<std::string> read(HANDLE handle, size_t size)
-{
-  return ::os::read(
-      _open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDONLY),
-      size);
+  return ::_read(fd.operator int(), data, static_cast<unsigned int>(size));
 }
 
 } // namespace os {

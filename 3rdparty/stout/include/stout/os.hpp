@@ -47,6 +47,7 @@
 #include <stout/os/chdir.hpp>
 #include <stout/os/chroot.hpp>
 #include <stout/os/exists.hpp>
+#include <stout/os/filedescriptor.hpp>
 #include <stout/os/fcntl.hpp>
 #include <stout/os/kill.hpp>
 #include <stout/os/ls.hpp>

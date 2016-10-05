@@ -806,23 +806,6 @@ inline Try<Nothing> pipe(int pipe[2])
   return Nothing();
 }
 
-
-// Prepare the file descriptors to be shared with a different process.
-// Under Windows we have to obtain the underlying handles to be shared
-// with a different processs.
-inline intptr_t fd_to_handle(int in)
-{
-  return ::_get_osfhandle(in);
-}
-
-
-// Convert the global file handle into a file descriptor, which on
-// Windows is only valid within the current process.
-inline int handle_to_fd(intptr_t in, int flags)
-{
-  return ::_open_osfhandle(in, flags);
-}
-
 } // namespace os {
 
 #endif // __STOUT_WINDOWS_OS_HPP__

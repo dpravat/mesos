@@ -138,7 +138,7 @@ inline Try<int> download(const std::string& url, const std::string& path)
 {
   initialize();
 
-  Try<int> fd = os::open(
+  Try<FileDesc> fd = os::open(
       path,
       O_CREAT | O_WRONLY | O_CLOEXEC,
       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
