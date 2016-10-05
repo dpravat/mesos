@@ -374,7 +374,7 @@ public:
 
   // Test-only method to fetch the file descriptor behind a
   // persistent socket.
-  Option<int> get_persistent_socket(const UPID& to);
+  Option<int_fd> get_persistent_socket(const UPID& to);
 
   PID<HttpProxy> proxy(const Socket& socket);
 
@@ -390,9 +390,9 @@ public:
   void send(Message* message,
             const SocketImpl::Kind& kind = SocketImpl::DEFAULT_KIND());
 
-  Encoder* next(int s);
+  Encoder* next(const int_fd& s);
 
-  void close(int s);
+  void close(const int_fd& s);
 
   void exited(const Address& address);
   void exited(ProcessBase* process);
@@ -431,32 +431,32 @@ private:
       Message* message);
 
   // Collection of all active sockets (both inbound and outbound).
-  map<int, Socket> sockets;
+  map<int_fd, Socket> sockets;
 
   // Collection of sockets that should be disposed when they are
   // finished being used (e.g., when there is no more data to send on
   // them). Can contain both inbound and outbound sockets.
-  set<int> dispose;
+  set<int_fd> dispose;
 
   // Map from socket to socket address for outbound sockets.
-  hashmap<int, Address> addresses;
+  hashmap<int_fd, Address> addresses;
 
   // Map from socket address to temporary sockets (outbound sockets
   // that will be closed once there is no more data to send on them).
-  hashmap<Address, int> temps;
+  hashmap<Address, int_fd> temps;
 
   // Map from socket address (ip, port) to persistent sockets
   // (outbound sockets that will remain open even if there is no more
   // data to send on them).  We distinguish these from the 'temps'
   // collection so we can tell when a persistent socket has been lost
   // (and thus generate ExitedEvents).
-  hashmap<Address, int> persists;
+  hashmap<Address, int_fd> persists;
 
   // Map from outbound socket to outgoing queue.
-  hashmap<int, queue<Encoder*>> outgoing;
+  hashmap<int_fd, queue<Encoder*>> outgoing;
 
   // HTTP proxies.
-  hashmap<int, HttpProxy*> proxies;
+  hashmap<int_fd, HttpProxy*> proxies;
 
   // Protects instance variables.
   std::recursive_mutex mutex;
@@ -1610,7 +1610,7 @@ void SocketManager::finalize()
   // have to worry about sockets or links being created during cleanup.
   CHECK(gc == nullptr);
 
-  int socket = -1;
+  int_fd socket = -1;
   // Close each socket.
   // Don't hold the lock since there is a dependency between `SocketManager`
   // and `ProcessManager`, which may result in deadlock.  See comments in
@@ -1818,7 +1818,7 @@ void SocketManager::link(
           return;
         }
         socket = create.get();
-        int s = socket.get().get();
+        int_fd s = socket.get().get();
 
         CHECK(sockets.count(s) == 0);
         sockets.emplace(s, socket.get());
@@ -1899,12 +1899,12 @@ void SocketManager::link(
 // declaring this function, it is not visible. This is the preferred
 // behavior as we do not want applications to have easy access to
 // managed FD's.
-Option<int> get_persistent_socket(const UPID& to)
+Option<int_fd> get_persistent_socket(const UPID& to)
 {
   return socket_manager->get_persistent_socket(to);
 }
 
-Option<int> SocketManager::get_persistent_socket(const UPID& to)
+Option<int_fd> SocketManager::get_persistent_socket(const UPID& to)
 {
   synchronized (mutex) {
     if (persists.count(to.address) > 0) {
@@ -2184,7 +2184,7 @@ void SocketManager::send(Message* message, const SocketImpl::Kind& kind)
     bool persist = persists.count(address) > 0;
     bool temp = temps.count(address) > 0;
     if (persist || temp) {
-      int s = persist ? persists[address] : temps[address];
+      int_fd s = persist ? persists[address] : temps[address];
       CHECK(sockets.count(s) > 0);
       socket = sockets.at(s);
 
@@ -2215,7 +2215,7 @@ void SocketManager::send(Message* message, const SocketImpl::Kind& kind)
         return;
       }
       socket = create.get();
-      int s = socket.get();
+      int_fd s = socket.get();
 
       CHECK(sockets.count(s) == 0);
       sockets.emplace(s, socket.get());
@@ -2249,7 +2249,7 @@ void SocketManager::send(Message* message, const SocketImpl::Kind& kind)
 }
 
 
-Encoder* SocketManager::next(int s)
+Encoder* SocketManager::next(const int_fd& s)
 {
   HttpProxy* proxy = nullptr; // Non-null if needs to be terminated.
 
@@ -2331,7 +2331,7 @@ Encoder* SocketManager::next(int s)
 }
 
 
-void SocketManager::close(int s)
+void SocketManager::close(const int_fd& s)
 {
   Option<UPID> proxy; // Some if an `HttpProxy` needs to be terminated.
 
@@ -2529,8 +2529,8 @@ void SocketManager::exited(ProcessBase* process)
 void SocketManager::swap_implementing_socket(
     const Socket& from, const Socket& to)
 {
-  const int from_fd = from.get();
-  const int to_fd = to.get();
+  const int_fd& from_fd = from.get();
+  const int_fd& to_fd = to.get();
 
   synchronized (mutex) {
     // Make sure 'from' and 'to' are valid to swap.

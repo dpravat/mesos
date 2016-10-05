@@ -35,7 +35,8 @@ namespace process {
 namespace network {
 namespace internal {
 
-Try<std::shared_ptr<SocketImpl>> SocketImpl::create(int s, Kind kind)
+
+Try<std::shared_ptr<SocketImpl>> SocketImpl::create(const int_fd& s, Kind kind)
 {
   switch (kind) {
     case Kind::POLL:
@@ -72,7 +73,7 @@ Try<std::shared_ptr<SocketImpl>> SocketImpl::create(
     return Error("Failed to create socket: " + s.error());
   }
 #else
-  Try<int> s = network::socket(domain, SOCK_STREAM, 0);
+  Try<int_fd> s = network::socket(domain, SOCK_STREAM, 0);
   if (s.isError()) {
     return Error("Failed to create socket: " + s.error());
   }

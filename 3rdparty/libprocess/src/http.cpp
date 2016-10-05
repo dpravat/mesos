@@ -1457,7 +1457,7 @@ Future<Nothing> sendfile(
   // should be reported and no response sent.
   response.body.clear();
 
-  Try<int> fd = os::open(response.path, O_CLOEXEC | O_NONBLOCK | O_RDONLY);
+  Try<int_fd> fd = os::open(response.path, O_CLOEXEC | O_NONBLOCK | O_RDONLY);
 
   if (fd.isError()) {
     const string body = "Failed to open '" + response.path + "': " + fd.error();
@@ -1468,7 +1468,7 @@ Future<Nothing> sendfile(
   }
 
   struct stat s; // Need 'struct' because of function named 'stat'.
-  if (fstat(fd.get(), &s) != 0) {
+  if (fstat(static_cast<int>(fd.get()), &s) != 0) {
     const string body =
       "Failed to fstat '" + response.path + "': " + os::strerror(errno);
     // TODO(benh): VLOG(1)?
@@ -1504,7 +1504,7 @@ Future<Nothing> sendfile(
     })
     .then([=]() mutable -> Future<Nothing> {
       // NOTE: the file descriptor gets closed by FileEncoder.
-      Encoder* encoder = new FileEncoder(fd.get(), s.st_size);
+      Encoder* encoder = new FileEncoder(static_cast<int>(fd.get()), s.st_size);
       return send(socket, encoder)
         .onAny([=]() {
           delete encoder;

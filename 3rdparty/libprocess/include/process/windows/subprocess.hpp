@@ -99,10 +99,6 @@ inline Option<std::map<std::string, std::string>> getSystemEnvironment()
     std::wstring varName = std::wstring(environmentEntry, separator);
     std::wstring varVal = std::wstring(separator + 1);
 
-    // Mesos variables are upper case. Convert system variables to
-    // match the name provided by the scheduler in case of a collision.
-    std::transform(varName.begin(), varName.end(), varName.begin(), ::towupper);
-
     // The system environment has priority. Force `ANSI` usage until the code
     // is converted to UNICODE.
     systemEnvironment.insert_or_assign(
