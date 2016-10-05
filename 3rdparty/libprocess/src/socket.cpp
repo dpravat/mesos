@@ -33,7 +33,7 @@ using std::string;
 namespace process {
 namespace network {
 
-Try<Socket> Socket::create(Kind kind, Option<int> s)
+Try<Socket> Socket::create(Kind kind, Option<int_fd> s)
 {
   // If the caller passed in a file descriptor, we do
   // not own its life cycle and must not close it.
@@ -49,7 +49,7 @@ Try<Socket> Socket::create(Kind kind, Option<int> s)
       return Error("Failed to create socket: " + fd.error());
     }
 #else
-    Try<int> fd = network::socket(AF_INET, SOCK_STREAM, 0);
+    Try<int_fd> fd = network::socket(AF_INET, SOCK_STREAM, 0);
     if (fd.isError()) {
       return Error("Failed to create socket: " + fd.error());
     }

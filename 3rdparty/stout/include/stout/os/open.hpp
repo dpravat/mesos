@@ -23,7 +23,7 @@
 #include <stout/try.hpp>
 
 #include <stout/os/close.hpp>
-
+#include <stout/os/filedescriptor.hpp>
 
 // For old systems that do not support O_CLOEXEC, we still want
 // os::open to accept that flag so that we can simplify the code.

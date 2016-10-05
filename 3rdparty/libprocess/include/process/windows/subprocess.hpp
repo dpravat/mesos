@@ -51,16 +51,14 @@ inline void close(
     const OutputFileDescriptors& stdoutfds,
     const OutputFileDescriptors& stderrfds)
 {
-  HANDLE fds[6] = {
+  int_fd fds[6] = {
     stdinfds.read, stdinfds.write.getOrElse(INVALID_HANDLE_VALUE),
     stdoutfds.read.getOrElse(INVALID_HANDLE_VALUE), stdoutfds.write,
     stderrfds.read.getOrElse(INVALID_HANDLE_VALUE), stderrfds.write
   };
 
-  foreach (HANDLE fd, fds) {
-    if (fd != INVALID_HANDLE_VALUE) {
+  foreach (int_fd fd, fds) {
       os::close(fd);
-    }
   }
 }
 
@@ -96,10 +94,6 @@ inline Option<map<string, string>> getSystemEnvironment()
     wchar_t * separator = wcschr(environmentEntry, L'=');
     std::wstring varName = std::wstring(environmentEntry, separator);
     std::wstring varVal = std::wstring(separator + 1);
-
-    // Mesos variables are upper case. Convert system variables to
-    // match the name provided by the scheduler in case of a collision.
-    std::transform(varName.begin(), varName.end(), varName.begin(), ::towupper);
 
     // The system environment has priority. Force `ANSI` usage until the code
     // is converted to UNICODE.

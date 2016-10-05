@@ -22,9 +22,9 @@ namespace network {
 class PollSocketImpl : public Socket::Impl
 {
 public:
-  static Try<std::shared_ptr<Socket::Impl>> create(int s);
+  static Try<std::shared_ptr<Socket::Impl>> create(const int_fd& s);
 
-  PollSocketImpl(int s) : Socket::Impl(s) {}
+  PollSocketImpl(const int_fd& s) : Socket::Impl(s) {}
 
   virtual ~PollSocketImpl() {}
 
@@ -34,7 +34,7 @@ public:
   virtual Future<Nothing> connect(const Address& address);
   virtual Future<size_t> recv(char* data, size_t size);
   virtual Future<size_t> send(const char* data, size_t size);
-  virtual Future<size_t> sendfile(int fd, off_t offset, size_t size);
+  virtual Future<size_t> sendfile(const int_fd& fd, off_t offset, size_t size);
 
   virtual Socket::Kind kind() const { return Socket::POLL; }
 };

@@ -28,12 +28,12 @@ using net::socket;
 
 
 // TODO(benh): Remove and defer to Socket::accept.
-inline Try<int> accept(int s)
+inline Try<int_fd> accept(const int_fd& s)
 {
   struct sockaddr_storage storage;
   socklen_t storagelen = sizeof(storage);
 
-  int accepted = ::accept(s, (struct sockaddr*) &storage, &storagelen);
+  int_fd accepted = ::accept(s, (struct sockaddr*) &storage, &storagelen);
   if (accepted < 0) {
     return ErrnoError("Failed to accept");
   }
@@ -43,7 +43,7 @@ inline Try<int> accept(int s)
 
 
 // TODO(benh): Remove and defer to Socket::bind.
-inline Try<Nothing> bind(int s, const Address& address)
+inline Try<Nothing> bind(const int_fd& s, const Address& address)
 {
   struct sockaddr_storage storage =
     net::createSockaddrStorage(address.ip, address.port);
@@ -55,10 +55,9 @@ inline Try<Nothing> bind(int s, const Address& address)
   return Nothing();
 }
 
-
 // TODO(benh): Remove and defer to Socket::connect.
-inline Try<Nothing, SocketError> connect(int s, const Address& address)
-{
+inline Try<Nothing, SocketError> connect(const int_fd& s,
+                                         const Address& address) {
   struct sockaddr_storage storage =
     net::createSockaddrStorage(address.ip, address.port);
 
@@ -76,7 +75,7 @@ inline Try<Nothing, SocketError> connect(int s, const Address& address)
  * @return An `Address` or an error if the `getsockname` system call
  *     fails or the family type is not supported.
  */
-inline Try<Address> address(int s)
+inline Try<Address> address(const int_fd& s)
 {
   struct sockaddr_storage storage;
   socklen_t storagelen = sizeof(storage);
@@ -95,7 +94,7 @@ inline Try<Address> address(int s)
  * @return An `Address` or an error if the `getpeername` system call
  *     fails or the family type is not supported.
  */
-inline Try<Address> peer(int s)
+inline Try<Address> peer(const int_fd& s)
 {
   struct sockaddr_storage storage;
   socklen_t storagelen = sizeof(storage);

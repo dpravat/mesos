@@ -41,7 +41,7 @@ enum ReadFlags
 
 
 void read(
-    int fd,
+  const int_fd& fd,
     void* data,
     size_t size,
     ReadFlags flags,
@@ -111,7 +111,7 @@ void read(
 
 
 void write(
-    int fd,
+  const int_fd& fd,
     const void* data,
     size_t size,
     const std::shared_ptr<Promise<size_t>>& promise,
@@ -171,7 +171,7 @@ void write(
 } // namespace internal {
 
 
-Future<size_t> read(int fd, void* data, size_t size)
+Future<size_t> read(const int_fd& fd, void* data, size_t size)
 {
   process::initialize();
 
@@ -204,7 +204,7 @@ Future<size_t> read(int fd, void* data, size_t size)
 }
 
 
-Future<size_t> write(int fd, const void* data, size_t size)
+Future<size_t> write(const int_fd& fd, const void* data, size_t size)
 {
   process::initialize();
 
@@ -237,7 +237,7 @@ Future<size_t> write(int fd, const void* data, size_t size)
 }
 
 
-Future<size_t> peek(int fd, void* data, size_t size, size_t limit)
+Future<size_t> peek(const int_fd& fd, void* data, size_t size, size_t limit)
 {
   process::initialize();
 
@@ -255,24 +255,24 @@ Future<size_t> peek(int fd, void* data, size_t size, size_t limit)
     return Failure(os::strerror(EBADF));
   }
 
-  fd = dup(fd);
-  if (fd == -1) {
+  int_fd own_fd = os::dup(fd);
+  if (own_fd == -1) {
     return Failure(ErrnoError("Failed to duplicate file descriptor"));
   }
 
   // Set the close-on-exec flag.
-  Try<Nothing> cloexec = os::cloexec(fd);
+  Try<Nothing> cloexec = os::cloexec(own_fd);
   if (cloexec.isError()) {
-    os::close(fd);
+    os::close(own_fd);
     return Failure(
         "Failed to set close-on-exec on duplicated file descriptor: " +
         cloexec.error());
   }
 
   // Make the file descriptor non-blocking.
-  Try<Nothing> nonblock = os::nonblock(fd);
+  Try<Nothing> nonblock = os::nonblock(own_fd);
   if (nonblock.isError()) {
-    os::close(fd);
+    os::close(own_fd);
     return Failure(
         "Failed to make duplicated file descriptor non-blocking: " +
         nonblock.error());
@@ -287,10 +287,10 @@ Future<size_t> peek(int fd, void* data, size_t size, size_t limit)
   // block for non-deterministically long periods of time. This may be
   // fixed in a newer version of libev (we use 3.8 at the time of
   // writing this comment).
-  internal::read(fd, data, limit, internal::PEEK, promise, io::READ);
+  internal::read(own_fd, data, limit, internal::PEEK, promise, io::READ);
 
   // NOTE: We wrap `os::close` in a lambda to disambiguate on Windows.
-  promise->future().onAny([fd]() { os::close(fd); });
+  promise->future().onAny([own_fd]() { os::close(own_fd); });
 
   return promise->future();
 }
@@ -299,7 +299,7 @@ Future<size_t> peek(int fd, void* data, size_t size, size_t limit)
 namespace internal {
 
 Future<string> _read(
-    int fd,
+  const int_fd& fd,
     const std::shared_ptr<string>& buffer,
     const boost::shared_array<char>& data,
     size_t length)
@@ -316,7 +316,7 @@ Future<string> _read(
 
 
 Future<Nothing> _write(
-    int fd,
+  const int_fd& fd,
     Owned<string> data,
     size_t index)
 {
@@ -331,8 +331,8 @@ Future<Nothing> _write(
 
 
 void _splice(
-    int from,
-    int to,
+  const int_fd& from,
+  const int_fd& to,
     size_t chunk,
     boost::shared_array<char> data,
     std::shared_ptr<Promise<Nothing>> promise)
@@ -377,7 +377,7 @@ void _splice(
 }
 
 
-Future<Nothing> splice(int from, int to, size_t chunk)
+Future<Nothing> splice(const int_fd& from, const int_fd& to, size_t chunk)
 {
   boost::shared_array<char> data(new char[chunk]);
 
@@ -397,7 +397,7 @@ Future<Nothing> splice(int from, int to, size_t chunk)
 } // namespace internal {
 
 
-Future<string> read(int fd)
+Future<string> read(const int_fd& fd)
 {
   process::initialize();
 
@@ -410,24 +410,24 @@ Future<string> read(int fd)
     return Failure(os::strerror(EBADF));
   }
 
-  fd = dup(fd);
-  if (fd == -1) {
+  int_fd own_fd = os::dup(fd);
+  if (own_fd == -1) {
     return Failure(ErrnoError("Failed to duplicate file descriptor"));
   }
 
   // Set the close-on-exec flag.
-  Try<Nothing> cloexec = os::cloexec(fd);
+  Try<Nothing> cloexec = os::cloexec(own_fd);
   if (cloexec.isError()) {
-    os::close(fd);
+    os::close(own_fd);
     return Failure(
         "Failed to set close-on-exec on duplicated file descriptor: " +
         cloexec.error());
   }
 
   // Make the file descriptor non-blocking.
-  Try<Nothing> nonblock = os::nonblock(fd);
+  Try<Nothing> nonblock = os::nonblock(own_fd);
   if (nonblock.isError()) {
-    os::close(fd);
+    os::close(own_fd);
     return Failure(
         "Failed to make duplicated file descriptor non-blocking: " +
         nonblock.error());
@@ -439,22 +439,11 @@ Future<string> read(int fd)
   boost::shared_array<char> data(new char[BUFFERED_READ_SIZE]);
 
   // NOTE: We wrap `os::close` in a lambda to disambiguate on Windows.
-  return internal::_read(fd, buffer, data, BUFFERED_READ_SIZE)
-    .onAny([fd]() { os::close(fd); });
+  return internal::_read(own_fd, buffer, data, BUFFERED_READ_SIZE)
+    .onAny([own_fd]() { os::close(own_fd); });
 }
 
-
-#ifdef __WINDOWS__
-// NOTE: Ordinarily this would go in a Windows-specific header; we put it here
-// to avoid complex forward declarations.
-Future<string> read(HANDLE handle)
-{
-  return read(_open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDONLY));
-}
-#endif // __WINDOWS__
-
-
-Future<Nothing> write(int fd, const string& data)
+Future<Nothing> write(const int_fd& fd, const string& data)
 {
   process::initialize();
 
@@ -463,40 +452,40 @@ Future<Nothing> write(int fd, const string& data)
   // closes the file descriptor before discarding this future. We can
   // also make sure it's non-blocking and will close-on-exec. Start by
   // checking we've got a "valid" file descriptor before dup'ing.
-  if (fd < 0) {
+  if (fd.operator int() < 0) {
     return Failure(os::strerror(EBADF));
   }
 
-  fd = dup(fd);
-  if (fd == -1) {
+  int_fd own_fd = os::dup(fd);
+  if (own_fd == -1) {
     return Failure(ErrnoError("Failed to duplicate file descriptor"));
   }
 
   // Set the close-on-exec flag.
-  Try<Nothing> cloexec = os::cloexec(fd);
+  Try<Nothing> cloexec = os::cloexec(own_fd);
   if (cloexec.isError()) {
-    os::close(fd);
+    os::close(own_fd);
     return Failure(
         "Failed to set close-on-exec on duplicated file descriptor: " +
         cloexec.error());
   }
 
   // Make the file descriptor non-blocking.
-  Try<Nothing> nonblock = os::nonblock(fd);
+  Try<Nothing> nonblock = os::nonblock(own_fd);
   if (nonblock.isError()) {
-    os::close(fd);
+    os::close(own_fd);
     return Failure(
         "Failed to make duplicated file descriptor non-blocking: " +
         nonblock.error());
   }
 
   // NOTE: We wrap `os::close` in a lambda to disambiguate on Windows.
-  return internal::_write(fd, Owned<string>(new string(data)), 0)
-    .onAny([fd]() { os::close(fd); });
+  return internal::_write(own_fd, Owned<string>(new string(data)), 0)
+    .onAny([own_fd]() { os::close(own_fd); });
 }
 
 
-Future<Nothing> redirect(int from, Option<int> to, size_t chunk)
+Future<Nothing> redirect(const int_fd& from, Option<int_fd> to, size_t chunk)
 {
   // Make sure we've got "valid" file descriptors.
   if (from < 0 || (to.isSome() && to.get() < 0)) {
@@ -505,7 +494,7 @@ Future<Nothing> redirect(int from, Option<int> to, size_t chunk)
 
   if (to.isNone()) {
     // Open up /dev/null that we can splice into.
-    Try<int> open = os::open("/dev/null", O_WRONLY | O_CLOEXEC);
+    Try<int_fd> open = os::open("/dev/null", O_WRONLY | O_CLOEXEC);
 
     if (open.isError()) {
       return Failure("Failed to open /dev/null for writing: " + open.error());
@@ -514,7 +503,7 @@ Future<Nothing> redirect(int from, Option<int> to, size_t chunk)
     to = open.get();
   } else {
     // Duplicate 'to' so that we're in control of its lifetime.
-    int fd = dup(to.get());
+    int_fd fd = os::dup(to.get());
     if (fd == -1) {
       return Failure(ErrnoError("Failed to duplicate 'to' file descriptor"));
     }
@@ -525,65 +514,52 @@ Future<Nothing> redirect(int from, Option<int> to, size_t chunk)
   CHECK_SOME(to);
 
   // Duplicate 'from' so that we're in control of its lifetime.
-  from = dup(from);
-  if (from == -1) {
+  int_fd own_from = os::dup(from);
+  if (own_from == -1) {
     os::close(to.get());
     return Failure(ErrnoError("Failed to duplicate 'from' file descriptor"));
   }
 
   // Set the close-on-exec flag (no-op if already set).
-  Try<Nothing> cloexec = os::cloexec(from);
+  Try<Nothing> cloexec = os::cloexec(own_from);
   if (cloexec.isError()) {
-    os::close(from);
+    os::close(own_from);
     os::close(to.get());
     return Failure("Failed to set close-on-exec on 'from': " + cloexec.error());
   }
 
   cloexec = os::cloexec(to.get());
   if (cloexec.isError()) {
-    os::close(from);
+    os::close(own_from);
     os::close(to.get());
     return Failure("Failed to set close-on-exec on 'to': " + cloexec.error());
   }
 
   // Make the file descriptors non-blocking (no-op if already set).
-  Try<Nothing> nonblock = os::nonblock(from);
+  Try<Nothing> nonblock = os::nonblock(own_from);
   if (nonblock.isError()) {
-    os::close(from);
+    os::close(own_from);
     os::close(to.get());
     return Failure("Failed to make 'from' non-blocking: " + nonblock.error());
   }
 
   nonblock = os::nonblock(to.get());
   if (nonblock.isError()) {
-    os::close(from);
+    os::close(own_from);
     os::close(to.get());
     return Failure("Failed to make 'to' non-blocking: " + nonblock.error());
   }
 
   // NOTE: We wrap `os::close` in a lambda to disambiguate on Windows.
-  return internal::splice(from, to.get(), chunk)
-    .onAny([from]() { os::close(from); })
+  return internal::splice(own_from, to.get(), chunk)
+    .onAny([own_from]() { os::close(own_from); })
     .onAny([to]() { os::close(to.get()); });
 }
 
 
-#ifdef __WINDOWS__
-// NOTE: Ordinarily this would go in a Windows-specific header; we put it here
-// to avoid complex forward declarations.
-Future<Nothing> redirect(HANDLE from, Option<int> to, size_t chunk)
-{
-  return redirect(
-      _open_osfhandle(reinterpret_cast<intptr_t>(from), O_RDWR),
-      to,
-      chunk);
-}
-#endif // __WINDOWS__
-
-
 // TODO(hartem): Most of the boilerplate code here is the same as
 // in io::read, so this needs to be refactored.
-Future<string> peek(int fd, size_t limit)
+Future<string> peek(const int_fd& fd, size_t limit)
 {
   process::initialize();
 
