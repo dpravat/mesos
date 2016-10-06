@@ -40,8 +40,8 @@ public:
     Option<std::string> rootfs;
     Option<std::string> user;
 #endif // __WINDOWS__
-    Option<int> pipe_read;
-    Option<int> pipe_write;
+    Option<FileDesc> pipe_read;
+    Option<FileDesc> pipe_write;
     Option<JSON::Array> pre_exec_commands;
 #ifdef __linux__
     bool unshare_namespace_mnt;

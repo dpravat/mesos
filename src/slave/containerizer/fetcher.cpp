@@ -746,7 +746,7 @@ Future<Nothing> FetcherProcess::run(
   // instead of Subprocess::FD(). The reason this can't easily be done
   // today is because we not only need to open the files but also
   // chown them.
-  Try<int> out = os::open(
+  Try<FileDesc> out = os::open(
       path::join(info.sandbox_directory(), "stdout"),
       O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK | O_CLOEXEC,
       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -756,7 +756,7 @@ Future<Nothing> FetcherProcess::run(
   }
 
   string _stderr = path::join(info.sandbox_directory(), "stderr");
-  Try<int> err = os::open(
+  Try<FileDesc> err = os::open(
       _stderr,
       O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK | O_CLOEXEC,
       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
