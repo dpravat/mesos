@@ -47,8 +47,8 @@ public:
     Option<std::string> user;
     Option<RLimitInfo> rlimits;
 #endif // __WINDOWS__
-    Option<int> pipe_read;
-    Option<int> pipe_write;
+    Option<FileDesc> pipe_read;
+    Option<FileDesc> pipe_write;
     Option<JSON::Array> pre_exec_commands;
 #ifdef __linux__
     Option<CapabilityInfo> capabilities;

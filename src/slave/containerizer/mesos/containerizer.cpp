@@ -1443,15 +1443,8 @@ Future<bool> MesosContainerizerProcess::_launch(
     launchFlags.rlimits = rlimits;
 #endif // __WINDOWS__
 
-#ifndef __WINDOWS__
     launchFlags.pipe_read = pipes[0];
     launchFlags.pipe_write = pipes[1];
-#else
-    // NOTE: On windows we need to pass `Handle`s between processes, as fds
-    // are not unique across processes.
-    launchFlags.pipe_read = os::fd_to_handle(pipes[0]);
-    launchFlags.pipe_write = os::fd_to_handle(pipes[1]);
-#endif // __WINDOWS
     launchFlags.pre_exec_commands = preExecCommands;
 
 #ifndef __WINDOWS__

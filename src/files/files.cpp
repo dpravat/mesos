@@ -619,7 +619,7 @@ Future<Try<tuple<size_t, string>, FilesError>> FilesProcess::_read(
 
   // TODO(benh): Cache file descriptors so we aren't constantly
   // opening them and paging the data in from disk.
-  Try<int> fd = os::open(resolvedPath.get(), O_RDONLY | O_CLOEXEC);
+  const Try<FileDesc> fd = os::open(resolvedPath.get(), O_RDONLY | O_CLOEXEC);
 
   if (fd.isError()) {
     string error = strings::format(

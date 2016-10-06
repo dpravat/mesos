@@ -609,7 +609,7 @@ Try<TaskState> TaskState::recover(
 
   // Open the status updates file for reading and writing (for
   // truncating).
-  Try<int> fd = os::open(path, O_RDWR | O_CLOEXEC);
+  Try<FileDesc> fd = os::open(path, O_RDWR | O_CLOEXEC);
 
   if (fd.isError()) {
     message = "Failed to open status updates file '" + path +
@@ -735,7 +735,7 @@ Try<Resources> ResourcesState::recoverResources(
 {
   Resources resources;
 
-  Try<int> fd = os::open(path, O_RDWR | O_CLOEXEC);
+  Try<FileDesc> fd = os::open(path, O_RDWR | O_CLOEXEC);
   if (fd.isError()) {
     string message =
       "Failed to open resources file '" + path + "': " + fd.error();

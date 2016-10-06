@@ -401,7 +401,7 @@ Future<Nothing> HealthCheckerProcess::_httpHealthCheck()
     url
   };
 
-  Try<Subprocess> s = subprocess(
+  const Try<Subprocess> s = subprocess(
       "curl",
       argv,
       Subprocess::PATH("/dev/null"),
