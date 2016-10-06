@@ -18,6 +18,7 @@
 #include <stout/nothing.hpp>
 #include <stout/try.hpp>
 
+#include <stout/os/filedescriptor.hpp>
 #include <stout/os/socket.hpp>
 
 namespace os {
@@ -86,7 +87,7 @@ inline int safe_close(int fd)
 
 } // namespace internal {
 
-
+/*
 // NOTE: This function needs to be defined before `os::close(int)`. The `int`
 // version checks whether its argument is a socket, and if it is, it makes uses
 // `static_cast<SOCKET>` to dispatch to this version of the function.
@@ -127,16 +128,16 @@ inline Try<Nothing> close(int fd)
 
   return Nothing();
 }
+*/
 
-
-inline Try<Nothing> close(HANDLE handle)
+inline Try<Nothing> close(const FileDesc& fd)
 {
-  if (!internal::safe_closehandle(handle)) {
-    return WindowsError("os::close: Failed to close handle");
-  }
+  const_cast<FileDesc&>(fd).close();
 
   return Nothing();
 }
+
+
 
 } // namespace os {
 

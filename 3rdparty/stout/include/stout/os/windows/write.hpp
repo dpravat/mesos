@@ -25,36 +25,21 @@
 namespace os {
 
 // Forward declaration for an OS-agnostic `write`.
-inline Try<Nothing> write(int fd, const std::string& message);
+inline Try<Nothing> write(const FileDesc& fd, const std::string& message);
 
 
-inline ssize_t write(int fd, const void* data, size_t size)
+inline ssize_t write(const FileDesc& fd, const void* data, size_t size)
 {
   assert(size < INT_MAX);
 
-  if (net::is_socket(fd)) {
+  if (fd.isSocket()) {
     return ::send(fd, (const char*) data, static_cast<int>(size), 0);
   }
 
-  return ::_write(fd, data, static_cast<int>(size));
+  return ::_write(fd.operator int(), data, static_cast<int>(size));
 }
 
 
-inline ssize_t read(HANDLE handle, const void* data, size_t size)
-{
-  return ::os::write(
-      _open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDWR),
-      data,
-      size);
-}
-
-
-inline Try<Nothing> write(HANDLE handle, const std::string& message)
-{
-  return ::os::write(
-      _open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDWR),
-      message);
-}
 
 } // namespace os {
 

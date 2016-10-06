@@ -113,7 +113,7 @@ inline int spawn(
     const std::string& command,
     const std::vector<std::string>& arguments)
 {
-  return ::_spawnvp(_P_WAIT, command.c_str(), os::raw::Argv(arguments));
+  return static_cast<int>(::_spawnvp(_P_WAIT, command.c_str(), os::raw::Argv(arguments)));
 }
 
 

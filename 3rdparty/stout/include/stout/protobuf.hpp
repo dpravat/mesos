@@ -60,7 +60,7 @@ namespace protobuf {
 // first writing out the length of the protobuf followed by the
 // contents.
 // NOTE: On error, this may have written partial data to the file.
-inline Try<Nothing> write(int fd, const google::protobuf::Message& message)
+inline Try<Nothing> write(const FileDesc& fd, const google::protobuf::Message& message)
 {
   if (!message.IsInitialized()) {
     return Error(message.InitializationErrorString() +
@@ -83,27 +83,13 @@ inline Try<Nothing> write(int fd, const google::protobuf::Message& message)
   return Nothing();
 }
 
-
-#ifdef __WINDOWS__
-// NOTE: Ordinarily this would go in a Windows-specific header; we put it here
-// to avoid complex forward declarations.
-inline Try<Nothing> write(
-    HANDLE handle,
-    const google::protobuf::Message& message)
-{
-  return write(
-      _open_osfhandle(reinterpret_cast<intptr_t>(handle), O_WRONLY), message);
-}
-#endif // __WINDOWS__
-
-
 // Write out the given sequence of protobuf messages to the
 // specified file descriptor by repeatedly invoking write
 // on each of the messages.
 // NOTE: On error, this may have written partial data to the file.
 template <typename T>
 Try<Nothing> write(
-    int fd,
+  const FileDesc& fd,
     const google::protobuf::RepeatedPtrField<T>& messages)
 {
   foreach (const T& message, messages) {
@@ -127,7 +113,7 @@ Try<Nothing> write(const std::string& path, const T& t)
   operation_flags |= _O_BINARY;
 #endif // __WINDOWS__
 
-  Try<int> fd = os::open(
+  Try<FileDesc> fd = os::open(
       path,
       operation_flags,
       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -158,7 +144,7 @@ inline Try<Nothing> append(
   operation_flags |= _O_BINARY;
 #endif // __WINDOWS__
 
-  Try<int> fd = os::open(
+  Try<FileDesc> fd = os::open(
       path,
       operation_flags,
       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -214,7 +200,7 @@ namespace internal {
 template <typename T>
 struct Read
 {
-  Result<T> operator()(int fd, bool ignorePartial, bool undoFailed)
+  Result<T> operator()(const FileDesc& fd, bool ignorePartial, bool undoFailed)
   {
     off_t offset = 0;
 
@@ -337,12 +323,12 @@ struct Read<google::protobuf::RepeatedPtrField<T>>
 // If 'undoFailed' is true, failed read attempts will restore the file
 // read/write file offset towards the initial callup position.
 template <typename T>
-Result<T> read(int fd, bool ignorePartial = false, bool undoFailed = false)
+Result<T> read(const FileDesc& fd, bool ignorePartial = false, bool undoFailed = false)
 {
   return internal::Read<T>()(fd, ignorePartial, undoFailed);
 }
 
-
+/*
 #ifdef __WINDOWS__
 // NOTE: Ordinarily this would go in a Windows-specific header; we put it here
 // to avoid complex forward declarations.
@@ -359,7 +345,7 @@ Result<T> read(
 }
 #endif // __WINDOWS__
 
-
+*/
 // A wrapper function that wraps the above read() with open and
 // closing the file.
 template <typename T>
@@ -372,7 +358,7 @@ Result<T> read(const std::string& path)
   operation_flags |= _O_BINARY;
 #endif // __WINDOWS__
 
-  Try<int> fd = os::open(
+  Try<FileDesc> fd = os::open(
       path,
       operation_flags,
       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);

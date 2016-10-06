@@ -18,6 +18,7 @@
 #include <glog/logging.h>
 
 #include <stout/abort.hpp>
+#include <stout/os/filedescriptor.hpp>
 
 namespace net {
 
@@ -117,48 +118,25 @@ inline bool is_inprogress_error(int error)
 }
 
 
-inline bool is_socket(SOCKET fd)
-{
-  int value = 0;
-  int length = sizeof(int);
-
-  if (::getsockopt(
-          fd,
-          SOL_SOCKET,
-          SO_TYPE,
-          (char*) &value,
-          &length) == SOCKET_ERROR) {
-    switch (WSAGetLastError()) {
-      case WSAENOTSOCK:
-        return false;
-      default:
-        // TODO(benh): Handle `WSANOTINITIALISED`.
-        ABORT("Not expecting 'getsockopt' to fail when passed a valid socket");
-    }
-  }
-
-  return true;
-}
-
-inline int bind(int socket, const struct sockaddr *addr, size_t addrlen)
+inline int bind(const FileDesc& socket, const struct sockaddr *addr, size_t addrlen)
 {
   CHECK(addrlen < INT32_MAX);
   return ::bind(socket, addr, static_cast<int>(addrlen));
 }
 
-inline int connect(int socket, const struct sockaddr *address, size_t addrlen)
+inline int connect(const FileDesc& socket, const struct sockaddr *address, size_t addrlen)
 {
     CHECK(addrlen < INT32_MAX);
     return ::connect(socket, address, static_cast<int>(addrlen));
 }
 
-inline ssize_t send(int sockfd, const void *buf, size_t len, int flags)
+inline ssize_t send(const FileDesc& sockfd, const void *buf, size_t len, int flags)
 {
     CHECK(len < INT32_MAX);
     return ::send(sockfd, static_cast<const char*>(buf), static_cast<int>(len), flags);
 }
 
-inline size_t recv(int sockfd, void *buf, size_t len, int flags)
+inline size_t recv(const FileDesc& sockfd, void *buf, size_t len, int flags)
 {
     CHECK(len < INT32_MAX);
     return ::recv(sockfd, static_cast<char *>(buf), static_cast<int>(len), flags);
