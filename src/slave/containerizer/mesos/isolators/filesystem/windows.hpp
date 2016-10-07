@@ -29,17 +29,47 @@ namespace internal {
 namespace slave {
 
 // TODO(hausdorff): (MESOS-5462) For now the Windows isolators are essentially
-// direct copies of their POSIX counterparts. In the future, we expect to
-// refactor the POSIX classes into platform-independent base class, with
-// Windows and POSIX implementations. For now, we leave the Windows
-// implementations as inheriting from the POSIX implementations.
-class WindowsFilesystemIsolatorProcess : public PosixFilesystemIsolatorProcess
+// direct copies of their POSIX counterparts.
+
+class WindowsFilesystemIsolatorProcess : public MesosIsolatorProcess
 {
 public:
   static Try<mesos::slave::Isolator*> create(const Flags& flags);
 
-private:
+  virtual ~WindowsFilesystemIsolatorProcess();
+
+  virtual process::Future<Nothing> recover(
+    const std::list<mesos::slave::ContainerState>& states,
+    const hashset<ContainerID>& orphans);
+
+  virtual process::Future<Option<mesos::slave::ContainerLaunchInfo>> prepare(
+    const ContainerID& containerId,
+    const mesos::slave::ContainerConfig& containerConfig);
+
+  virtual process::Future<Nothing> update(
+    const ContainerID& containerId,
+    const Resources& resources);
+
+  virtual process::Future<Nothing> cleanup(
+    const ContainerID& containerId);
+
+protected:
   WindowsFilesystemIsolatorProcess(const Flags& flags);
+
+  const Flags flags;
+
+  struct Info
+  {
+    explicit Info(const std::string& _directory)
+      : directory(_directory) {}
+
+    const std::string directory;
+
+    // Track resources so we can unlink unneeded persistent volumes.
+    Resources resources;
+  };
+
+  hashmap<ContainerID, process::Owned<Info>> infos;
 };
 
 } // namespace slave {
