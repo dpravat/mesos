@@ -200,7 +200,6 @@ Future<Nothing> PosixFilesystemIsolatorProcess::update(
       // that they are used by one task at a time. This is currently enforced by
       // `os::chown`. Windows does not support `os::chown`, we will need to
       // revisit this later.
-#ifndef __WINDOWS__
       LOG(INFO) << "Changing the ownership of the persistent volume at '"
                 << original << "' with uid " << uid << " and gid " << gid;
 
@@ -212,7 +211,6 @@ Future<Nothing> PosixFilesystemIsolatorProcess::update(
             original + "' with uid " + stringify(uid) +
             " and gid " + stringify(gid) + ": " + chown.error());
       }
-#endif
     }
 
     string link = path::join(info->directory, containerPath);

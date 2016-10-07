@@ -302,6 +302,11 @@ set(LINUX_SRC
   slave/containerizer/mesos/provisioner/backends/overlay.cpp
   )
 
+set(WIN32_SRC
+  ${WIN32_SRC}
+  slave/containerizer/mesos/isolators/filesystem/windows.cpp
+  )
+
 set(LOCAL_SRC
   local/local.cpp
   )
@@ -383,7 +388,7 @@ if (NOT WIN32)
     state/leveldb.cpp
     state/log.cpp
     )
-endif (NOT WIN32)
+ endif (NOT WIN32)
 
 set(URI_SRC
   uri/fetcher.cpp
@@ -421,7 +426,6 @@ set(WATCHER_SRC
 
 set(WIN32_SRC
   ${WIN32_SRC}
-  slave/containerizer/mesos/isolators/filesystem/posix.cpp
   slave/containerizer/mesos/isolators/filesystem/windows.cpp
   )
 
@@ -466,6 +470,11 @@ if (NOT WIN32)
     ${HDFS_SRC}
     ${LOG_SRC}
     ${POSIX_SRC}
+    )
+else (NOT WIN32)
+  set(MESOS_SRC
+    ${MESOS_SRC}
+    ${WIN32_SRC}
     )
 endif (NOT WIN32)
 
