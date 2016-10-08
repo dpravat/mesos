@@ -96,8 +96,8 @@ public:
   struct timeval timeval() const
   {
     struct timeval t;
-    t.tv_sec = secs();
-    t.tv_usec = us() - (t.tv_sec * MILLISECONDS);
+    t.tv_sec = static_cast<long>(secs());
+    t.tv_usec = static_cast<long>(us() - (t.tv_sec * MILLISECONDS));
     return t;
   }
 
