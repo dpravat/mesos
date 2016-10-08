@@ -185,7 +185,6 @@ set(LINUX_SRC
 
 set(WIN32_SRC
   ${WIN32_SRC}
-  slave/containerizer/mesos/isolators/filesystem/posix.cpp
   slave/containerizer/mesos/isolators/filesystem/windows.cpp
   )
 
@@ -359,7 +358,7 @@ if (NOT WIN32)
     slave/containerizer/mesos/isolators/network/cni/spec.cpp
     slave/containerizer/mesos/isolators/volume/sandbox_path.cpp
     )
-endif (NOT WIN32)
+ endif (NOT WIN32)
 
 set(URI_SRC
   uri/fetcher.cpp
@@ -443,6 +442,11 @@ if (NOT WIN32)
     ${SCHEDULER_SRC}
     ${STATE_SRC}
     ${WATCHER_SRC}
+    )
+else (NOT WIN32)
+  set(MESOS_SRC
+    ${MESOS_SRC}
+    ${WIN32_SRC}
     )
 endif (NOT WIN32)
 
