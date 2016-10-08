@@ -49,7 +49,7 @@ inline Try<std::string> compress(
   z_stream_s stream;
   stream.next_in =
     const_cast<Bytef*>(reinterpret_cast<const Bytef*>(decompressed.data()));
-  stream.avail_in = decompressed.length();
+  stream.avail_in = static_cast<unsigned int>(decompressed.length());
   stream.zalloc = Z_NULL;
   stream.zfree = Z_NULL;
   stream.opaque = Z_NULL;
@@ -102,7 +102,7 @@ inline Try<std::string> decompress(const std::string& compressed)
   z_stream_s stream;
   stream.next_in =
     const_cast<Bytef*>(reinterpret_cast<const Bytef*>(compressed.data()));
-  stream.avail_in = compressed.length();
+  stream.avail_in = static_cast<unsigned int>(compressed.length());
   stream.zalloc = Z_NULL;
   stream.zfree = Z_NULL;
   stream.opaque = Z_NULL;
