@@ -31,7 +31,7 @@ namespace os {
 inline Try<Nothing> touch(const std::string& path)
 {
   if (!os::exists(path)) {
-    Try<int> fd = os::open(
+    Try<FileDesc> fd = os::open(
         path,
         O_RDWR | O_CREAT,
         S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
