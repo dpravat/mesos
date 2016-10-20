@@ -117,7 +117,8 @@ Try<ExecutorRunPath> parseExecutorRunPath(
 
 std::string Base64EncodeGuid(const std::string & guid)
 {
-  // Modified BASE64 table - '/' replaced with '-' to generate valid path components
+  // Modified BASE64 table - '/' replaced with '-' to generate valid path
+  // components.
   static const std::string base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "abcdefghijklmnopqrstuvwxyz0123456789+-";
   Try<UUID> uuid = UUID::fromString(guid);
@@ -125,8 +126,8 @@ std::string Base64EncodeGuid(const std::string & guid)
   string base64;
   DWORD* dw = (DWORD *)uuid.get().data;
 
-  // Bit magic for base64 encoding - take groups of 6 bits and mask with 0b111111 (0x3F)
-  // First 30 bits from dw[0]
+  // Bit magic for base64 encoding - take groups of 6 bits and mask with
+  // 0b111111 (0x3F). First 30 bits from dw[0].
   base64 += base64Chars[dw[0] >> 26 & 0x3F];
   base64 += base64Chars[dw[0] >> 20 & 0x3F];
   base64 += base64Chars[dw[0] >> 14 & 0x3F];
