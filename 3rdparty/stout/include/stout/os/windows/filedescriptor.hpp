@@ -32,9 +32,11 @@ namespace os {
       crtFd = -1;
     }
 
-    WindowsFileDescriptor(HANDLE h) : handle(h) {
-      crtFd = _open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDWR);
-      CHECK_NE(crtFd, -1);
+    WindowsFileDescriptor(HANDLE h) : handle(h), crtFd(-1) {
+      if (handle != INVALID_HANDLE_VALUE) {
+        crtFd = _open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDWR);
+        CHECK_NE(crtFd, -1);
+      }
       socket = INVALID_SOCKET;
     }
 
@@ -83,7 +85,7 @@ namespace os {
       {
         ::_close(crtFd);
       }
-      else {
+      else if (handle != INVALID_HANDLE_VALUE) {
         CloseHandle(handle);
       }
     }

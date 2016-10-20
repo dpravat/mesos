@@ -98,14 +98,11 @@ Try<std::string> shell(const std::string& fmt, const T&... t)
 
 // Executes a command by calling "cmd /c <command>", and returns
 // after the command has been completed. Returns 0 if succeeds, and
-// return -1 on error.
-//
-// The returned value from `_spawnlp` represents child exit code when
-// `_P_WAIT` is used.
+// return -1 on error
 inline int system(const std::string& command)
 {
   return static_cast<int>(::_spawnlp(
-    _P_WAIT, Shell::name, Shell::arg0, Shell::arg1, command.c_str(), nullptr));
+      _P_WAIT, Shell::name, Shell::arg0, Shell::arg1, command.c_str(), nullptr));
 }
 
 
@@ -116,22 +113,18 @@ inline int spawn(
     const std::string& command,
     const std::vector<std::string>& arguments)
 {
-  return static_cast<int>(
-      ::_spawnvp(_P_WAIT, command.c_str(), os::raw::Argv(arguments)));
+  return static_cast<int>(::_spawnvp(_P_WAIT, command.c_str(), os::raw::Argv(arguments)));
 }
+
 
 // On Windows, the `_spawnlp` call creates a new process.
 // In order to emulate the semantics of `execlp`, we spawn with `_P_WAIT`,
 // which forces the parent process to block on the child. When the child exits,
 // the exit code is propagated back through the parent via `exit()`.
-//
-// The returned value from `_spawnlp` represents child exit code when
-// `_P_WAIT` is used.
 template<typename... T>
 inline int execlp(const char* file, T... t)
 {
   exit(static_cast<int>(::_spawnlp(_P_WAIT, file, t...)));
-  return 0;
 }
 
 
@@ -139,13 +132,11 @@ inline int execlp(const char* file, T... t)
 // In order to emulate the semantics of `execvp`, we spawn with `_P_WAIT`,
 // which forces the parent process to block on the child. When the child exits,
 // the exit code is propagated back through the parent via `exit()`.
-//
-// The returned value from `_spawnlp` represents child exit code when
-// `_P_WAIT` is used.
 inline int execvp(const char* file, char* const argv[])
 {
+  _putenv("LIBPROCESS_IP=");
+  _putenv("LIBPROCESS_PORT=");
   exit(static_cast<int>(::_spawnvp(_P_WAIT, file, argv)));
-  return 0;
 }
 
 
