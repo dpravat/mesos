@@ -105,7 +105,7 @@ Try<std::string> shell(const std::string& fmt, const T&... t)
 inline int system(const std::string& command)
 {
   return static_cast<int>(::_spawnlp(
-    _P_WAIT, Shell::name, Shell::arg0, Shell::arg1, command.c_str(), nullptr));
+      _P_WAIT, Shell::name, Shell::arg0, Shell::arg1, command.c_str(), nullptr));
 }
 
 
@@ -144,6 +144,8 @@ inline int execlp(const char* file, T... t)
 // `_P_WAIT` is used.
 inline int execvp(const char* file, char* const argv[])
 {
+  _putenv("LIBPROCESS_IP=");
+  _putenv("LIBPROCESS_PORT=");
   exit(static_cast<int>(::_spawnvp(_P_WAIT, file, argv)));
   return 0;
 }

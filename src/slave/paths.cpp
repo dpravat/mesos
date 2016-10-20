@@ -58,11 +58,17 @@ const char TASK_UPDATES_FILE[] = "task.updates";
 const char RESOURCES_INFO_FILE[] = "resources.info";
 const char RESOURCES_TARGET_FILE[] = "resources.target";
 
-
+#ifdef __WINDOWS__
 const char SLAVES_DIR[] = "slaves";
 const char FRAMEWORKS_DIR[] = "frameworks";
 const char EXECUTORS_DIR[] = "executors";
 const char CONTAINERS_DIR[] = "runs";
+#else
+const char SLAVES_DIR[] = "ag";
+const char FRAMEWORKS_DIR[] = "fw";
+const char EXECUTORS_DIR[] = "ex";
+const char CONTAINERS_DIR[] = "runs";
+#endif // __WINDOWS__
 
 
 Try<ExecutorRunPath> parseExecutorRunPath(
@@ -107,6 +113,56 @@ Try<ExecutorRunPath> parseExecutorRunPath(
   }
 
   return Error("Could not parse executor run path from directory: " + dir);
+}
+
+std::string Base64EncodeGuid(const std::string & guid)
+{
+  // Modified BASE64 table - '/' replaced with '-' to generate valid path components
+  static const std::string base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "abcdefghijklmnopqrstuvwxyz0123456789+-";
+  Try<UUID> uuid = UUID::fromString(guid);
+
+  string base64;
+  DWORD* dw = (DWORD *)uuid.get().data;
+
+  // Bit magic for base64 encoding - take groups of 6 bits and mask with 0b111111 (0x3F)
+  // First 30 bits from dw[0]
+  base64 += base64Chars[dw[0] >> 26 & 0x3F];
+  base64 += base64Chars[dw[0] >> 20 & 0x3F];
+  base64 += base64Chars[dw[0] >> 14 & 0x3F];
+  base64 += base64Chars[dw[0] >> 8 & 0x3F];
+  base64 += base64Chars[dw[0] >> 2 & 0x3F];
+
+  // Two LSB in dw[0] along with 4 MSB from dw[1]
+  base64 += base64Chars[(dw[0] << 4 & 0x30 | dw[1] >> 28 & 0x0F) & 0x3F];
+
+  // Rest of dw[1]
+  base64 += base64Chars[dw[1] >> 22 & 0x3F];
+  base64 += base64Chars[dw[1] >> 16 & 0x3F];
+  base64 += base64Chars[dw[1] >> 10 & 0x3F];
+  base64 += base64Chars[dw[1] >> 4 & 0x3F];
+
+  // Four LSB in dw[1] along with 2 MSB from dw[2]
+  base64 += base64Chars[(dw[1] << 2 & 0x30 | dw[2] >> 30 & 0x03) & 0x3F];
+
+  // Rest of dw[2]
+  base64 += base64Chars[dw[2] >> 24 & 0x3F];
+  base64 += base64Chars[dw[2] >> 18 & 0x3F];
+  base64 += base64Chars[dw[2] >> 12 & 0x3F];
+  base64 += base64Chars[dw[2] >> 6 & 0x3F];
+  base64 += base64Chars[dw[2] & 0x3F];
+
+  // First 30 bits of dw[3]
+  base64 += base64Chars[dw[3] >> 26 & 0x3F];
+  base64 += base64Chars[dw[3] >> 20 & 0x3F];
+  base64 += base64Chars[dw[3] >> 14 & 0x3F];
+  base64 += base64Chars[dw[3] >> 8 & 0x3F];
+  base64 += base64Chars[dw[3] >> 2 & 0x3F];
+
+  // Last 2 bits of dw[3]
+  base64 += base64Chars[dw[3] & 0x03];
+
+  return base64;
 }
 
 
