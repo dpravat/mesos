@@ -18,6 +18,7 @@
 #define __STOUT_OS_WINDOWS_SU_HPP__
 
 #include <string>
+#include <vector>
 
 #include <stout/error.hpp>
 #include <stout/nothing.hpp>
@@ -25,6 +26,11 @@
 #include <stout/try.hpp>
 
 #include <stout/windows.hpp>
+
+#define SECURITY_WIN32
+#include <security.h>
+
+#pragma comment( lib, "Secur32.lib" )
 
 namespace os {
 
@@ -52,8 +58,23 @@ inline Result<gid_t> getgid(const Option<std::string>& user = None()) = delete;
 
 inline Result<std::string> user(Option<uid_t> uid = None())
 {
-  SetLastError(ERROR_NOT_SUPPORTED);
-  return WindowsError();
+  unsigned long bufferSize = MAX_PATH;
+  std::vector<char> userName(MAX_PATH);
+  for (;;)
+  {
+    if (::GetUserNameEx(NameSamCompatible, &userName[0], &bufferSize) == FALSE) {
+      if (::GetLastError() == ERROR_MORE_DATA) {
+        bufferSize *= 2;
+        userName.resize(bufferSize);
+        continue;
+      }
+      return WindowsError();
+    }
+    break;
+  }
+
+  auto ret = std::string(&userName[0]);
+  return strings::replace(ret, "\\", ".");
 }
 
 
