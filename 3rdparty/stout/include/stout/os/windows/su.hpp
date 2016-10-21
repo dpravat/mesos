@@ -42,6 +42,7 @@
 #undef SECURITY_WIN32
 #endif // SECURITY_WIN32 || SECURITY_KERNEL
 
+#pragma comment( lib, "Secur32.lib" )
 
 namespace os {
 
