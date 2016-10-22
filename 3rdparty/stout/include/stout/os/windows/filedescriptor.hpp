@@ -47,6 +47,8 @@ public:
     if (handle != INVALID_HANDLE_VALUE) {
       crtFd = _open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDWR);
       CHECK_NE(crtFd, -1);
+    } else {
+      crtFd = -1;
     }
     socket = INVALID_SOCKET;
   }
@@ -58,7 +60,11 @@ public:
   }
 
   WindowsFileDescriptor(int file) : crtFd(file) {
-    handle = (HANDLE)::_get_osfhandle(file);
+    if (file != -1) {
+      handle = (HANDLE)::_get_osfhandle(file);
+    } else {
+      handle = INVALID_HANDLE_VALUE;
+    }
     CHECK(!is_socket(crtFd));
     socket = INVALID_SOCKET;
   }
@@ -69,9 +75,15 @@ public:
   void addReference(std::shared_ptr<Translator> ref) { adapter = ref; }
 
   WindowsFileDescriptor& operator=(int file) {
-    handle = INVALID_HANDLE_VALUE;
     socket = INVALID_SOCKET;
     crtFd = file;
+
+    if (file != -1) {
+      handle = (HANDLE)::_get_osfhandle(file);
+    } else {
+      handle = INVALID_HANDLE_VALUE;
+    }
+
     CHECK(!is_socket(crtFd));
     return *this;
   }
