@@ -728,15 +728,10 @@ Future<Nothing> FetcherProcess::run(
   // instead of Subprocess::FD(). The reason this can't easily be done
   // today is because we not only need to open the files but also
   // chown them.
-<<<<<<< 5689e4f8b102e2e5e0db76345feb8436e062cea3
   const string stdoutPath = path::join(info.sandbox_directory(), "stdout");
 
-  Try<int> out = os::open(
-      stdoutPath,
-=======
   Try<FileDesc> out = os::open(
-      path::join(info.sandbox_directory(), "stdout"),
->>>>>>> Replaced POSIX `int` with `FileDesc` abstraction in `src` folder.
+      stdoutPath,
       O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK | O_CLOEXEC,
       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -744,15 +739,9 @@ Future<Nothing> FetcherProcess::run(
     return Failure("Failed to create 'stdout' file: " + out.error());
   }
 
-<<<<<<< 5689e4f8b102e2e5e0db76345feb8436e062cea3
   string stderrPath = path::join(info.sandbox_directory(), "stderr");
-  Try<int> err = os::open(
-      stderrPath,
-=======
-  string _stderr = path::join(info.sandbox_directory(), "stderr");
   Try<FileDesc> err = os::open(
-      _stderr,
->>>>>>> Replaced POSIX `int` with `FileDesc` abstraction in `src` folder.
+      stderrPath,
       O_WRONLY | O_CREAT | O_TRUNC | O_NONBLOCK | O_CLOEXEC,
       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
