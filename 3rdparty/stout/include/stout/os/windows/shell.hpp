@@ -144,8 +144,8 @@ inline int execlp(const char* file, T... t)
 // `_P_WAIT` is used.
 inline int execvp(const char* file, char* const argv[])
 {
-  _putenv("LIBPROCESS_IP=");
-  _putenv("LIBPROCESS_PORT=");
+//  _putenv("LIBPROCESS_IP=");
+//  _putenv("LIBPROCESS_PORT=");
   exit(static_cast<int>(::_spawnvp(_P_WAIT, file, argv)));
   return 0;
 }
