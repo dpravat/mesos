@@ -201,8 +201,8 @@ public:
   }
 
   ~Translator() {
-    ::closesocket(PrivateSocket);
-    ::CloseHandle(direction == READ ? Read : Write);
+    // No need to close the internal socket or the internal handle
+    // They are closed olready at this time
     WaitForThreadpoolWorkCallbacks(transferFunction, TRUE);
     CloseThreadpoolWork(transferFunction);
   }
