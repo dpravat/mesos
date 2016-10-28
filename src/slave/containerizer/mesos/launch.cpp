@@ -31,6 +31,8 @@
 #include <stout/path.hpp>
 #include <stout/unreachable.hpp>
 
+#include "process/subprocess.hpp"
+
 #include <mesos/mesos.hpp>
 #include <mesos/type_utils.hpp>
 
@@ -50,6 +52,7 @@
 
 #include "slave/containerizer/mesos/launch.hpp"
 #include "slave/containerizer/mesos/paths.hpp"
+
 
 using std::cerr;
 using std::cout;
@@ -666,11 +669,15 @@ int MesosContainerizerLaunch::execute()
 #ifdef __WINDOWS__
     if (!environment.contains("PATH")) {
       environment["PATH"] =
-        "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
+      "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
     }
 #else
+    // TODO(dpravat): (MESOS-6816) We should allow system environment variables
+    // to be overwritten if they are specified by the framework.  This might
+    // cause applications to not work, but upon overriding system defaults, it
+    // becomes the overidder's problem.
     Option<std::map<string, string>> systemEnvironment =
-      process::internal::getSystemEnvironment();
+        process::internal::getSystemEnvironment();
     foreachpair(const string& key, const string& value,
       systemEnvironment.get()) {
       environment[key] = value;
@@ -765,7 +772,6 @@ int MesosContainerizerLaunch::execute()
   exitWithStatus(EXIT_FAILURE);
   UNREACHABLE();
 }
-
 } // namespace slave {
 } // namespace internal {
 } // namespace mesos {
