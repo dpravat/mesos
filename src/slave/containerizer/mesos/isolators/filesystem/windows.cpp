@@ -82,9 +82,9 @@ Future<Option<ContainerLaunchInfo>> WindowsFilesystemIsolatorProcess::prepare(
   }
 
   const ExecutorInfo& executorInfo = containerConfig.executor_info();
-  /*
+  
   if (executorInfo.has_container()) {
-    CHECK_EQ(executorInfo.container().type(), ContainerInfo::MESOS);
+    CHECK_EQ(executorInfo.container().type(), ContainerInfo::DOCKER);
 
     // Return failure if the container change the filesystem root
     // because the symlinks will become invalid in the new root.
@@ -101,7 +101,7 @@ Future<Option<ContainerLaunchInfo>> WindowsFilesystemIsolatorProcess::prepare(
 
   return update(containerId, executorInfo.resources())
     .then([]() -> Future<Option<ContainerLaunchInfo>> { return None(); });
-    */
+   
   return None();
 }
 
