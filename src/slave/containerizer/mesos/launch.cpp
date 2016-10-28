@@ -31,6 +31,8 @@
 #include <stout/path.hpp>
 #include <stout/unreachable.hpp>
 
+#include "process/subprocess.hpp"
+
 #include <mesos/mesos.hpp>
 #include <mesos/type_utils.hpp>
 
@@ -48,6 +50,7 @@
 
 #include "slave/containerizer/mesos/launch.hpp"
 #include "slave/containerizer/mesos/paths.hpp"
+
 
 using std::cerr;
 using std::cout;
@@ -672,13 +675,21 @@ int MesosContainerizerLaunch::execute()
   if (flags.environment.isSome()) {
     JSON::Object environment = flags.environment.get();
 
+#ifndef __WINDOWS__
     Result<JSON::String> path = flags.environment->find<JSON::String>("PATH");
     if (path.isNone()) {
       environment.values["PATH"] =
-          "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
+        "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
     }
-
-    envp = os::raw::Envp(environment);
+#else
+    Option<std::map<string, string>> systemEnvironment =
+      process::internal::getSystemEnvironment();
+    foreachpair(const string& key, const string& value,
+      systemEnvironment.get()) {
+      environment.values[key] = value;
+    }
+#endif // __WINDOWS__
+    envp = environment;
   }
 
 #ifndef __WINDOWS__
@@ -765,7 +776,6 @@ int MesosContainerizerLaunch::execute()
   cerr << "Failed to execute command: " << os::strerror(errno) << endl;
   UNREACHABLE();
 }
-
 } // namespace slave {
 } // namespace internal {
 } // namespace mesos {
