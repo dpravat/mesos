@@ -31,6 +31,8 @@
 #include <stout/path.hpp>
 #include <stout/unreachable.hpp>
 
+#include "process/subprocess.hpp"
+
 #include <mesos/mesos.hpp>
 #include <mesos/type_utils.hpp>
 
@@ -48,6 +50,7 @@
 
 #include "slave/containerizer/mesos/launch.hpp"
 #include "slave/containerizer/mesos/paths.hpp"
+
 
 using std::cerr;
 using std::cout;
@@ -648,10 +651,24 @@ int MesosContainerizerLaunch::execute()
 
   // Prepare the environment for the child. If 'environment' is not
   // specified, inherit the environment of the current process.
-  Option<os::raw::Envp> envp;
+  std::map<string, string> envMap;
   if (flags.environment.isSome()) {
-    envp = os::raw::Envp(flags.environment.get());
+    foreachpair(const std::string& key,
+      const JSON::Value& value,
+      flags.environment.get().values) {
+      envMap[key] = value.as<JSON::String>().value;
+    }
   }
+
+#ifdef __WINDOWS__
+  Option<std::map<string, string>> systemEnvironment = process::internal::getSystemEnvironment();
+  foreachpair(const string& key, const string& value, systemEnvironment.get()) {
+    envMap[key] = value;
+  }
+#endif
+
+  Option<os::raw::Envp> envp;
+  envp = os::raw::Envp(envMap);
 
 #ifndef __WINDOWS__
   // If we have `containerStatusFd` set, then we need to fork-exec the
