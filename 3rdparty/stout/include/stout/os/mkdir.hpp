@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #endif // __WINDOWS__
 
+#include <stack>
 #include <string>
 #include <vector>
 
@@ -41,23 +42,30 @@ inline Try<Nothing> mkdir(const std::string& directory, bool recursive = true)
       return ErrnoError();
     }
   } else {
-    std::vector<std::string> tokens =
-      strings::tokenize(directory, stringify(os::PATH_SEPARATOR));
+    std::string last_path = directory;
+    std::stack<std::string> stack;
+    for(;;) {
+      if (::mkdir(last_path.c_str(), 0755) < 0 && errno != EEXIST) {
+        stack.push(last_path);
+      }
+      else {
+        break;
+      }
 
-    std::string path;
-
-    // We got an absolute path, so keep the leading slash.
-    if (directory.find_first_of(stringify(os::PATH_SEPARATOR)) == 0) {
-      path = os::PATH_SEPARATOR;
+      std::string::size_type last_separator = last_path.find_last_of(stringify(os::PATH_SEPARATOR));
+      if (last_separator == std::string::npos) {
+        break;
+      }
+      else {
+        last_path = last_path.substr(0, last_separator);
+      }
     }
-
-    foreach (const std::string& token, tokens) {
-      path += token;
+    while (stack.size() > 0) {
+      std::string path = stack.top();
       if (::mkdir(path.c_str(), 0755) < 0 && errno != EEXIST) {
         return ErrnoError();
       }
-
-      path += os::PATH_SEPARATOR;
+      stack.pop();
     }
   }
 
