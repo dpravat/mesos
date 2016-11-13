@@ -789,6 +789,9 @@ Future<Nothing> FetcherProcess::run(
   }
 #endif // __WINDOWS__
 
+  os::close(out.get());
+  os::close(err.get());
+
   // Return early if there are no URIs to fetch.
   if (info.items_size() == 0) {
       return Nothing();
@@ -804,9 +807,6 @@ Future<Nothing> FetcherProcess::run(
                << "': "
                << (realpath.isError() ? realpath.error()
                                       : "No such file or directory");
-
-    os::close(out.get());
-    os::close(err.get());
 
     return Failure("Could not fetch URIs: failed to find mesos-fetcher");
   }
