@@ -100,7 +100,7 @@ Subprocess::IO Subprocess::PATH(const string& path)
 }
 
 
-Subprocess::IO Subprocess::FD(int fd, IO::FDType type)
+Subprocess::IO Subprocess::FD(const int_fd& fd, IO::FDType type)
 {
   return Subprocess::IO(
       [fd, type]() -> Try<InputFileDescriptors> {

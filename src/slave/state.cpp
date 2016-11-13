@@ -39,6 +39,7 @@
 #include <stout/os/read.hpp>
 #include <stout/os/realpath.hpp>
 #include <stout/os/stat.hpp>
+#include <stout/os.hpp>
 
 #include "messages/messages.hpp"
 
@@ -614,7 +615,7 @@ Try<TaskState> TaskState::recover(
 
   // Open the status updates file for reading and writing (for
   // truncating).
-  Try<int> fd = os::open(path, O_RDWR | O_CLOEXEC);
+  Try<int_fd> fd = os::open(path, O_RDWR | O_CLOEXEC);
 
   if (fd.isError()) {
     message = "Failed to open status updates file '" + path +
@@ -647,7 +648,7 @@ Try<TaskState> TaskState::recover(
     }
   }
 
-  off_t offset = lseek(fd.get(), 0, SEEK_CUR);
+  off_t offset = os::lseek(fd.get(), 0, SEEK_CUR);
 
   if (offset < 0) {
     os::close(fd.get());
@@ -740,7 +741,7 @@ Try<Resources> ResourcesState::recoverResources(
 {
   Resources resources;
 
-  Try<int> fd = os::open(path, O_RDWR | O_CLOEXEC);
+  Try<int_fd> fd = os::open(path, O_RDWR | O_CLOEXEC);
   if (fd.isError()) {
     string message =
       "Failed to open resources file '" + path + "': " + fd.error();
@@ -766,7 +767,7 @@ Try<Resources> ResourcesState::recoverResources(
     resources += resource.get();
   }
 
-  off_t offset = lseek(fd.get(), 0, SEEK_CUR);
+  off_t offset = os::lseek(fd.get(), 0, SEEK_CUR);
   if (offset < 0) {
     os::close(fd.get());
     return ErrnoError("Failed to lseek resources file '" + path + "'");

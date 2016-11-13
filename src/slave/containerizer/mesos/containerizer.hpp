@@ -181,7 +181,7 @@ public:
 
   virtual process::Future<bool> exec(
       const ContainerID& containerId,
-      int pipeWrite);
+      const int_fd& pipeWrite);
 
   virtual process::Future<bool> destroy(
       const ContainerID& containerId);

@@ -95,11 +95,9 @@ MesosContainerizerLaunch::Flags::Flags()
       "properly in the subprocess. It's used to synchronize with the \n"
       "parent process. If not specified, no synchronization will happen.");
 
-#ifndef __WINDOWS__
   add(&Flags::runtime_directory,
       "runtime_directory",
       "The runtime directory for the container (used for checkpointing)");
-#endif // __WINDOWS__
 
 #ifdef __linux__
   add(&Flags::namespace_mnt_target,
@@ -318,16 +316,8 @@ int MesosContainerizerLaunch::execute()
     flags.pipe_read.isSome() && flags.pipe_write.isSome();
 
   if (controlPipeSpecified) {
-    int pipe[2] = { flags.pipe_read.get(), flags.pipe_write.get() };
+    int_fd pipe[2] = { flags.pipe_read.get(), flags.pipe_write.get() };
 
-    // NOTE: On windows we need to pass `HANDLE`s between processes,
-    // as file descriptors are not unique across processes. Here we
-    // convert back from from the `HANDLE`s we receive to fds that can
-    // be used in os-agnostic code.
-#ifdef __WINDOWS__
-    pipe[0] = os::handle_to_fd(pipe[0], _O_RDONLY | _O_TEXT);
-    pipe[1] = os::handle_to_fd(pipe[1], _O_TEXT);
-#endif // __WINDOWS__
 
     Try<Nothing> close = os::close(pipe[1]);
     if (close.isError()) {
@@ -673,10 +663,19 @@ int MesosContainerizerLaunch::execute()
       environment[name] = value;
     }
 
+#ifdef __WINDOWS__
     if (!environment.contains("PATH")) {
       environment["PATH"] =
         "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
     }
+#else
+    Option<std::map<string, string>> systemEnvironment =
+      process::internal::getSystemEnvironment();
+    foreachpair(const string& key, const string& value,
+      systemEnvironment.get()) {
+      environment[key] = value;
+    }
+#endif // __WINDOWS__
 
     envp = os::raw::Envp(environment);
   }
