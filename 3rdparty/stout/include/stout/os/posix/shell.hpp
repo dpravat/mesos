@@ -38,6 +38,7 @@ namespace Shell {
 // received by the callee, usually the command name and `arg1` is the
 // second command argument received by the callee.
 
+constexpr const char* entrypoint = "/bin/sh";
 constexpr const char* name = "sh";
 constexpr const char* arg0 = "sh";
 constexpr const char* arg1 = "-c";
