@@ -42,97 +42,30 @@ using OutputFileDescriptors = Subprocess::IO::OutputFileDescriptors;
 
 namespace internal {
 
-static Try<HANDLE> duplicateHandle(const HANDLE handle)
-{
-  HANDLE duplicate = INVALID_HANDLE_VALUE;
-
-  // TODO(anaparu): Do we need to scope the duplicated handle
-  // to the child process?
-  BOOL result = ::DuplicateHandle(
-      ::GetCurrentProcess(),  // Source process == current.
-      handle,                 // Handle to duplicate.
-      ::GetCurrentProcess(),  // Target process == current.
-      &duplicate,
-      0,                      // Ignored (DUPLICATE_SAME_ACCESS).
-      TRUE,                   // Inheritable handle.
-      DUPLICATE_SAME_ACCESS); // Same access level as source.
-
-  if (!result) {
-    return WindowsError("Failed to duplicate handle of stdin file");
-  }
-
-  return duplicate;
-}
-
-
-// Returns either the file descriptor associated to the Windows handle, or
-// `Nothing` if the handle is invalid.
-static Option<int> getFileDescriptorFromHandle(
-    const Option<HANDLE>& handle,
-    const int flags)
-{
-  int fd = ::_open_osfhandle(
-      reinterpret_cast<intptr_t>(handle.getOrElse(INVALID_HANDLE_VALUE)),
-      flags);
-
-  return fd > 0 ? Option<int>(fd) : None();
-}
-
-
-static Try<HANDLE> getHandleFromFileDescriptor(int fd)
-{
-  // Extract handle from file descriptor.
-  const HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(fd));
-  if (handle == INVALID_HANDLE_VALUE) {
-    return WindowsError("Failed to get `HANDLE` for file descriptor");
-  }
-
-  return handle;
-}
-
-
-static Try<HANDLE> getHandleFromFileDescriptor(
-    const int fd,
-    const Subprocess::IO::FDType type)
-{
-  Try<HANDLE> handle = getHandleFromFileDescriptor(fd);
-  if (handle.isError()) {
-    return Error(handle.error());
-  }
-
-  switch (type) {
-    case Subprocess::IO::DUPLICATED: {
-      const Try<HANDLE> duplicate = duplicateHandle(handle.get());
-
-      if (duplicate.isError()) {
-        return Error(duplicate.error());
-      }
-
-      return duplicate;
-    }
-    case Subprocess::IO::OWNED:
-      return handle;
-
-    // NOTE: By not setting a default we leverage the compiler
-    // errors when the enumeration is augmented to find all
-    // the cases we need to provide. Same for below.
-  }
-}
-
-
 // TODO(hausdorff): Rethink name here, write a comment about this function.
 static Try<HANDLE> createIoPath(const string& path, DWORD accessFlags)
 {
   // The `TRUE` in the last field makes this duplicate handle inheritable.
   SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE };
-  const HANDLE handle = ::CreateFile(
+  HANDLE handle = ::CreateFile(
       path.c_str(),
       accessFlags,
-      FILE_SHARE_READ,
+      FILE_SHARE_READ | FILE_SHARE_WRITE,
       &sa,
       CREATE_NEW,
       FILE_ATTRIBUTE_NORMAL,
       nullptr);
+
+  if (handle == INVALID_HANDLE_VALUE && GetLastError() == ERROR_FILE_EXISTS) {
+    handle = ::CreateFile(
+      path.c_str(),
+      accessFlags,
+      FILE_SHARE_READ | FILE_SHARE_WRITE,
+      &sa,
+      OPEN_EXISTING,
+      FILE_ATTRIBUTE_NORMAL,
+      nullptr);
+  }
 
   if (handle == INVALID_HANDLE_VALUE) {
     return WindowsError("Failed to open '" + path + "'");
@@ -167,9 +100,11 @@ Subprocess::IO Subprocess::PIPE()
 {
   return Subprocess::IO(
       []() -> Try<InputFileDescriptors> {
-        std::array<FileDesc, 2> handles;
-        MakePipe(handles, os::SOCKETMODE::WRITE);
- //         return Error(handles.error());
+        FileDesc handles[2];
+        Try<Nothing> res = os::pipe(handles, os::SOCKETMODE::WRITE);
+        if (res.isError()) {
+          return Error(res.error());
+        }
  
         InputFileDescriptors fds;
         fds.read = handles[0];
@@ -177,9 +112,11 @@ Subprocess::IO Subprocess::PIPE()
         return fds;
       },
       []() -> Try<OutputFileDescriptors> {
-        std::array<FileDesc, 2> handles;
-        MakePipe(handles, os::SOCKETMODE::READ);
-
+        FileDesc handles[2];
+        Try<Nothing> res = os::pipe(handles, os::SOCKETMODE::READ);
+        if (res.isError()) {
+          return Error(res.error());
+        }
         OutputFileDescriptors fds;
         fds.read = handles[0];
         fds.write = handles[1];
@@ -216,31 +153,44 @@ Subprocess::IO Subprocess::PATH(const string& path)
 }
 
 
-Subprocess::IO Subprocess::FD(int fd, IO::FDType type)
+Subprocess::IO Subprocess::FD(const FileDesc& fd, IO::FDType type)
 {
   return Subprocess::IO(
       [fd, type]() -> Try<InputFileDescriptors> {
-        const Try<HANDLE> inHandle =
-          internal::getHandleFromFileDescriptor(fd, type);
-
-        if (inHandle.isError()) {
-          return Error(inHandle.error());
+        FileDesc new_fd;
+        switch (type) {
+          case Subprocess::IO::DUPLICATED: {
+            new_fd = os::dup(fd);
+            if (new_fd == -1) {
+              return WindowsError(" to duplicate handle");
+            }
+            break;
+          }
+          case Subprocess::IO::OWNED:
+            new_fd = fd;
+            break;
         }
-
         InputFileDescriptors fds;
-        fds.read = inHandle.get();
+        fds.read = new_fd;
         return fds;
       },
       [fd, type]() -> Try<OutputFileDescriptors> {
-        const Try<HANDLE> outHandle =
-          internal::getHandleFromFileDescriptor(fd, type);
-
-        if (outHandle.isError()) {
-          return Error(outHandle.error());
+        FileDesc new_fd;
+        switch (type) {
+          case Subprocess::IO::DUPLICATED: {
+            new_fd = os::dup(fd);
+            if (new_fd == -1) {
+              return WindowsError("Failed to duplicate handle");
+            }            
+            break;
+          }
+          case Subprocess::IO::OWNED:
+            new_fd = fd;
+            break;
         }
 
         OutputFileDescriptors fds;
-        fds.write = outHandle.get();
+        fds.write = new_fd;
         return fds;
       });
 }

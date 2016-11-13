@@ -116,7 +116,7 @@ Future<Nothing> connect(const Socket& socket)
   // Now check that a successful connection was made.
   int opt;
   socklen_t optlen = sizeof(opt);
-  int s = socket.get();
+  FileDesc s = socket.get();
 
   // NOTE: We cast to `char*` here because the function prototypes on Windows
   // use `char*` instead of `void*`.
@@ -203,7 +203,7 @@ Future<size_t> socket_send_data(Socket socket, const char* data, size_t size)
 
 Future<size_t> socket_send_file(
     Socket socket,
-    int fd,
+    const FileDesc& fd,
     off_t offset,
     size_t size)
 {

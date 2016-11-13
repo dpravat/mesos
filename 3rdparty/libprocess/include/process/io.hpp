@@ -53,7 +53,7 @@ const size_t BUFFERED_READ_SIZE = 16*4096;
  * @see process::io::WRITE
  */
 // TODO(benh): Add a version which takes multiple file descriptors.
-Future<short> poll(int fd, short events);
+Future<short> poll(const FileDesc& fd, short events);
 
 
 /**

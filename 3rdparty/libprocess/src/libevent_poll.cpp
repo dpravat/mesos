@@ -72,7 +72,7 @@ void pollDiscard(const std::weak_ptr<event>& ev, short events)
 } // namespace internal {
 
 
-Future<short> poll(int fd, short events)
+Future<short> poll(const FileDesc& fd, short events)
 {
   process::initialize();
 

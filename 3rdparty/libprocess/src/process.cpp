@@ -2285,8 +2285,8 @@ void SocketManager::exited(ProcessBase* process)
 void SocketManager::swap_implementing_socket(
     const Socket& from, const Socket& to)
 {
-  const int from_fd = from.get();
-  const int to_fd = to.get();
+  const FileDesc& from_fd = from.get();
+  const FileDesc& to_fd = to.get();
 
   synchronized (mutex) {
     // Make sure 'from' and 'to' are valid to swap.

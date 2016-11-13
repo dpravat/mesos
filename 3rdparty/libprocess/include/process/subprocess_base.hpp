@@ -211,7 +211,7 @@ public:
   // Some syntactic sugar to create an IO::PIPE redirector.
   static IO PIPE();
   static IO PATH(const std::string& path);
-  static IO FD(int fd, IO::FDType type = IO::DUPLICATED);
+  static IO FD(const FileDesc& fd, IO::FDType type = IO::DUPLICATED);
 
   /**
    * @return The operating system PID for this subprocess.
