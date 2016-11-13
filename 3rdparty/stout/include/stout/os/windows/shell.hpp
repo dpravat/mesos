@@ -31,6 +31,7 @@ namespace Shell {
   // `name` is the command name, `arg0` is the first argument received
   // by the callee, usually the command name and `arg1` is the second
   // command argument received by the callee.
+  constexpr const char* entrypoint = "cmd";
   constexpr const char* name = "cmd.exe";
   constexpr const char* arg0 = "cmd";
   constexpr const char* arg1 = "/c";
