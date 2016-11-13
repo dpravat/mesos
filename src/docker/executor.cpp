@@ -53,6 +53,10 @@
 
 #include "slave/constants.hpp"
 
+#ifdef __WINDOWS__
+#include <process/windows/winsock.hpp>
+#endif // __WINDOWS__
+
 using namespace mesos;
 using namespace process;
 
@@ -671,6 +675,11 @@ private:
 int main(int argc, char** argv)
 {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+#ifdef __WINDOWS__
+  // Initialize the Windows socket stack.
+  process::Winsock winsock;
+#endif
 
   mesos::internal::docker::Flags flags;
 
