@@ -58,6 +58,10 @@
 
 #include "slave/constants.hpp"
 
+#ifdef __WINDOWS__
+#include <process/windows/winsock.hpp>
+#endif // __WINDOWS__
+
 using namespace mesos;
 using namespace process;
 
@@ -678,6 +682,7 @@ int main(int argc, char** argv)
 #ifdef __WINDOWS__
   // Initialize the Windows socket stack.
   process::Winsock winsock;
+
 #endif // __WINDOWS__
 
   mesos::internal::docker::Flags flags;
