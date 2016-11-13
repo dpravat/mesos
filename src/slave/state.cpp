@@ -36,6 +36,7 @@
 #include <stout/os/ftruncate.hpp>
 #include <stout/os/read.hpp>
 #include <stout/os/realpath.hpp>
+#include <stout/os.hpp>
 
 #include "messages/messages.hpp"
 
@@ -642,7 +643,7 @@ Try<TaskState> TaskState::recover(
     }
   }
 
-  off_t offset = lseek(fd.get(), 0, SEEK_CUR);
+  off_t offset = os::lseek(fd.get(), 0, SEEK_CUR);
 
   if (offset < 0) {
     os::close(fd.get());
@@ -761,7 +762,7 @@ Try<Resources> ResourcesState::recoverResources(
     resources += resource.get();
   }
 
-  off_t offset = lseek(fd.get(), 0, SEEK_CUR);
+  off_t offset = os::lseek(fd.get(), 0, SEEK_CUR);
   if (offset < 0) {
     os::close(fd.get());
     return ErrnoError("Failed to lseek resources file '" + path + "'");
