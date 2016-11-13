@@ -93,8 +93,10 @@ const string DOCKER_NAME_SEPERATOR = ".";
 // Declared in header, see explanation there.
 #ifdef __WINDOWS__
 const string DOCKER_SYMLINK_DIRECTORY = "docker\\links";
+const string MESOS_DOCKER_EXECUTOR = "mesos-docker-executor.exe";
 #else
 const string DOCKER_SYMLINK_DIRECTORY = "docker/links";
+const string MESOS_DOCKER_EXECUTOR = "mesos-docker-executor";
 #endif // __WINDOWS__
 
 
@@ -1443,7 +1445,7 @@ Future<pid_t> DockerContainerizerProcess::launchExecutorProcess(
     // container (to distinguish it from Docker containers not created
     // by Mesos).
     Try<Subprocess> s = subprocess(
-        path::join(flags.launcher_dir, "mesos-docker-executor"),
+        path::join(flags.launcher_dir, MESOS_DOCKER_EXECUTOR),
         argv,
         Subprocess::PIPE(),
         subprocessInfo.out,
