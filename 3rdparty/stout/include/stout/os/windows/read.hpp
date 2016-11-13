@@ -37,6 +37,11 @@ inline ssize_t read(const FileDesc& fd, void* data, size_t size)
   return ::_read(fd.operator int(), data, static_cast<unsigned int>(size));
 }
 
+
+inline long lseek(const FileDesc& fd, long offset, int origin) {
+  return _lseek(fd.operator int(), offset, origin);
+}
+
 } // namespace os {
 
 #endif // __STOUT_OS_WINDOWS_READ_HPP__
