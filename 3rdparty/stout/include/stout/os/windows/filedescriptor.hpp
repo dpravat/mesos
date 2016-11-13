@@ -18,6 +18,9 @@
 
 #include <WinSock2.h>
 
+#include <stout/nothing.hpp>
+#include <stout/try.hpp>
+
 namespace os {
 
 class Translator;
@@ -73,6 +76,7 @@ public:
   WindowsFileDescriptor& operator=(const WindowsFileDescriptor&) = default;
 
   void addReference(std::shared_ptr<Translator> ref) { adapter = ref; }
+  std::shared_ptr<Translator> getReference() const { return adapter; }
 
   WindowsFileDescriptor& operator=(int file) {
     socket = INVALID_SOCKET;
@@ -112,17 +116,20 @@ public:
 
   operator HANDLE() const { return handle; }
 
-  operator int() const {
-    // There is code that threats eveything as int
+  // libevent impropely defines a socket as intptr_t
+  operator intptr_t() const {
     if (isSocket()) {
-      return static_cast<int>(socket);
+      return static_cast<intptr_t>(socket);
     }
+  }
+
+  explicit operator int() const {
     return crtFd;
   }
 };
 
 constexpr int BUFSIZE = 4096;
-enum SOCKETMODE { READ, WRITE };
+enum SOCKETMODE { NONE, READ, WRITE };
 
 class Translator {
   HANDLE Read = INVALID_HANDLE_VALUE;
@@ -316,11 +323,16 @@ inline WindowsFileDescriptor dup(const WindowsFileDescriptor& f) {
     if (WSADuplicateSocket(f, GetCurrentProcessId(), &protInfo) !=
         INVALID_SOCKET) {
       SOCKET s = WSASocket(0, 0, 0, &protInfo, 0, 0);
-      return s;
+      WindowsFileDescriptor ret = s;
+      ret.addReference(f.getReference());
+      return ret;
+
     };
     return INVALID_SOCKET;
   } else if (f.isFile()) {
-    return ::dup(f.operator int());
+    WindowsFileDescriptor ret = ::dup(f.operator int());
+    ret.addReference(f.getReference());
+    return ret;
   } else {
     return INVALID_HANDLE_VALUE;
   }
@@ -328,6 +340,7 @@ inline WindowsFileDescriptor dup(const WindowsFileDescriptor& f) {
 
 inline std::ostream& operator<<(std::ostream& stream,
                                 const os::WindowsFileDescriptor& fd) {
+  LOG(WARNING) << "Operator << has been called";
   if (fd.isSocket()) {
     stream << fd.operator SOCKET();
   } else if (fd.isHandle()) {
@@ -355,6 +368,17 @@ inline bool operator==(const os::WindowsFileDescriptor& left, int right) {
          (left.isFile() && left.operator int() == right);
 }
 
+
+inline bool operator==(const os::WindowsFileDescriptor& left,
+  const os::WindowsFileDescriptor& right) {
+  return (left.isSocket() &&
+    left.operator SOCKET() == right.operator SOCKET()) ||
+    (left.isHandle() &&
+      left.operator HANDLE() == right.operator HANDLE()) ||
+      (left.isFile() && left.operator int() < right.operator int());
+}
+
+
 inline bool operator<(const os::WindowsFileDescriptor& left,
                       const os::WindowsFileDescriptor& right) {
   return (left.isSocket() &&
@@ -369,8 +393,36 @@ inline bool operator<(const os::WindowsFileDescriptor& left, const int& right) {
          (left.isFile() && left.operator int() < right);
 }
 
-inline int MakePipe(std::array<os::WindowsFileDescriptor, 2>& pipes,
-                    os::SOCKETMODE dir = os::SOCKETMODE::READ) {
+inline Try<Nothing> pipe(os::WindowsFileDescriptor pipes[2],
+                    os::SOCKETMODE dir = os::SOCKETMODE::NONE) {
+  if (dir == os::SOCKETMODE::NONE) {
+    // Create inheritable pipe, as described in MSDN[1].
+    //
+    // [1] https://msdn.microsoft.com/en-us/library/windows/desktop/aa365782(v=vs.85).aspx
+    SECURITY_ATTRIBUTES securityAttr;
+    securityAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+    securityAttr.bInheritHandle = TRUE;
+    securityAttr.lpSecurityDescriptor = nullptr;
+
+    HANDLE read_handle;
+    HANDLE write_handle;
+
+    const BOOL result = ::CreatePipe(
+      &read_handle,
+      &write_handle,
+      &securityAttr,
+      0);
+    if (result == 0) {
+    return WindowsError();
+    }
+    pipes[0] = read_handle;
+    pipes[1] = write_handle;
+    
+    return Nothing();
+  } else {
+
+  
+
   std::shared_ptr<os::Translator> adapter =
       std::make_shared<os::Translator>(dir);
   WindowsFileDescriptor reader = adapter->reader();
@@ -380,8 +432,9 @@ inline int MakePipe(std::array<os::WindowsFileDescriptor, 2>& pipes,
   pipes[0] = reader;
   pipes[1] = writer;
 
-  return 0;
+  return Nothing();
 }
+                    }
 
 } // namespace os {
 
