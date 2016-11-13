@@ -76,7 +76,7 @@ inline Try<Nothing> write(const FileDesc& fd,
     return Error("Failed to write size: " + result.error());
   }
 
-  if (!message.SerializeToFileDescriptor(fd)) {
+  if (!message.SerializeToFileDescriptor(static_cast<int>(fd))) {
     return Error("Failed to write/serialize message");
   }
 
@@ -206,7 +206,7 @@ struct Read
 
     if (undoFailed) {
       // Save the offset so we can re-adjust if something goes wrong.
-      offset = lseek(fd, 0, SEEK_CUR);
+      offset = os::lseek(fd, 0, SEEK_CUR);
       if (offset == -1) {
         return ErrnoError("Failed to lseek to SEEK_CUR");
       }
@@ -217,7 +217,7 @@ struct Read
 
     if (result.isError()) {
       if (undoFailed) {
-        lseek(fd, offset, SEEK_SET);
+        os::lseek(fd, offset, SEEK_SET);
       }
       return Error("Failed to read size: " + result.error());
     } else if (result.isNone()) {
@@ -226,7 +226,7 @@ struct Read
       // Hit EOF unexpectedly.
       if (undoFailed) {
         // Restore the offset to before the size read.
-        lseek(fd, offset, SEEK_SET);
+        os::lseek(fd, offset, SEEK_SET);
       }
       if (ignorePartial) {
         return None();
@@ -246,14 +246,14 @@ struct Read
     if (result.isError()) {
       if (undoFailed) {
         // Restore the offset to before the size read.
-        lseek(fd, offset, SEEK_SET);
+        os::lseek(fd, offset, SEEK_SET);
       }
       return Error("Failed to read message: " + result.error());
     } else if (result.isNone() || result.get().size() < size) {
       // Hit EOF unexpectedly.
       if (undoFailed) {
         // Restore the offset to before the size read.
-        lseek(fd, offset, SEEK_SET);
+        os::lseek(fd, offset, SEEK_SET);
       }
       if (ignorePartial) {
         return None();
@@ -273,7 +273,7 @@ struct Read
     if (!message.ParseFromZeroCopyStream(&stream)) {
       if (undoFailed) {
         // Restore the offset to before the size read.
-        lseek(fd, offset, SEEK_SET);
+        os::lseek(fd, offset, SEEK_SET);
       }
       return Error("Failed to deserialize message");
     }
