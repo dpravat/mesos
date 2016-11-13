@@ -124,7 +124,7 @@ TEST_F(OsTest, System)
 // NOTE: Disabled because `os::cloexec` is not implemented on Windows.
 TEST_F_TEMP_DISABLED_ON_WINDOWS(OsTest, Cloexec)
 {
-  Try<int> fd = os::open(
+  Try<int_fd> fd = os::open(
       "cloexec",
       O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC,
       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);

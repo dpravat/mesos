@@ -138,7 +138,7 @@ inline Try<int> download(const std::string& url, const std::string& path)
 {
   initialize();
 
-  Try<int> fd = os::open(
+  Try<int_fd> fd = os::open(
       path,
       O_CREAT | O_WRONLY | O_CLOEXEC,
       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -159,7 +159,7 @@ inline Try<int> download(const std::string& url, const std::string& path)
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, nullptr);
   curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, true);
 
-  FILE* file = fdopen(fd.get(), "w");
+  FILE* file = fdopen(static_cast<int>(fd.get()), "w");
   if (file == nullptr) {
     curl_easy_cleanup(curl);
     os::close(fd.get());

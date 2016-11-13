@@ -18,6 +18,7 @@
 #include <glog/logging.h>
 
 #include <stout/abort.hpp>
+#include <stout/os/filedescriptor.hpp>
 
 namespace net {
 
@@ -127,29 +128,29 @@ inline bool is_socket(SOCKET fd)
 // NOTE: The below wrappers are used to silence some implicit
 // type-casting warnings.
 
-inline int bind(int socket, const struct sockaddr* addr, size_t addrlen)
+inline int bind(const int_fd& socket, const struct sockaddr* addr, size_t addrlen)
 {
   CHECK_LE(addrlen, INT32_MAX);
   return ::bind(socket, addr, static_cast<int>(addrlen));
 }
 
 
-inline int connect(int socket, const struct sockaddr* address, size_t addrlen)
+inline int connect(const int_fd& socket, const struct sockaddr* address, size_t addrlen)
 {
   CHECK_LE(addrlen, INT32_MAX);
   return ::connect(socket, address, static_cast<int>(addrlen));
 }
 
 
-inline ssize_t send(int sockfd, const void* buf, size_t len, int flags)
+inline ssize_t send(const int_fd& sockfd, const void* buf, size_t len, int flags)
 {
   CHECK_LE(len, INT32_MAX);
-  return ::send(
-      sockfd, static_cast<const char*>(buf), static_cast<int>(len), flags);
+  return ::send(sockfd, static_cast<const char *>(buf), static_cast<int>(len),
+                flags);
 }
 
 
-inline size_t recv(int sockfd, void* buf, size_t len, int flags)
+inline size_t recv(const int_fd& sockfd, void* buf, size_t len, int flags)
 {
   CHECK_LE(len, INT32_MAX);
   return ::recv(sockfd, static_cast<char*>(buf), static_cast<int>(len), flags);

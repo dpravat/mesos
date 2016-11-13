@@ -30,7 +30,7 @@
 namespace os {
 
 // Write out the string to the file at the current fd position.
-inline Try<Nothing> write(int fd, const std::string& message)
+inline Try<Nothing> write(const int_fd& fd, const std::string& message)
 {
   size_t offset = 0;
 
@@ -63,7 +63,7 @@ inline Try<Nothing> write(int fd, const std::string& message)
 // open and closing the file.
 inline Try<Nothing> write(const std::string& path, const std::string& message)
 {
-  Try<int> fd = os::open(
+  Try<int_fd> fd = os::open(
       path,
       O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
