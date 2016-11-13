@@ -1381,7 +1381,7 @@ Future<bool> MesosContainerizerProcess::_launch(
 
     // Use a pipe to block the child until it's been isolated.
     // The `pipes` array is captured later in a lambda.
-    std::array<int, 2> pipes;
+    std::array<FileDesc, 2> pipes;
 
     // TODO(jmlvanre): consider returning failure if `pipe` gives an
     // error. Currently we preserve the previous logic.
@@ -1605,7 +1605,7 @@ Future<bool> MesosContainerizerProcess::isolate(
 
 Future<bool> MesosContainerizerProcess::exec(
     const ContainerID& containerId,
-    int pipeWrite)
+    const FileDesc& pipeWrite)
 {
   // The container may be destroyed before we exec the executor so
   // return failure here.
@@ -1623,7 +1623,7 @@ Future<bool> MesosContainerizerProcess::exec(
   // by writing to the pipe.
   char dummy;
   ssize_t length;
-  while ((length = write(pipeWrite, &dummy, sizeof(dummy))) == -1 &&
+  while ((length = os::write(pipeWrite, &dummy, sizeof(dummy))) == -1 &&
          errno == EINTR);
 
   if (length != sizeof(dummy)) {
