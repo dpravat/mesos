@@ -23,10 +23,24 @@
 
 namespace os {
 
-inline Try<Nothing> close(const int_fd& fd)
+inline Try<Nothing> close(const WindowsFD& fd)
 {
-  const_cast<int_fd&>(fd).close();
-
+  switch (fd.type) {
+  case WindowsFD::FD_FILE:
+  case WindowsFD::FD_HANDLE: {
+    // The invocation to `_close` also implicitly
+    // closes the underlying `HANDLE`,
+    // therefore we don't need to call `CloseHandle`.
+    ::_close(fd.file);
+    break;
+  }
+  case WindowsFD::FD_SOCKET: {
+    ::shutdown(fd.socket, SD_BOTH);
+    ::closesocket(fd.socket);
+    break;
+  }
+  }
+  return Nothing();
   return Nothing();
 }
 
