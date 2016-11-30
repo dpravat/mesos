@@ -21,7 +21,7 @@
 #endif // __WINDOWS__
 
 #ifdef __WINDOWS__
-typedef os::WindowsFileDescriptor int_fd;
+typedef os::WindowsFD int_fd;
 #else
 typedef int int_fd;
 #endif // __WINDOWS__

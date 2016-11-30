@@ -29,104 +29,73 @@ class Translator;
 // indeed a socket.
 bool is_socket(SOCKET fd);
 
-class WindowsFileDescriptor {
+class WindowsFD {
   std::shared_ptr<Translator> adapter;
-  HANDLE handle;
-  SOCKET socket;
-  unsigned int handletype :2;
-  unsigned int nonblock   :1;
-  unsigned int closed     :1;
-  int crtFd;
-
+  union {
+    // We keep both a CRT FD as well as a `HANDLE`
+    // regardless of whether we were constructed
+    // from a file or a handle.
+    //
+    // This is because once we request for a CRT FD
+    // from a `HANDLE`, we're required to close it
+    // via `_close`. If we were to do the conversion
+    // lazily upon request, the resulting CRT FD
+    // would be dangling.
+    struct {
+      int file;
+      HANDLE handle;
+    };
+    SOCKET socket;
+  };
+  enum { FD_NONE, FD_FILE, FD_HANDLE, FD_SOCKET } type = FD_NONE;
+  bool nonblock = false;
+  bool closed = false;
+ 
 public:
-  bool isSocket() const { return socket != INVALID_SOCKET; }
-  bool isHandle() const { return handle != INVALID_HANDLE_VALUE; }
-  bool isFile() const { return crtFd != -1; }
+  bool isSocket() const { return type == FD_SOCKET; }
+  bool isHandle() const { return type == FD_HANDLE; }
+  bool isFile() const { return (type == FD_FILE) | (type == FD_HANDLE); }
 
-  WindowsFileDescriptor() {
-    closed = 1;
-    handle = INVALID_HANDLE_VALUE;
-    socket = INVALID_SOCKET;
-    crtFd = -1;
-  }
+  WindowsFD() = default;
 
-  ~WindowsFileDescriptor() {
-  }
+  ~WindowsFD() = default;
+  
 
-  WindowsFileDescriptor(HANDLE h) : handle(h), crtFd(-1) {
-    if (handle != INVALID_HANDLE_VALUE) {
-      closed = 0;
-      crtFd = _open_osfhandle(reinterpret_cast<intptr_t>(handle), O_RDWR);
-      CHECK_NE(crtFd, -1);
-    } else {
-      crtFd = -1;
-    }
-    socket = INVALID_SOCKET;
-  }
+  WindowsFD(HANDLE h)
+    : type(FD_HANDLE),
+    file(
+      h == INVALID_HANDLE_VALUE
+      ? -1
+      : _open_osfhandle(reinterpret_cast<intptr_t>(h), O_RDWR)),
+    handle(h) {}
 
-  WindowsFileDescriptor(SOCKET s) : socket(s) {
-    closed = 0;
+
+
+  WindowsFD(SOCKET s) 
+    : type(FD_SOCKET), socket(s) {
     CHECK(is_socket(socket));
-    handle = INVALID_HANDLE_VALUE;
-    crtFd = -1;
   }
 
-  WindowsFileDescriptor(int file) : crtFd(file) {
-    if (file != -1) {
-      closed = 0;
-      handle = (HANDLE)::_get_osfhandle(file);
-    } else {
-      handle = INVALID_HANDLE_VALUE;
-    }
-    CHECK(!is_socket(crtFd));
-    socket = INVALID_SOCKET;
-  }
+  WindowsFD(int file)
+    : type(FD_FILE), handle(
+      file < 0
+      ? INVALID_HANDLE_VALUE
+      : reinterpret_cast<HANDLE>(::_get_osfhandle(file))),
+    file(file) {}
 
-  WindowsFileDescriptor(const WindowsFileDescriptor&) = default;
-  WindowsFileDescriptor& operator=(const WindowsFileDescriptor&) = default;
-
+  WindowsFD(const WindowsFD&) = default;
+  WindowsFD& operator=(const WindowsFD&) = default;
   void addReference(std::shared_ptr<Translator> ref) { adapter = ref; }
   std::shared_ptr<Translator> getReference() const { return adapter; }
 
-  WindowsFileDescriptor& operator=(int file) {
-    closed = 0;
-    socket = INVALID_SOCKET;
-    crtFd = file;
 
-    if (file != -1) {
-      handle = (HANDLE)::_get_osfhandle(file);
-    } else {
-      handle = INVALID_HANDLE_VALUE;
-    }
-
-    CHECK(!is_socket(crtFd));
-    return *this;
-  }
-
-  WindowsFileDescriptor& operator=(SOCKET s) {
-    closed = 0; 
-    handle = INVALID_HANDLE_VALUE;
-    socket = s;
-    crtFd = -1;
-    CHECK(is_socket(socket));
-    return *this;
-  }
-
-  void close() {
-    CHECK_NE(closed, 1);
-    closed = 1;
-    if (isSocket()) {
-      ::shutdown(socket, SD_BOTH);
-      ::closesocket(socket);
-      socket = INVALID_SOCKET;
-    } else if (crtFd != -1) {
-      ::_close(crtFd);
-      crtFd = -1;
-    } else if (handle != INVALID_HANDLE_VALUE) {
-      CloseHandle(handle);
-      handle = INVALID_HANDLE_VALUE;
-    }
-  }
+  friend Try<Nothing> close(const WindowsFD& fd);
+  friend bool operator==(const WindowsFD&, const WindowsFD&);
+  friend bool operator==(const WindowsFD&, int);
+  friend bool operator<(const WindowsFD&, const WindowsFD&);
+  friend bool operator<(const WindowsFD&, int);
+  friend std::ostream& operator<<(std::ostream& stream,
+    const WindowsFD& fd);
 
   operator SOCKET() const { return socket; }
 
@@ -140,9 +109,108 @@ public:
 
   explicit operator int() const {
     CHECK(isFile());
-    return crtFd;
+    return file;
   }
 };
+
+
+inline std::ostream& operator<<(std::ostream& stream,
+  const os::WindowsFD& fd) {
+  CHECK_NE(fd.type, WindowsFD::FD_NONE);
+  switch (fd.type) {
+  case WindowsFD::FD_FILE: {
+    stream << fd.operator int();
+  }
+  case WindowsFD::FD_HANDLE: {
+    stream << fd.operator HANDLE();
+  }
+  case WindowsFD::FD_SOCKET: {
+    stream << fd.operator SOCKET();
+  }
+  }
+  return stream;
+}
+
+inline std::istream& operator >> (std::istream& stream,
+  os::WindowsFD& fd) {
+  HANDLE handle;
+  if (!(stream >> handle)) {
+    stream.setstate(std::ios_base::badbit);
+    return stream;
+  }
+  fd = os::WindowsFD(handle);
+
+  return stream;
+}
+
+
+
+inline bool operator==(
+  const os::WindowsFD& left,
+  const os::WindowsFD& right) {
+    if (left.type != right.type) return false;
+      switch (left.type) {
+      case WindowsFD::FD_FILE: {
+          return static_cast<int>(left) == static_cast<int>(right);
+        }
+      case WindowsFD::FD_HANDLE: {
+        return static_cast<HANDLE>(left) == static_cast<HANDLE>(right);
+      }
+      case WindowsFD::FD_SOCKET: {
+        return static_cast<SOCKET>(left) == static_cast<SOCKET>(right);
+      }
+  }
+}
+
+
+inline bool operator==(
+  const os::WindowsFD& left,
+  int right) {
+  CHECK_NE(left.type, WindowsFD::FD_NONE);
+  switch (left.type) {
+  case WindowsFD::FD_FILE:
+  case WindowsFD::FD_HANDLE: {
+    return static_cast<int>(left) == right;
+  }
+  case WindowsFD::FD_SOCKET: {
+    return static_cast<SOCKET>(left) == right;
+  }
+  }
+}
+
+
+inline bool operator<(const os::WindowsFD& left,
+  const os::WindowsFD& right) {
+  switch (left.type) {
+    CHECK_NE(left.type, WindowsFD::FD_NONE);
+  case WindowsFD::FD_FILE: {
+    return static_cast<int>(left) < static_cast<int>(right);
+  }
+  case WindowsFD::FD_HANDLE: {
+    return static_cast<HANDLE>(left) < static_cast<HANDLE>(right);
+  }
+  case WindowsFD::FD_SOCKET: {
+    return static_cast<SOCKET>(left) < static_cast<SOCKET>(right);
+  }
+  }
+}
+
+inline bool operator<(const os::WindowsFD& left, int right) {
+  switch (left.type) {
+    CHECK_NE(left.type, WindowsFD::FD_NONE);
+  case WindowsFD::FD_FILE:
+  case WindowsFD::FD_HANDLE: {
+    return static_cast<int>(left) < right;
+  }
+  case WindowsFD::FD_SOCKET: {
+    return static_cast<SOCKET>(left) < right;
+  }
+  }
+}
+
+inline bool operator>=(const os::WindowsFD& left, const int& right) {
+  return !(left < right);
+}
 
 constexpr int BUFSIZE = 4096;
 enum SOCKETMODE { NONE, READ, WRITE };
@@ -230,21 +298,21 @@ public:
     CloseThreadpoolWork(transferFunction);
   }
 
-  WindowsFileDescriptor reader() {
+  WindowsFD reader() {
     if (direction == WRITE) {
       // If the socket is used to write the pipe is used to read.
-      return WindowsFileDescriptor(Read);
+      return WindowsFD(Read);
     } else {
-      return WindowsFileDescriptor(ClientSocket);
+      return WindowsFD(ClientSocket);
     }
   }
 
-  WindowsFileDescriptor writer() {
+  WindowsFD writer() {
     if (direction == WRITE) {
       // If the socket is used to write the pipe is used to read.
-      return WindowsFileDescriptor(ClientSocket);
+      return WindowsFD(ClientSocket);
     } else {
-      return WindowsFileDescriptor(Write);
+      return WindowsFD(Write);
     }
   }
 
@@ -333,19 +401,19 @@ inline bool is_socket(SOCKET fd) {
   return true;
 }
 
-inline WindowsFileDescriptor dup(const WindowsFileDescriptor& f) {
+inline WindowsFD dup(const WindowsFD& f) {
   if (f.isSocket()) {
     WSAPROTOCOL_INFO protInfo;
     if (WSADuplicateSocket(f, GetCurrentProcessId(), &protInfo) !=
         INVALID_SOCKET) {
       SOCKET s = WSASocket(0, 0, 0, &protInfo, 0, 0);
-      WindowsFileDescriptor ret = s;
+      WindowsFD ret = s;
       ret.addReference(f.getReference());
       return ret;
     };
     return INVALID_SOCKET;
   } else if (f.isFile()) {
-    WindowsFileDescriptor ret = ::dup(f.operator int());
+    WindowsFD ret = ::dup(f.operator int());
     ret.addReference(f.getReference());
     return ret;
   } else {
@@ -353,67 +421,8 @@ inline WindowsFileDescriptor dup(const WindowsFileDescriptor& f) {
   }
 }
 
-inline std::ostream& operator<<(std::ostream& stream,
-                                const os::WindowsFileDescriptor& fd) {
-  LOG(WARNING) << "Operator << has been called";
-  if (fd.isSocket()) {
-    stream << fd.operator SOCKET();
-  } else if (fd.isHandle()) {
-    stream << fd.operator HANDLE();
-  } else {
-    stream << fd.operator int();
-  }
-  return stream;
-}
 
-inline std::istream& operator>>(std::istream& stream,
-                                os::WindowsFileDescriptor& fd) {
-  HANDLE handle;
-  if (!(stream >> handle)) {
-    stream.setstate(std::ios_base::badbit);
-    return stream;
-  }
-  fd = os::WindowsFileDescriptor(handle);
-
-  return stream;
-}
-
-inline bool operator==(const os::WindowsFileDescriptor& left, int right) {
-  return (left.isSocket() && left.operator SOCKET() == right) ||
-         (left.isFile() && left.operator int() == right);
-}
-
-
-inline bool operator==(const os::WindowsFileDescriptor& left,
-  const os::WindowsFileDescriptor& right) {
-  return (left.isSocket() &&
-    left.operator SOCKET() == right.operator SOCKET()) ||
-    (left.isHandle() &&
-      left.operator HANDLE() == right.operator HANDLE()) ||
-      (left.isFile() && left.operator int() < right.operator int());
-}
-
-
-inline bool operator<(const os::WindowsFileDescriptor& left,
-                      const os::WindowsFileDescriptor& right) {
-  return (left.isSocket() &&
-          left.operator SOCKET() < right.operator SOCKET()) ||
-         (left.isHandle() &&
-          left.operator HANDLE() < right.operator HANDLE()) ||
-         (left.isFile() && left.operator int() < right.operator int());
-}
-
-inline bool operator<(const os::WindowsFileDescriptor& left, const int& right) {
-  return (left.isSocket() && left.operator SOCKET() < right) ||
-         (left.isFile() && left.operator int() < right);
-}
-
-inline bool operator>=(const os::WindowsFileDescriptor& left, const int& right) {
-  return !(left < right);
-}
-
-
-inline Try<Nothing> std_pipe(os::WindowsFileDescriptor pipes[2]) {
+inline Try<Nothing> std_pipe(os::WindowsFD pipes[2]) {
   // Create inheritable pipe, as described in MSDN[1].
   //
   // [1] https://msdn.microsoft.com/en-us/library/windows/desktop/aa365782(v=vs.85).aspx
@@ -440,15 +449,15 @@ inline Try<Nothing> std_pipe(os::WindowsFileDescriptor pipes[2]) {
 }
 
 
-inline Try<Nothing> pipe(os::WindowsFileDescriptor pipes[2],
+inline Try<Nothing> pipe(os::WindowsFD pipes[2],
                     os::SOCKETMODE dir = os::SOCKETMODE::NONE) {
   if (dir == os::SOCKETMODE::NONE) {
     return std_pipe(pipes);
   } else {
     std::shared_ptr<os::Translator> adapter =
         std::make_shared<os::Translator>(dir);
-    WindowsFileDescriptor reader = adapter->reader();
-    WindowsFileDescriptor writer = adapter->writer();
+    WindowsFD reader = adapter->reader();
+    WindowsFD writer = adapter->writer();
     reader.addReference(adapter);
     writer.addReference(adapter);
     pipes[0] = reader;
