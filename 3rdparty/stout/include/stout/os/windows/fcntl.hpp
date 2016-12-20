@@ -43,7 +43,7 @@ inline Try<Nothing> unsetCloexec(const int_fd& fd)
 
 
 // NOTE: This is not supported on Windows.
-inline Try<bool> isCloexec(int fd)
+inline Try<bool> isCloexec(const int_fd& fd)
 {
   LOG(WARNING) << "`os::isCloexec` has been called, but is a stub on Windows";
   return true;
