@@ -28,6 +28,7 @@
 #include <stout/stringify.hpp>
 
 #include <stout/os/killtree.hpp>
+#include <stout/os/getcwd.hpp> 
 #include <stout/os/read.hpp>
 #include <stout/os/write.hpp>
 
@@ -561,7 +562,7 @@ Future<Option<int>> Docker::run(
   environmentVariables += "MESOS_SANDBOX=" + mappedDirectory + "\n";
   environmentVariables += "MESOS_CONTAINER_NAME=" + name + "\n";
 
-  Try<string> environmentFile_ = os::mktemp();
+  Try<string> environmentFile_ = os::mktemp(path::join(os::getcwd(), "XXXXXX"));
   if (environmentFile_.isError()) {
     return Failure("Failed to create temporary docker environment "
                    "file: " + environmentFile_.error());
